@@ -31,10 +31,10 @@ export default async function AppHomePage() {
 
   return (
     <div className="grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
+      <div className="rounded-3xl border p-8 bg-white" style={{ borderColor: '#C5E0DE' }}>
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="text-xs font-semibold text-muted">Dashboard</div>
+            <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>Dashboard</div>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Good day, Admin</h1>
             <p className="mt-4 max-w-3xl text-sm leading-6 text-muted">
               Your live fleet overview across devices, alerts, geofences, reports, and operations.
@@ -50,10 +50,10 @@ export default async function AppHomePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-3xl border border-divider bg-surface p-6">
+        <div className="md:col-span-2 rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold">Fleet status</div>
-            <Link href="/app/devices" className="text-xs font-semibold text-primary hover:underline">
+            <Link href="/app/devices" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
               View devices
             </Link>
           </div>
@@ -64,10 +64,10 @@ export default async function AppHomePage() {
             <StatusTile label="Offline" value="6" color="muted" />
           </div>
 
-          <div className="mt-6 rounded-3xl border border-divider bg-background p-6">
+          <div className="mt-6 rounded-3xl border p-6" style={{ borderColor: '#C5E0DE', background: '#E8F4F3' }}>
             <div className="flex items-center justify-between">
               <div className="text-sm font-extrabold">Dispatch panel</div>
-              <Link href="/app" className="text-xs font-semibold text-primary hover:underline">
+              <Link href="/app" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
                 Open
               </Link>
             </div>
@@ -76,17 +76,17 @@ export default async function AppHomePage() {
               <MiniCard title="Available drivers" value="8" tone="success" />
             </div>
             <div className="mt-4">
-              <button className="inline-flex h-12 w-full items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-white hover:bg-primary-dark">
+              <button className="inline-flex h-12 w-full items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition-colors hover:brightness-110" style={{ background: '#0D4A47' }}>
                 Assign jobs
               </button>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-divider bg-surface p-6">
+        <div className="rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold">Recent alerts</div>
-            <Link href="/app/alerts" className="text-xs font-semibold text-primary hover:underline">
+            <Link href="/app/alerts" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
               View all
             </Link>
           </div>
@@ -99,23 +99,23 @@ export default async function AppHomePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border border-divider bg-surface p-6 md:col-span-2">
+        <div className="rounded-3xl border p-6 md:col-span-2 bg-white" style={{ borderColor: '#C5E0DE' }}>
           <div className="flex items-center justify-between">
             <div className="text-sm font-extrabold">Map preview</div>
-            <Link href="/app/map" className="text-xs font-semibold text-primary hover:underline">
+            <Link href="/app/map" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
               Open map
             </Link>
           </div>
-          <div className="mt-4 rounded-3xl border border-divider bg-background p-6">
-            <div className="h-56 rounded-2xl bg-background">
-              <div className="flex h-full items-center justify-center rounded-2xl border border-divider bg-surface text-sm text-muted">
+          <div className="mt-4 rounded-3xl border p-6" style={{ borderColor: '#C5E0DE', background: '#E8F4F3' }}>
+            <div className="h-56 rounded-2xl" style={{ background: '#E8F4F3' }}>
+              <div className="flex h-full items-center justify-center rounded-2xl border text-sm" style={{ borderColor: '#C5E0DE', color: '#1A7A75', background: '#fff' }}>
                 Live map preview (next: connect to latest locations)
               </div>
             </div>
           </div>
         </div>
 
-        <div className="rounded-3xl border border-divider bg-surface p-6">
+        <div className="rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
           <div className="text-sm font-extrabold">Quick actions</div>
           <div className="mt-4 grid gap-3">
             <QuickLink href="/app/geofences" title="Geofences" subtitle="Create and assign zones" />
@@ -139,19 +139,20 @@ function StatCard({
   value: string;
   accent: "primary" | "success" | "warning" | "danger";
 }) {
-  const cls = {
-    primary: "text-primary bg-primary/10",
-    success: "text-success bg-success/10",
-    warning: "text-warning bg-warning/10",
-    danger: "text-danger bg-danger/10",
-  }[accent];
+  const styles: Record<string, { color: string; bg: string }> = {
+    primary: { color: '#0D4A47', bg: 'rgba(13,74,71,0.1)' },
+    success: { color: '#22C55E', bg: 'rgba(34,197,94,0.1)' },
+    warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
+    danger:  { color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
+  };
+  const s = styles[accent];
 
   return (
-    <div className="rounded-2xl border border-divider bg-background p-4">
-      <div className="text-xs font-semibold text-muted">{label}</div>
+    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
+      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{label}</div>
       <div className="mt-2 flex items-center justify-between">
         <div className="text-2xl font-extrabold">{value}</div>
-        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>Live</div>
+        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: s.color, background: s.bg }}>Live</div>
       </div>
     </div>
   );
@@ -166,32 +167,35 @@ function StatusTile({
   value: string;
   color: "success" | "warning" | "danger" | "muted";
 }) {
-  const cls = {
-    success: "bg-success/15 text-success",
-    warning: "bg-warning/15 text-warning",
-    danger: "bg-danger/15 text-danger",
-    muted: "bg-divider text-muted",
-  }[color];
+  const pillStyle: Record<string, { color: string; bg: string }> = {
+    success: { color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
+    warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+    danger:  { color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
+    muted:   { color: '#6B7280', bg: 'rgba(107,114,128,0.12)' },
+  };
+  const ps = pillStyle[color];
 
   return (
-    <div className="rounded-2xl border border-divider bg-background p-4">
+    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
       <div className="flex items-center justify-between">
         <div className="text-sm font-extrabold">{value}</div>
-        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>{label}</div>
+        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: ps.color, background: ps.bg }}>{label}</div>
       </div>
-      <div className="mt-2 text-xs text-muted">Vehicles</div>
+      <div className="mt-2 text-xs" style={{ color: '#1A7A75' }}>Vehicles</div>
     </div>
   );
 }
 
 function MiniCard({ title, value, tone }: { title: string; value: string; tone: "success" | "warning" }) {
-  const cls = tone === "success" ? "text-success bg-success/10" : "text-warning bg-warning/10";
+  const s = tone === "success"
+    ? { color: '#22C55E', bg: 'rgba(34,197,94,0.1)' }
+    : { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' };
   return (
-    <div className="rounded-2xl border border-divider bg-surface p-4">
-      <div className="text-xs font-semibold text-muted">{title}</div>
+    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
+      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{title}</div>
       <div className="mt-2 flex items-center justify-between">
         <div className="text-2xl font-extrabold">{value}</div>
-        <div className={`rounded-full px-3 py-1 text-xs font-semibold ${cls}`}>Today</div>
+        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: s.color, background: s.bg }}>Today</div>
       </div>
     </div>
   );
@@ -208,15 +212,17 @@ function AlertRow({
   time: string;
   tone: "warning" | "danger";
 }) {
-  const cls = tone === "danger" ? "bg-danger/10 text-danger border-danger/30" : "bg-warning/10 text-warning border-warning/30";
+  const ts = tone === "danger"
+    ? { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' }
+    : { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' };
   return (
-    <div className="rounded-2xl border border-divider bg-background p-4">
+    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="truncate text-sm font-extrabold">{title}</div>
-          <div className="mt-1 truncate text-xs text-muted">{subtitle}</div>
+          <div className="mt-1 truncate text-xs" style={{ color: '#1A7A75' }}>{subtitle}</div>
         </div>
-        <div className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${cls}`}>{time}</div>
+        <div className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold" style={{ color: ts.color, background: ts.bg, borderColor: ts.border }}>{time}</div>
       </div>
     </div>
   );
@@ -224,9 +230,9 @@ function AlertRow({
 
 function QuickLink({ href, title, subtitle }: { href: string; title: string; subtitle: string }) {
   return (
-    <Link href={href} className="rounded-2xl border border-divider bg-background p-4 hover:bg-surface">
-      <div className="text-sm font-extrabold">{title}</div>
-      <div className="mt-1 text-xs text-muted">{subtitle}</div>
+    <Link href={href} className="rounded-2xl border p-4 bg-white transition-colors hover:bg-[#E8F4F3] block" style={{ borderColor: '#C5E0DE' }}>
+      <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{title}</div>
+      <div className="mt-1 text-xs" style={{ color: '#1A7A75' }}>{subtitle}</div>
     </Link>
   );
 }

@@ -97,7 +97,7 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
     <div className="grid gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Link href="/app/devices" className="text-sm font-semibold text-muted hover:text-foreground">
+          <Link href="/app/devices" className="text-sm font-semibold transition-colors" style={{ color: '#1A7A75' }}>
             ← Devices
           </Link>
         </div>
@@ -120,8 +120,8 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
         ) : device ? (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="md:col-span-2">
-              <div className="text-xs font-semibold text-muted">Device</div>
-              <h1 className="mt-2 text-2xl font-extrabold tracking-tight">{device.name}</h1>
+              <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Device</div>
+              <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>{device.name}</h1>
               <div className="mt-4 grid gap-2 text-sm text-muted">
                 <div>
                   <span className="font-semibold text-foreground">IMEI:</span> {device.imei}
@@ -159,7 +159,8 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
                   type="button"
                   onClick={save}
                   disabled={isSaving}
-                  className="inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-12 items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  style={{ background: '#0D4A47' }}
                 >
                   {isSaving ? "Saving…" : "Save changes"}
                 </button>
@@ -188,9 +189,9 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-divider bg-surface p-4">
-      <div className="text-xs font-semibold text-muted">{label}</div>
-      <div className="mt-2 text-lg font-extrabold">{value}</div>
+    <div className="rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
+      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{label}</div>
+      <div className="mt-2 text-lg font-extrabold" style={{ color: '#0D4A47' }}>{value}</div>
     </div>
   );
 }

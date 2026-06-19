@@ -2,8 +2,8 @@ export default function AlertsPage() {
   return (
     <div className="grid gap-6">
       <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-semibold text-muted">Alerts</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Alerts center</h1>
+        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Alerts</div>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Alerts center</h1>
         <p className="mt-4 text-sm leading-6 text-muted">
           View, filter, acknowledge, and export alerts across your fleet.
         </p>
@@ -13,10 +13,10 @@ export default function AlertsPage() {
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="text-sm font-extrabold">Recent</div>
           <div className="flex gap-2">
-            <button className="inline-flex h-10 items-center justify-center rounded-xl border border-divider bg-background px-4 text-sm font-semibold hover:bg-surface">
+            <button className="inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors" style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#E8F4F3' }}>
               Filters
             </button>
-            <button className="inline-flex h-10 items-center justify-center rounded-xl border border-divider bg-background px-4 text-sm font-semibold hover:bg-surface">
+            <button className="inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors" style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#E8F4F3' }}>
               Export
             </button>
           </div>
@@ -58,10 +58,10 @@ function AlertCard({
         <div className={`shrink-0 rounded-full border px-3 py-1 text-xs font-semibold ${cls}`}>{time}</div>
       </div>
       <div className="mt-4 flex gap-2">
-        <button className="inline-flex h-10 items-center justify-center rounded-xl border border-divider bg-surface px-4 text-sm font-semibold hover:bg-background">
+        <button className="inline-flex h-10 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors" style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#E8F4F3' }}>
           View on map
         </button>
-        <button className="inline-flex h-10 items-center justify-center rounded-xl bg-primary px-4 text-sm font-semibold text-white hover:bg-primary-dark">
+        <button className="inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-semibold text-white transition-all hover:brightness-110" style={{ background: '#0D4A47' }}>
           Acknowledge
         </button>
       </div>

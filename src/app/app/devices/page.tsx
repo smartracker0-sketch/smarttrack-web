@@ -91,8 +91,8 @@ export default function DevicesPage() {
       <div className="rounded-3xl border border-divider bg-surface p-8">
         <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="text-xs font-semibold text-muted">Fleet</div>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Devices</h1>
+            <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Fleet</div>
+            <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Devices</h1>
             <p className="mt-3 text-sm leading-6 text-muted">
               Search, add, and manage tracking devices.
             </p>
@@ -109,7 +109,8 @@ export default function DevicesPage() {
             <button
               type="button"
               onClick={load}
-              className="inline-flex h-11 items-center justify-center rounded-xl border border-divider bg-background px-4 text-sm font-semibold hover:bg-surface"
+              className="inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors"
+              style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#E8F4F3' }}
             >
               Refresh
             </button>
@@ -142,14 +143,17 @@ export default function DevicesPage() {
                 <Link
                   key={d.id}
                   href={`/app/devices/${d.id}`}
-                  className="rounded-2xl border border-divider bg-background p-4 hover:bg-surface"
+                  className="rounded-2xl border p-4 transition-colors"
+                  style={{ borderColor: '#C5E0DE', background: '#fff' }}
+                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#E8F4F3'; }}
+                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}
                 >
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold">{d.name}</div>
-                      <div className="mt-1 truncate text-xs text-muted">IMEI: {d.imei}</div>
+                      <div className="truncate text-sm font-extrabold" style={{ color: '#0D4A47' }}>{d.name}</div>
+                      <div className="mt-1 truncate text-xs" style={{ color: '#1A7A75' }}>IMEI: {d.imei}</div>
                     </div>
-                    <div className="text-xs text-muted">Open</div>
+                    <div className="text-xs font-semibold" style={{ color: '#F97316' }}>Open →</div>
                   </div>
                 </Link>
               ))
@@ -184,7 +188,8 @@ export default function DevicesPage() {
               type="button"
               onClick={addDevice}
               disabled={isAdding}
-              className="mt-1 inline-flex h-12 items-center justify-center rounded-full bg-primary px-6 text-sm font-semibold text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 inline-flex h-12 items-center justify-center rounded-full px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 transition-all hover:brightness-110"
+              style={{ background: '#0D4A47' }}
             >
               {isAdding ? "Adding…" : "Add device"}
             </button>

@@ -29,5 +29,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: ["/app/:path*", "/login"],
+  // /tracking is intentionally public — no auth required
 };
 

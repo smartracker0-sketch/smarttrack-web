@@ -2,8 +2,8 @@ export default function EcoDrivingPage() {
   return (
     <div className="grid gap-6">
       <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-semibold text-muted">Analytics</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight">Eco-driving</h1>
+        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Analytics</div>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Eco-driving</h1>
         <p className="mt-4 text-sm leading-6 text-muted">
           Driver scoring, harsh events, and leaderboards (web version of the mobile eco-driving module).
         </p>
@@ -35,18 +35,18 @@ export default function EcoDrivingPage() {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-divider bg-background p-4">
-      <div className="text-xs font-semibold text-muted">{label}</div>
-      <div className="mt-2 text-2xl font-extrabold">{value}</div>
+    <div className="rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
+      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{label}</div>
+      <div className="mt-2 text-2xl font-extrabold" style={{ color: '#0D4A47' }}>{value}</div>
     </div>
   );
 }
 
 function Row({ name, score }: { name: string; score: string }) {
   return (
-    <div className="flex items-center justify-between rounded-2xl border border-divider bg-background p-4">
-      <div className="text-sm font-extrabold">{name}</div>
-      <div className="rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">{score}</div>
+    <div className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
+      <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{name}</div>
+      <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: '#E8F4F3', color: '#0D4A47' }}>{score}</div>
     </div>
   );
 }
