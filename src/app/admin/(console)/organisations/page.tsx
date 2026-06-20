@@ -1,0 +1,206 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { FiPlus, FiSearch, FiEye, FiSlash, FiTrash2, FiLogIn } from "react-icons/fi";
+import { ORGS, Organisation, OrgPlan, OrgStatus } from "@/admin/data/mockData";
+import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
+
+function StatusBadge({ status }: { status: OrgStatus }) {
+  const map: Record<OrgStatus, { bg: string; color: string }> = {
+    Active:    { bg: "#22C55E1a", color: "#22C55E" },
+    Trial:     { bg: "#F59E0B1a", color: "#F59E0B" },
+    Suspended: { bg: "#EF44441a", color: "#EF4444" },
+    Churned:   { bg: "rgba(255,255,255,0.06)", color: "#9CA3AF" },
+  };
+  const s = map[status];
+  return <span className="inline-flex items-center h-5 px-2 rounded text-[10px] font-bold" style={{ background: s.bg, color: s.color }}>{status}</span>;
+}
+
+function PlanBadge({ plan }: { plan: OrgPlan }) {
+  const map: Record<OrgPlan, { bg: string; color: string }> = {
+    Starter:    { bg: "rgba(255,255,255,0.06)", color: "#9CA3AF" },
+    Pro:        { bg: "#1A7A751a", color: "#1A7A75" },
+    Enterprise: { bg: "#F974161a", color: "#F97316" },
+  };
+  const s = map[plan];
+  return <span className="inline-flex items-center h-5 px-2 rounded text-[10px] font-bold" style={{ background: s.bg, color: s.color }}>{plan}</span>;
+}
+
+function CreateOrgModal({ onClose }: { onClose: () => void }) {
+  const [form, setForm] = useState({ name: "", adminEmail: "", adminName: "", plan: "Pro", vehicleLimit: 20, trialDays: 14 });
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    alert(`Organisation "${form.name}" created! Invite sent to ${form.adminEmail}`);
+    onClose();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.7)" }}>
+      <div className="w-full max-w-md rounded-3xl p-6" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <h2 className="text-base font-bold text-white mb-5">New Organisation</h2>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {[
+            { label: "Organisation Name", key: "name", type: "text", placeholder: "Acme Logistics" },
+            { label: "Admin Email", key: "adminEmail", type: "email", placeholder: "admin@acme.com" },
+            { label: "Admin Name", key: "adminName", type: "text", placeholder: "John Doe" },
+          ].map(({ label, key, type, placeholder }) => (
+            <div key={key}>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>{label}</label>
+              <input
+                type={type}
+                required
+                placeholder={placeholder}
+                value={String(form[key as keyof typeof form])}
+                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+              />
+            </div>
+          ))}
+          <div>
+            <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Plan</label>
+            <select
+              value={form.plan}
+              onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
+              className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
+            >
+              {["Starter", "Pro", "Enterprise"].map(p => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Vehicle Limit</label>
+              <input type="number" value={form.vehicleLimit} onChange={e => setForm(f => ({ ...f, vehicleLimit: +e.target.value }))}
+                className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Trial Days</label>
+              <input type="number" value={form.trialDays} onChange={e => setForm(f => ({ ...f, trialDays: +e.target.value }))}
+                className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
+                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
+            </div>
+          </div>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 h-10 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,0.06)", color: "#9CA3AF" }}>Cancel</button>
+            <button type="submit" className="flex-1 h-10 rounded-xl text-sm font-bold text-white" style={{ background: "#F97316" }}>Create & Invite</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default function OrganisationsPage() {
+  const router = useRouter();
+  const { startImpersonation } = useAdminAuthStore();
+  const [search, setSearch] = useState("");
+  const [filterPlan, setFilterPlan] = useState("All");
+  const [filterStatus, setFilterStatus] = useState("All");
+  const [showCreate, setShowCreate] = useState(false);
+
+  const filtered = ORGS.filter(o => {
+    const matchSearch = o.name.toLowerCase().includes(search.toLowerCase()) || o.adminEmail.toLowerCase().includes(search.toLowerCase());
+    const matchPlan = filterPlan === "All" || o.plan === filterPlan;
+    const matchStatus = filterStatus === "All" || o.status === filterStatus;
+    return matchSearch && matchPlan && matchStatus;
+  });
+
+  function handleImpersonate(o: Organisation) {
+    if (confirm(`You are about to view the platform as "${o.name}". This action will be logged.`)) {
+      startImpersonation({ orgId: o.id, orgName: o.name });
+      router.push("/app");
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} />}
+
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <FiSearch size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: "#4A8A87" }} />
+          <input
+            placeholder="Search organisations…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="w-full pl-9 pr-4 h-9 rounded-xl text-sm text-white outline-none"
+            style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.08)" }}
+          />
+        </div>
+        {["All", "Starter", "Pro", "Enterprise"].map(p => (
+          <button key={p} onClick={() => setFilterPlan(p)}
+            className="h-9 px-3 rounded-xl text-xs font-semibold transition-colors"
+            style={{ background: filterPlan === p ? "#0D4A47" : "rgba(255,255,255,0.06)", color: filterPlan === p ? "#fff" : "#7BBBB8" }}>
+            {p}
+          </button>
+        ))}
+        {["All", "Active", "Trial", "Suspended", "Churned"].map(s => (
+          <button key={s} onClick={() => setFilterStatus(s)}
+            className="h-9 px-3 rounded-xl text-xs font-semibold transition-colors"
+            style={{ background: filterStatus === s ? "#0D4A47" : "rgba(255,255,255,0.06)", color: filterStatus === s ? "#fff" : "#7BBBB8" }}>
+            {s}
+          </button>
+        ))}
+        <button onClick={() => setShowCreate(true)}
+          className="ml-auto flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-bold text-white"
+          style={{ background: "#F97316" }}>
+          <FiPlus size={14} /> New Organisation
+        </button>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
+                {["Organisation", "Plan", "Vehicles", "Users", "Status", "Onboarded", "Actions"].map(h => (
+                  <th key={h} className="text-left px-4 py-3 font-semibold whitespace-nowrap">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map((o) => (
+                <tr key={o.id} className="hover:bg-white/[0.03] transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <td className="px-4 py-3">
+                    <div className="text-white font-semibold">{o.name}</div>
+                    <div style={{ color: "#4A8A87" }}>{o.adminEmail}</div>
+                  </td>
+                  <td className="px-4 py-3"><PlanBadge plan={o.plan} /></td>
+                  <td className="px-4 py-3 text-white">{o.vehicles}</td>
+                  <td className="px-4 py-3 text-white">{o.users}</td>
+                  <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
+                  <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{o.onboarded}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => router.push(`/admin/organisations/${o.id}`)} title="View Details"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+                        style={{ color: "#7BBBB8" }}><FiEye size={13} /></button>
+                      <button onClick={() => handleImpersonate(o)} title="Impersonate"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+                        style={{ color: "#F97316" }}><FiLogIn size={13} /></button>
+                      <button title="Suspend"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+                        style={{ color: "#F59E0B" }}><FiSlash size={13} /></button>
+                      <button title="Delete"
+                        className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
+                        style={{ color: "#EF4444" }}><FiTrash2 size={13} /></button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="px-4 py-3 text-xs" style={{ color: "#4A8A87", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
+          {filtered.length} of {ORGS.length} organisations
+        </div>
+      </div>
+    </div>
+  );
+}

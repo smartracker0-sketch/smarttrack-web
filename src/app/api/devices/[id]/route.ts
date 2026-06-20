@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
+import { requireAdmin } from "@/lib/requireAdmin";
 
 function baseUrl() {
   return process.env.TRACKPRO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
@@ -26,6 +27,9 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 }
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const access = (await cookies()).get("tp_access")?.value;
   if (!access) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 
@@ -55,6 +59,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+  const denied = await requireAdmin();
+  if (denied) return denied;
+
   const access = (await cookies()).get("tp_access")?.value;
   if (!access) return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
 

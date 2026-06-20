@@ -24,11 +24,29 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  if (pathname.startsWith("/admin") && pathname !== "/admin/login") {
+    const adminToken = request.cookies.get("stt_admin_token")?.value;
+    if (!adminToken) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/login";
+      return NextResponse.redirect(url);
+    }
+  }
+
+  if (pathname === "/admin/login") {
+    const adminToken = request.cookies.get("stt_admin_token")?.value;
+    if (adminToken) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/admin/overview";
+      return NextResponse.redirect(url);
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/app/:path*", "/login"],
+  matcher: ["/app/:path*", "/login", "/admin/:path*"],
   // /tracking is intentionally public — no auth required
 };
 
