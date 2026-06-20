@@ -10,6 +10,7 @@ import {
   FiBarChart2, FiDollarSign, FiFileText, FiTool,
   FiUsers, FiMapPin, FiShoppingCart, FiDisc,
   FiCpu, FiHelpCircle, FiSettings, FiLock,
+  FiZap, FiVideo,
 } from "react-icons/fi";
 
 const VEHICLE_SUB = [
@@ -19,23 +20,53 @@ const VEHICLE_SUB = [
   { href: "/app/devices/states",         label: "My Vehicle States" },
 ];
 
+const TRIPS_SUB = [
+  { href: "/app/history",                label: "All Trips" },
+  { href: "/app/history/schedules",      label: "Trip Schedules" },
+  { href: "/app/history/routes",         label: "Routes" },
+  { href: "/app/history/consigners",     label: "Consigners" },
+];
+
+const REPORTS_SUB = [
+  { href: "/app/reports",                label: "All Reports" },
+  { href: "/app/reports/schedules",      label: "Report Schedules" },
+];
+
+const MAINTENANCE_SUB = [
+  { href: "/app/maintenance",                    label: "Service History & Reminders" },
+  { href: "/app/maintenance/schedules",          label: "Service Schedules" },
+];
+
+const DRIVERS_SUB = [
+  { href: "/app/drivers",                        label: "My Drivers" },
+  { href: "/app/drivers/performance",            label: "Driver Performance" },
+];
+
+const CONFIGURATIONS_SUB = [
+  { href: "/app/settings",                       label: "General Settings" },
+  { href: "/app/settings/custom-fields",         label: "Custom Fields" },
+  { href: "/app/settings/captain",               label: "Captain Configurations" },
+];
+
 const SIDEBAR_ITEMS = [
   { href: "/app",                  icon: FiPieChart,      label: "Analytics" },
   { href: "/app/devices",          icon: FiTruck,         label: "Vehicles",  sub: VEHICLE_SUB },
-  { href: "/app/history",          icon: FiNavigation,    label: "Trips" },
+  { href: "/app/history",          icon: FiNavigation,    label: "Trips",     sub: TRIPS_SUB },
   { href: "/app/alerts",           icon: FiAlertTriangle, label: "Alerts" },
-  { href: "/app/reports",          icon: FiBarChart2,     label: "Reports" },
+  { href: "/app/reports",          icon: FiBarChart2,     label: "Reports",   sub: REPORTS_SUB },
   { href: "/app/expenses",         icon: FiDollarSign,    label: "My Expenses" },
   { href: "/app/documents",        icon: FiFileText,      label: "Documents" },
-  { href: "/app/maintenance",      icon: FiTool,          label: "Maintenance" },
-  { href: "/app/drivers",          icon: FiUsers,         label: "Drivers" },
+  { href: "/app/maintenance",      icon: FiTool,          label: "Maintenance", sub: MAINTENANCE_SUB },
+  { href: "/app/drivers",          icon: FiUsers,         label: "Drivers",   sub: DRIVERS_SUB },
   { href: "/app/geofences",        icon: FiMapPin,        label: "Geofence" },
   { href: "/app/vendors",          icon: FiShoppingCart,  label: "Vendors" },
   { href: "/app/tyre-management",  icon: FiDisc,          label: "Tyre Management" },
   { href: "/app/devices-mgmt",     icon: FiCpu,           label: "Devices" },
   { href: "/app/support",          icon: FiHelpCircle,    label: "Support" },
-  { href: "/app/settings",         icon: FiSettings,      label: "Configurations" },
+  { href: "/app/settings",         icon: FiSettings,      label: "Configurations", sub: CONFIGURATIONS_SUB },
   { href: "/app/elock",            icon: FiLock,          label: "E-Lock Status" },
+  { href: "/app/ev",               icon: FiZap,           label: "EV" },
+  { href: "/app/cctv",             icon: FiVideo,         label: "CCTV" },
 ];
 
 const DRAWER_GROUPS = [
@@ -62,6 +93,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [vehicleOpen, setVehicleOpen] = useState(pathname.startsWith('/app/devices'));
+  const [tripsOpen, setTripsOpen] = useState(pathname.startsWith('/app/history'));
+  const [reportsOpen, setReportsOpen] = useState(pathname.startsWith('/app/reports'));
+  const [maintenanceOpen, setMaintenanceOpen] = useState(pathname.startsWith('/app/maintenance'));
+  const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
+  const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -105,13 +141,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Nav items */}
         <div className="flex flex-col gap-0.5 flex-1 overflow-y-auto overflow-x-hidden px-2">
           {SIDEBAR_ITEMS.map(({ href, icon: Icon, label, sub }) => {
-            const active = pathname === href || (sub && pathname.startsWith('/app/devices'));
+            const isVehicles = href === '/app/devices';
+            const isTrips = href === '/app/history';
+            const isReports = href === '/app/reports';
+            const isMaintenance = href === '/app/maintenance';
+            const isDrivers = href === '/app/drivers';
+            const isConfigurations = href === '/app/settings';
+            const subOpen = isVehicles ? vehicleOpen : isTrips ? tripsOpen : isReports ? reportsOpen : isMaintenance ? maintenanceOpen : isDrivers ? driversOpen : isConfigurations ? configurationsOpen : false;
+            const setSubOpen = isVehicles ? setVehicleOpen : isTrips ? setTripsOpen : isReports ? setReportsOpen : isMaintenance ? setMaintenanceOpen : isDrivers ? setDriversOpen : isConfigurations ? setConfigurationsOpen : () => {};
+            const active = pathname === href || (sub && (isVehicles ? pathname.startsWith('/app/devices') : isTrips ? pathname.startsWith('/app/history') : isReports ? pathname.startsWith('/app/reports') : isMaintenance ? pathname.startsWith('/app/maintenance') : isDrivers ? pathname.startsWith('/app/drivers') : isConfigurations ? pathname.startsWith('/app/settings') : false));
             const hasDropdown = !!sub;
             return (
               <div key={href}>
                 <button
                   type="button"
-                  onClick={() => hasDropdown ? setVehicleOpen(o => !o) : router.push(href)}
+                  onClick={() => hasDropdown ? setSubOpen((o: boolean) => !o) : router.push(href)}
                   className="relative flex items-center gap-3 h-10 px-2 rounded-lg transition-colors whitespace-nowrap overflow-hidden w-full text-left"
                   style={{
                     background: active ? '#E8F4F3' : 'transparent',
@@ -130,12 +174,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                     <FiChevronDown
                       size={13}
                       className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-all duration-150"
-                      style={{ transform: vehicleOpen ? 'rotate(180deg)' : 'rotate(0deg)', color: '#9ca3af' }}
+                      style={{ transform: subOpen ? 'rotate(180deg)' : 'rotate(0deg)', color: '#9ca3af' }}
                     />
                   )}
                 </button>
                 {/* Sub-items — only visible when sidebar is expanded (group-hover) */}
-                {hasDropdown && vehicleOpen && sub && (
+                {hasDropdown && subOpen && sub && (
                   <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 pl-8 pr-2">
                     {sub.map((s) => {
                       const subActive = pathname === s.href;
@@ -279,13 +323,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </p>
               <div className="space-y-0.5">
                 {group.links.map(({ href, icon: Icon, label, sub }) => {
-                  const active = pathname === href || (sub && pathname.startsWith('/app/devices'));
+                  const isVehicles = href === '/app/devices';
+                  const isTrips = href === '/app/history';
+                  const isReports = href === '/app/reports';
+                  const isMaintenance = href === '/app/maintenance';
+                  const isDrivers = href === '/app/drivers';
+                  const isConfigurations = href === '/app/settings';
+                  const subOpen = isVehicles ? vehicleOpen : isTrips ? tripsOpen : isReports ? reportsOpen : isMaintenance ? maintenanceOpen : isDrivers ? driversOpen : isConfigurations ? configurationsOpen : false;
+                  const setSubOpen = isVehicles ? setVehicleOpen : isTrips ? setTripsOpen : isReports ? setReportsOpen : isMaintenance ? setMaintenanceOpen : isDrivers ? setDriversOpen : isConfigurations ? setConfigurationsOpen : () => {};
+                  const active = pathname === href || (sub && (isVehicles ? pathname.startsWith('/app/devices') : isTrips ? pathname.startsWith('/app/history') : isReports ? pathname.startsWith('/app/reports') : isMaintenance ? pathname.startsWith('/app/maintenance') : isDrivers ? pathname.startsWith('/app/drivers') : isConfigurations ? pathname.startsWith('/app/settings') : false));
                   const hasDropdown = !!sub;
                   return (
                     <div key={href}>
                       <button
                         type="button"
-                        onClick={() => hasDropdown ? setVehicleOpen(o => !o) : (closeDrawer(), router.push(href))}
+                        onClick={() => hasDropdown ? setSubOpen((o: boolean) => !o) : (closeDrawer(), router.push(href))}
                         className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors"
                         style={{
                           background: active ? 'rgba(255,255,255,0.15)' : 'transparent',
@@ -299,11 +351,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                         {hasDropdown && (
                           <FiChevronDown
                             size={13}
-                            style={{ transform: vehicleOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: '#B2D4D2' }}
+                            style={{ transform: subOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s', color: '#B2D4D2' }}
                           />
                         )}
                       </button>
-                      {hasDropdown && vehicleOpen && sub && (
+                      {hasDropdown && subOpen && sub && (
                         <div className="ml-8 mt-0.5 flex flex-col gap-0.5">
                           {sub.map((s) => {
                             const subActive = pathname === s.href;

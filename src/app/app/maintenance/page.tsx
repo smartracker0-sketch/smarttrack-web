@@ -3,8 +3,8 @@ export default function MaintenancePage() {
     <div className="p-6 grid gap-6">
       <div className="rounded-3xl border border-divider bg-surface p-8">
         <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Fleet</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Maintenance</h1>
-        <p className="mt-4 text-sm leading-6 text-muted">Schedule, track, and log service events for all vehicles.</p>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Service History & Reminders</h1>
+        <p className="mt-4 text-sm leading-6 text-muted">View past service records and upcoming reminders for all vehicles.</p>
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {[
