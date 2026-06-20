@@ -36,10 +36,8 @@ function Section({
             <Link
               key={i.label}
               href={i.href}
-              className="rounded-2xl border p-4 text-sm font-semibold transition-colors"
+              className="rounded-2xl border p-4 text-sm font-semibold transition-colors hover:bg-[#E8F4F3]"
               style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#fff' }}
-              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#E8F4F3'; }}
-              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}
             >
               {i.label}
             </Link>

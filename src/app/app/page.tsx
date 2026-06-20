@@ -1,238 +1,224 @@
-import Link from "next/link";
-import { cookies } from "next/headers";
+"use client";
 
-type DevicesPageResponse = {
-  content?: unknown[];
-  totalElements?: number;
+import { useState } from "react";
+import Link from "next/link";
+import { FiShare2, FiUser, FiRefreshCw, FiMessageSquare, FiMapPin, FiChevronRight } from "react-icons/fi";
+
+const MOCK_VEHICLES = [
+  {
+    id: "1",
+    name: "R7_Binder Singh...GK1292",
+    status: "stopped",
+    statusLabel: "Stopped: 5 hours and 35 minutes",
+    distance: "Today: 0.1 km",
+    lastSeen: "Last data received 3 min ago",
+    location: "Payal Maksudra Rd, Payal, Punjab 141416, India",
+    ignition: "OFF",
+    speed: "0 km/h",
+    battery: "12.76 V",
+    lat: 30.678,
+    lng: 76.021,
+  },
+  {
+    id: "2",
+    name: "Truck 12 — PB10GK1234",
+    status: "moving",
+    statusLabel: "Moving",
+    distance: "Today: 42.3 km",
+    lastSeen: "Last data received just now",
+    location: "GT Road, Ludhiana, Punjab, India",
+    ignition: "ON",
+    speed: "68 km/h",
+    battery: "13.2 V",
+    lat: 30.901,
+    lng: 75.857,
+  },
+  {
+    id: "3",
+    name: "Van 3 — PB07CA5678",
+    status: "idle",
+    statusLabel: "Idle: 22 minutes",
+    distance: "Today: 18.7 km",
+    lastSeen: "Last data received 1 min ago",
+    location: "Industrial Area, Phase 2, Chandigarh",
+    ignition: "ON",
+    speed: "0 km/h",
+    battery: "12.9 V",
+    lat: 30.733,
+    lng: 76.779,
+  },
+];
+
+const STATUS_COLOR: Record<string, string> = {
+  moving: "#22C55E",
+  stopped: "#EF4444",
+  idle: "#F59E0B",
+  offline: "#9CA3AF",
 };
 
-async function fetchDeviceCount() {
-  const access = (await cookies()).get("tp_access")?.value;
-  if (!access) return null;
+export default function AppHomePage() {
+  const [selected, setSelected] = useState<string>(MOCK_VEHICLES[0].id);
 
-  const baseUrl = process.env.TRACKPRO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
-  try {
-    const resp = await fetch(`${baseUrl}/api/v1/devices`, {
-      headers: { authorization: `Bearer ${access}` },
-      cache: "no-store",
-    });
-    if (!resp.ok) return null;
-    const data = (await resp.json()) as DevicesPageResponse;
-    if (typeof data.totalElements === "number") return data.totalElements;
-    if (Array.isArray(data.content)) return data.content.length;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-export default async function AppHomePage() {
-  const deviceCount = await fetchDeviceCount();
+  const vehicle = MOCK_VEHICLES.find((v) => v.id === selected) ?? MOCK_VEHICLES[0];
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-3xl border p-8 bg-white" style={{ borderColor: '#C5E0DE' }}>
-        <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>Dashboard</div>
-            <h1 className="mt-2 text-3xl font-extrabold tracking-tight">Good day, Admin</h1>
-            <p className="mt-4 max-w-3xl text-sm leading-6 text-muted">
-              Your live fleet overview across devices, alerts, geofences, reports, and operations.
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatCard label="Active vehicles" value={deviceCount === null ? "—" : `${deviceCount}`} accent="primary" />
-            <StatCard label="Alerts today" value="3" accent="danger" />
-            <StatCard label="Geofence violations" value="1" accent="warning" />
-            <StatCard label="Eco score (avg)" value="85" accent="success" />
-          </div>
+    <div className="flex h-full" style={{ background: "#f3f4f6" }}>
+
+      {/* ── Vehicle list panel ── */}
+      <div
+        className="flex flex-col w-full max-w-xs flex-shrink-0 border-r overflow-hidden"
+        style={{ background: "#fff", borderColor: "#e5e7eb" }}
+      >
+        {/* Panel header */}
+        <div className="px-4 py-3 border-b" style={{ borderColor: "#e5e7eb" }}>
+          <p className="text-xs" style={{ color: "#9ca3af" }}>
+            All Vehicles · {MOCK_VEHICLES.length} Vehicle{MOCK_VEHICLES.length !== 1 ? "s" : ""}
+          </p>
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-extrabold">Fleet status</div>
-            <Link href="/app/devices" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
-              View devices
-            </Link>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-            <StatusTile label="Moving" value="18" color="success" />
-            <StatusTile label="Stopped" value="4" color="danger" />
-            <StatusTile label="Idle" value="2" color="warning" />
-            <StatusTile label="Offline" value="6" color="muted" />
-          </div>
+        {/* Vehicle cards */}
+        <div className="flex-1 overflow-y-auto">
+          {MOCK_VEHICLES.map((v) => {
+            const isSelected = v.id === selected;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setSelected(v.id)}
+                className="w-full text-left px-4 py-4 border-b transition-colors"
+                style={{
+                  borderColor: "#e5e7eb",
+                  background: isSelected ? "#f0faf9" : "#fff",
+                  borderLeft: isSelected ? "3px solid #0D4A47" : "3px solid transparent",
+                }}
+              >
+                {/* Row 1: name + actions */}
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>
+                    {v.name}
+                  </span>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <FiShare2 size={13} style={{ color: "#9ca3af" }} />
+                    <FiUser size={13} style={{ color: "#9ca3af" }} />
+                    <FiRefreshCw size={13} style={{ color: "#9ca3af" }} />
+                    <FiMessageSquare size={13} style={{ color: "#9ca3af" }} />
+                  </div>
+                </div>
 
-          <div className="mt-6 rounded-3xl border p-6" style={{ borderColor: '#C5E0DE', background: '#E8F4F3' }}>
-            <div className="flex items-center justify-between">
-              <div className="text-sm font-extrabold">Dispatch panel</div>
-              <Link href="/app" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
-                Open
-              </Link>
-            </div>
-            <div className="mt-4 grid grid-cols-2 gap-3">
-              <MiniCard title="Unassigned jobs" value="12" tone="warning" />
-              <MiniCard title="Available drivers" value="8" tone="success" />
-            </div>
-            <div className="mt-4">
-              <button className="inline-flex h-12 w-full items-center justify-center rounded-full px-6 text-sm font-semibold text-white transition-colors hover:brightness-110" style={{ background: '#0D4A47' }}>
-                Assign jobs
+                {/* Row 2: status */}
+                <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[v.status] }}>
+                  {v.statusLabel}
+                  <span className="ml-2 font-normal" style={{ color: "#9ca3af" }}>| {v.distance}</span>
+                </p>
+
+                {/* Row 3: last seen */}
+                <p className="mt-0.5 text-xs" style={{ color: "#9ca3af" }}>{v.lastSeen}</p>
+
+                {/* Row 4: location */}
+                <div className="mt-2 flex items-start gap-1">
+                  <FiMapPin size={11} className="mt-0.5 flex-shrink-0" style={{ color: "#6b7280" }} />
+                  <p className="text-xs leading-snug" style={{ color: "#4b5563" }}>{v.location}</p>
+                </div>
+
+                {/* Row 5: stats bar (only when selected) */}
+                {isSelected && (
+                  <div className="mt-3 flex items-center gap-0 rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
+                    <StatCell label="Ignition" value={v.ignition} />
+                    <StatCell label="Speed" value={v.speed} divider />
+                    <div className="flex-1 flex items-center justify-between px-3 py-2">
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: "#111827" }}>{v.battery}</p>
+                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Vehicle Battery Voltage</p>
+                      </div>
+                      <FiChevronRight size={14} style={{ color: "#9ca3af" }} />
+                    </div>
+                  </div>
+                )}
               </button>
+            );
+          })}
+        </div>
+
+        {/* Show All button */}
+        <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e7eb" }}>
+          <button
+            className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
+            style={{ borderColor: "#e5e7eb", color: "#374151" }}
+          >
+            Show All
+          </button>
+        </div>
+      </div>
+
+      {/* ── Map area ── */}
+      <div className="flex-1 relative overflow-hidden">
+        {/* Map placeholder — replace with Leaflet component when ready */}
+        <div
+          className="absolute inset-0 flex flex-col items-center justify-center gap-4"
+          style={{ background: "linear-gradient(135deg, #e8f4f3 0%, #d1ece9 50%, #b2d4d2 100%)" }}
+        >
+          {/* Simulated map grid */}
+          <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#0D4A47" strokeWidth="0.5"/>
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#grid)" />
+          </svg>
+
+          {/* Vehicle pin on map */}
+          <div className="relative z-10 flex flex-col items-center">
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg"
+              style={{ background: STATUS_COLOR[vehicle.status] }}
+            >
+              <span className="text-white text-xl">🚗</span>
+            </div>
+            <div
+              className="mt-2 px-3 py-1.5 rounded-xl shadow text-xs font-bold text-white"
+              style={{ background: "#0D4A47" }}
+            >
+              {vehicle.name}
             </div>
           </div>
-        </div>
 
-        <div className="rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-extrabold">Recent alerts</div>
-            <Link href="/app/alerts" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
-              View all
-            </Link>
+          {/* "More Options" overlay */}
+          <div
+            className="absolute top-4 right-4 px-4 py-2 rounded-xl shadow text-sm font-semibold flex items-center gap-2"
+            style={{ background: "#fff", color: "#374151", border: "1px solid #e5e7eb" }}
+          >
+            <FiChevronRight size={14} style={{ transform: "rotate(180deg)" }} />
+            More Options
           </div>
-          <div className="mt-4 grid gap-3">
-            <AlertRow title="Speeding" subtitle="Truck 12 exceeded 90 km/h" time="5m ago" tone="danger" />
-            <AlertRow title="Geofence exit" subtitle="Van 3 exited Warehouse zone" time="18m ago" tone="warning" />
-            <AlertRow title="SOS" subtitle="Driver 7 pressed panic button" time="1h ago" tone="danger" />
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-3xl border p-6 md:col-span-2 bg-white" style={{ borderColor: '#C5E0DE' }}>
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-extrabold">Map preview</div>
-            <Link href="/app/map" className="text-xs font-semibold hover:underline" style={{ color: '#0D4A47' }}>
-              Open map
-            </Link>
+          {/* Map attribution stub */}
+          <div className="absolute bottom-3 left-4 text-xs" style={{ color: "#6b7280" }}>
+            Map data ©2026 · 200 m
           </div>
-          <div className="mt-4 rounded-3xl border p-6" style={{ borderColor: '#C5E0DE', background: '#E8F4F3' }}>
-            <div className="h-56 rounded-2xl" style={{ background: '#E8F4F3' }}>
-              <div className="flex h-full items-center justify-center rounded-2xl border text-sm" style={{ borderColor: '#C5E0DE', color: '#1A7A75', background: '#fff' }}>
-                Live map preview (next: connect to latest locations)
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div className="rounded-3xl border p-6 bg-white" style={{ borderColor: '#C5E0DE' }}>
-          <div className="text-sm font-extrabold">Quick actions</div>
-          <div className="mt-4 grid gap-3">
-            <QuickLink href="/app/geofences" title="Geofences" subtitle="Create and assign zones" />
-            <QuickLink href="/app/history" title="History" subtitle="Trips, stops, and replay" />
-            <QuickLink href="/app/reports" title="Reports" subtitle="Generate and export" />
-            <QuickLink href="/app/eco-driving" title="Eco-driving" subtitle="Driver scoring" />
-            <QuickLink href="/app/whitelabel" title="Whitelabel Admin" subtitle="Branding and templates" />
-          </div>
+          {/* Link to full tracking page */}
+          <Link
+            href="/tracking"
+            className="absolute bottom-4 right-4 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
+            style={{ background: "#0D4A47" }}
+          >
+            Open Live Tracking →
+          </Link>
         </div>
       </div>
     </div>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent: "primary" | "success" | "warning" | "danger";
-}) {
-  const styles: Record<string, { color: string; bg: string }> = {
-    primary: { color: '#0D4A47', bg: 'rgba(13,74,71,0.1)' },
-    success: { color: '#22C55E', bg: 'rgba(34,197,94,0.1)' },
-    warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
-    danger:  { color: '#EF4444', bg: 'rgba(239,68,68,0.1)' },
-  };
-  const s = styles[accent];
-
+function StatCell({ label, value, divider }: { label: string; value: string; divider?: boolean }) {
   return (
-    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
-      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{label}</div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="text-2xl font-extrabold">{value}</div>
-        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: s.color, background: s.bg }}>Live</div>
-      </div>
+    <div
+      className="flex flex-col items-center px-3 py-2"
+      style={{ borderRight: divider ? "1px solid #e5e7eb" : undefined }}
+    >
+      <p className="text-xs font-bold" style={{ color: "#111827" }}>{value}</p>
+      <p className="text-[10px]" style={{ color: "#9ca3af" }}>{label}</p>
     </div>
-  );
-}
-
-function StatusTile({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: "success" | "warning" | "danger" | "muted";
-}) {
-  const pillStyle: Record<string, { color: string; bg: string }> = {
-    success: { color: '#22C55E', bg: 'rgba(34,197,94,0.12)' },
-    warning: { color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
-    danger:  { color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
-    muted:   { color: '#6B7280', bg: 'rgba(107,114,128,0.12)' },
-  };
-  const ps = pillStyle[color];
-
-  return (
-    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
-      <div className="flex items-center justify-between">
-        <div className="text-sm font-extrabold">{value}</div>
-        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: ps.color, background: ps.bg }}>{label}</div>
-      </div>
-      <div className="mt-2 text-xs" style={{ color: '#1A7A75' }}>Vehicles</div>
-    </div>
-  );
-}
-
-function MiniCard({ title, value, tone }: { title: string; value: string; tone: "success" | "warning" }) {
-  const s = tone === "success"
-    ? { color: '#22C55E', bg: 'rgba(34,197,94,0.1)' }
-    : { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' };
-  return (
-    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
-      <div className="text-xs font-semibold" style={{ color: '#1A7A75' }}>{title}</div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="text-2xl font-extrabold">{value}</div>
-        <div className="rounded-full px-3 py-1 text-xs font-semibold" style={{ color: s.color, background: s.bg }}>Today</div>
-      </div>
-    </div>
-  );
-}
-
-function AlertRow({
-  title,
-  subtitle,
-  time,
-  tone,
-}: {
-  title: string;
-  subtitle: string;
-  time: string;
-  tone: "warning" | "danger";
-}) {
-  const ts = tone === "danger"
-    ? { color: '#EF4444', bg: 'rgba(239,68,68,0.1)', border: 'rgba(239,68,68,0.3)' }
-    : { color: '#F59E0B', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)' };
-  return (
-    <div className="rounded-2xl border p-4 bg-white" style={{ borderColor: '#C5E0DE' }}>
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="truncate text-sm font-extrabold">{title}</div>
-          <div className="mt-1 truncate text-xs" style={{ color: '#1A7A75' }}>{subtitle}</div>
-        </div>
-        <div className="shrink-0 rounded-full border px-3 py-1 text-xs font-semibold" style={{ color: ts.color, background: ts.bg, borderColor: ts.border }}>{time}</div>
-      </div>
-    </div>
-  );
-}
-
-function QuickLink({ href, title, subtitle }: { href: string; title: string; subtitle: string }) {
-  return (
-    <Link href={href} className="rounded-2xl border p-4 bg-white transition-colors hover:bg-[#E8F4F3] block" style={{ borderColor: '#C5E0DE' }}>
-      <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{title}</div>
-      <div className="mt-1 text-xs" style={{ color: '#1A7A75' }}>{subtitle}</div>
-    </Link>
   );
 }
