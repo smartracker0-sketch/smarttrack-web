@@ -1,200 +1,199 @@
 "use client";
 
+import { useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { FiShare2, FiUser, FiRefreshCw, FiMessageSquare, FiMapPin, FiChevronRight } from "react-icons/fi";
+import type { MarkerData } from "@/components/MapboxMap";
 
-type Device = {
-  id: string;
-  imei: string;
-  name: string;
-  createdAt?: string;
+const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
+
+const MOCK_VEHICLES = [
+  {
+    id: "1",
+    name: "R7_Binder Singh...GK1292",
+    status: "stopped",
+    statusLabel: "Stopped: 5 hours and 35 minutes",
+    distance: "Today: 0.1 km",
+    lastSeen: "Last data received 3 min ago",
+    location: "Payal Maksudra Rd, Payal, Punjab 141416, India",
+    ignition: "OFF",
+    speed: "0 km/h",
+    battery: "12.76 V",
+    lat: 30.678,
+    lng: 76.021,
+  },
+  {
+    id: "2",
+    name: "Truck 12 — PB10GK1234",
+    status: "moving",
+    statusLabel: "Moving",
+    distance: "Today: 42.3 km",
+    lastSeen: "Last data received just now",
+    location: "GT Road, Ludhiana, Punjab, India",
+    ignition: "ON",
+    speed: "68 km/h",
+    battery: "13.2 V",
+    lat: 30.901,
+    lng: 75.857,
+  },
+  {
+    id: "3",
+    name: "Van 3 — PB07CA5678",
+    status: "idle",
+    statusLabel: "Idle: 22 minutes",
+    distance: "Today: 18.7 km",
+    lastSeen: "Last data received 1 min ago",
+    location: "Industrial Area, Phase 2, Chandigarh",
+    ignition: "ON",
+    speed: "0 km/h",
+    battery: "12.9 V",
+    lat: 30.733,
+    lng: 76.779,
+  },
+];
+
+const STATUS_COLOR: Record<string, string> = {
+  moving: "#22C55E",
+  stopped: "#EF4444",
+  idle: "#F59E0B",
+  offline: "#9CA3AF",
 };
 
-type DevicePage = {
-  content?: Device[];
-};
+function StatCell({ label, value, divider }: { label: string; value: string; divider?: boolean }) {
+  return (
+    <div
+      className="flex flex-col items-center px-3 py-2"
+      style={{ borderRight: divider ? "1px solid #e5e7eb" : undefined }}
+    >
+      <p className="text-xs font-bold" style={{ color: "#111827" }}>{value}</p>
+      <p className="text-[10px]" style={{ color: "#9ca3af" }}>{label}</p>
+    </div>
+  );
+}
 
-export default function DevicesPage() {
-  const [items, setItems] = useState<Device[]>([]);
-  const [query, setQuery] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string>("");
-  const [isAdding, setIsAdding] = useState(false);
-  const [newImei, setNewImei] = useState("");
-  const [newName, setNewName] = useState("");
+export default function AllVehiclesPage() {
+  const [selected, setSelected] = useState<string>(MOCK_VEHICLES[0].id);
+  const vehicle = MOCK_VEHICLES.find((v) => v.id === selected) ?? MOCK_VEHICLES[0];
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter((d) => d.name.toLowerCase().includes(q) || d.imei.includes(q));
-  }, [items, query]);
-
-  async function load() {
-    setError("");
-    setIsLoading(true);
-    try {
-      const resp = await fetch("/api/devices", { cache: "no-store" });
-      if (!resp.ok) {
-        const data = (await resp.json().catch(() => null)) as { message?: string } | null;
-        setError(data?.message ?? "Failed to load devices");
-        setItems([]);
-        return;
-      }
-      const data = (await resp.json()) as DevicePage;
-      setItems(Array.isArray(data.content) ? data.content : []);
-    } catch {
-      setError("Failed to load devices");
-      setItems([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  async function addDevice() {
-    const imei = newImei.trim();
-    const name = newName.trim();
-    if (!imei || !name) {
-      setError("Please enter IMEI and name");
-      return;
-    }
-
-    setError("");
-    setIsAdding(true);
-    try {
-      const resp = await fetch("/api/devices", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imei, name }),
-      });
-      if (!resp.ok) {
-        const data = (await resp.json().catch(() => null)) as { message?: string } | null;
-        setError(data?.message ?? "Failed to create device");
-        return;
-      }
-
-      setNewImei("");
-      setNewName("");
-      await load();
-    } catch {
-      setError("Failed to create device");
-    } finally {
-      setIsAdding(false);
-    }
-  }
-
-  useEffect(() => {
-    void load();
-  }, []);
+  const markers: MarkerData[] = useMemo(() =>
+    MOCK_VEHICLES.map((v) => ({
+      id: v.id,
+      lat: v.lat,
+      lng: v.lng,
+      color: STATUS_COLOR[v.status],
+      pulsing: v.status === "moving",
+      popupHtml: `
+        <div style="font-family:Inter,sans-serif">
+          <strong style="color:#f3f4f6">${v.name}</strong>
+          <div style="margin-top:6px;font-size:12px;color:#d1d5db;line-height:1.7">
+            <div>Status: ${v.statusLabel}</div>
+            <div>Ignition: ${v.ignition}</div>
+            <div>Speed: ${v.speed}</div>
+            <div>Battery: ${v.battery}</div>
+            <div style="margin-top:4px;color:#9ca3af">${v.location}</div>
+          </div>
+        </div>
+      `,
+    })),
+    []
+  );
 
   return (
-    <div className="grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Fleet</div>
-            <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Devices</h1>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Search, add, and manage tracking devices.
-            </p>
-          </div>
-          <div className="flex w-full flex-col gap-3 md:w-auto md:flex-row md:items-center">
-            <div className="relative w-full md:w-[320px]">
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="h-11 w-full rounded-xl border border-divider bg-background px-4 text-sm outline-none focus:border-primary"
-                placeholder="Search by name or IMEI…"
-              />
-            </div>
-            <button
-              type="button"
-              onClick={load}
-              className="inline-flex h-11 items-center justify-center rounded-xl border px-4 text-sm font-semibold transition-colors"
-              style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#E8F4F3' }}
-            >
-              Refresh
-            </button>
-          </div>
+    <div className="flex h-full" style={{ background: "#f3f4f6" }}>
+
+      {/* ── Vehicle list panel ── */}
+      <div
+        className="flex flex-col w-full max-w-xs flex-shrink-0 border-r overflow-hidden"
+        style={{ background: "#fff", borderColor: "#e5e7eb" }}
+      >
+        <div className="px-4 py-3 border-b" style={{ borderColor: "#e5e7eb" }}>
+          <p className="text-xs" style={{ color: "#9ca3af" }}>
+            All Vehicles · {MOCK_VEHICLES.length} Vehicle{MOCK_VEHICLES.length !== 1 ? "s" : ""}
+          </p>
+        </div>
+
+        <div className="flex-1 overflow-y-auto">
+          {MOCK_VEHICLES.map((v) => {
+            const isSelected = v.id === selected;
+            return (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setSelected(v.id)}
+                className="w-full text-left px-4 py-4 border-b transition-colors"
+                style={{
+                  borderColor: "#e5e7eb",
+                  background: isSelected ? "#f0faf9" : "#fff",
+                  borderLeft: isSelected ? "3px solid #0D4A47" : "3px solid transparent",
+                }}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>
+                    {v.name}
+                  </span>
+                  <div className="flex gap-1.5 flex-shrink-0">
+                    <FiShare2 size={13} style={{ color: "#9ca3af" }} />
+                    <FiUser size={13} style={{ color: "#9ca3af" }} />
+                    <FiRefreshCw size={13} style={{ color: "#9ca3af" }} />
+                    <FiMessageSquare size={13} style={{ color: "#9ca3af" }} />
+                  </div>
+                </div>
+                <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[v.status] }}>
+                  {v.statusLabel}
+                  <span className="ml-2 font-normal" style={{ color: "#9ca3af" }}>| {v.distance}</span>
+                </p>
+                <p className="mt-0.5 text-xs" style={{ color: "#9ca3af" }}>{v.lastSeen}</p>
+                <div className="mt-2 flex items-start gap-1">
+                  <FiMapPin size={11} className="mt-0.5 flex-shrink-0" style={{ color: "#6b7280" }} />
+                  <p className="text-xs leading-snug" style={{ color: "#4b5563" }}>{v.location}</p>
+                </div>
+                {isSelected && (
+                  <div className="mt-3 flex items-center gap-0 rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
+                    <StatCell label="Ignition" value={v.ignition} />
+                    <StatCell label="Speed" value={v.speed} divider />
+                    <div className="flex-1 flex items-center justify-between px-3 py-2">
+                      <div>
+                        <p className="text-xs font-bold" style={{ color: "#111827" }}>{v.battery}</p>
+                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Vehicle Battery Voltage</p>
+                      </div>
+                      <FiChevronRight size={14} style={{ color: "#9ca3af" }} />
+                    </div>
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e7eb" }}>
+          <button
+            className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
+            style={{ borderColor: "#e5e7eb", color: "#374151" }}
+          >
+            Show All
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="md:col-span-2 rounded-3xl border border-divider bg-surface p-6">
-          <div className="flex items-center justify-between">
-            <div className="text-sm font-extrabold">Device list</div>
-            <div className="text-xs text-muted">{isLoading ? "Loading…" : `${filtered.length} shown`}</div>
-          </div>
-          <div className="mt-4 grid gap-3">
-            {error ? (
-              <div className="rounded-2xl border border-danger/30 bg-danger/10 px-4 py-3 text-sm text-danger">
-                {error}
-              </div>
-            ) : null}
-            {isLoading ? (
-              <div className="rounded-2xl border border-divider bg-background p-4 text-sm text-muted">
-                Fetching devices…
-              </div>
-            ) : filtered.length === 0 ? (
-              <div className="rounded-2xl border border-divider bg-background p-6 text-sm text-muted">
-                No devices found.
-              </div>
-            ) : (
-              filtered.map((d) => (
-                <Link
-                  key={d.id}
-                  href={`/app/devices/${d.id}`}
-                  className="rounded-2xl border p-4 transition-colors"
-                  style={{ borderColor: '#C5E0DE', background: '#fff' }}
-                  onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#E8F4F3'; }}
-                  onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '#fff'; }}
-                >
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold" style={{ color: '#0D4A47' }}>{d.name}</div>
-                      <div className="mt-1 truncate text-xs" style={{ color: '#1A7A75' }}>IMEI: {d.imei}</div>
-                    </div>
-                    <div className="text-xs font-semibold" style={{ color: '#F97316' }}>Open →</div>
-                  </div>
-                </Link>
-              ))
-            )}
-          </div>
-        </div>
-
-        <div className="rounded-3xl border border-divider bg-surface p-6">
-          <div className="text-sm font-extrabold">Add device</div>
-          <div className="mt-1 text-xs text-muted">Register a new tracker to your fleet.</div>
-
-          <div className="mt-5 grid gap-3">
-            <label className="grid gap-2 text-sm font-semibold">
-              IMEI
-              <input
-                value={newImei}
-                onChange={(e) => setNewImei(e.target.value)}
-                className="h-11 rounded-xl border border-divider bg-background px-4 text-sm outline-none focus:border-primary"
-                placeholder="15-digit IMEI"
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold">
-              Name
-              <input
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                className="h-11 rounded-xl border border-divider bg-background px-4 text-sm outline-none focus:border-primary"
-                placeholder="e.g., Truck 12"
-              />
-            </label>
-            <button
-              type="button"
-              onClick={addDevice}
-              disabled={isAdding}
-              className="mt-1 inline-flex h-12 items-center justify-center rounded-full px-6 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 transition-all hover:brightness-110"
-              style={{ background: '#0D4A47' }}
-            >
-              {isAdding ? "Adding…" : "Add device"}
-            </button>
-          </div>
-        </div>
+      {/* ── Map area ── */}
+      <div className="flex-1 relative overflow-hidden">
+        <MapboxMap
+          markers={markers}
+          flyToId={selected}
+          center={[30.733, 76.779]}
+          zoom={10}
+          style="mapbox://styles/mapbox/streets-v12"
+          className="w-full h-full"
+          onMarkerClick={setSelected}
+        />
+        <Link
+          href="/tracking"
+          className="absolute bottom-4 right-4 z-10 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
+          style={{ background: "#0D4A47" }}
+        >
+          Open Live Tracking →
+        </Link>
       </div>
     </div>
   );

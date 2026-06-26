@@ -1,224 +1,210 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { FiShare2, FiUser, FiRefreshCw, FiMessageSquare, FiMapPin, FiChevronRight } from "react-icons/fi";
+import { FiTruck, FiAlertTriangle, FiActivity, FiChevronDown, FiNavigation, FiZap } from "react-icons/fi";
 
-const MOCK_VEHICLES = [
-  {
-    id: "1",
-    name: "R7_Binder Singh...GK1292",
-    status: "stopped",
-    statusLabel: "Stopped: 5 hours and 35 minutes",
-    distance: "Today: 0.1 km",
-    lastSeen: "Last data received 3 min ago",
-    location: "Payal Maksudra Rd, Payal, Punjab 141416, India",
-    ignition: "OFF",
-    speed: "0 km/h",
-    battery: "12.76 V",
-    lat: 30.678,
-    lng: 76.021,
-  },
-  {
-    id: "2",
-    name: "Truck 12 — PB10GK1234",
-    status: "moving",
-    statusLabel: "Moving",
-    distance: "Today: 42.3 km",
-    lastSeen: "Last data received just now",
-    location: "GT Road, Ludhiana, Punjab, India",
-    ignition: "ON",
-    speed: "68 km/h",
-    battery: "13.2 V",
-    lat: 30.901,
-    lng: 75.857,
-  },
-  {
-    id: "3",
-    name: "Van 3 — PB07CA5678",
-    status: "idle",
-    statusLabel: "Idle: 22 minutes",
-    distance: "Today: 18.7 km",
-    lastSeen: "Last data received 1 min ago",
-    location: "Industrial Area, Phase 2, Chandigarh",
-    ignition: "ON",
-    speed: "0 km/h",
-    battery: "12.9 V",
-    lat: 30.733,
-    lng: 76.779,
-  },
+const CHART_OPTIONS = [
+  { value: "distance", label: "Distance Driven" },
+  { value: "trips", label: "Trip Count" },
+  { value: "fuel", label: "Fuel Consumption" },
+  { value: "alerts", label: "Alert Frequency" },
+  { value: "idling", label: "Idling Time" },
+  { value: "speed", label: "Avg Speed" },
 ];
 
-const STATUS_COLOR: Record<string, string> = {
-  moving: "#22C55E",
-  stopped: "#EF4444",
-  idle: "#F59E0B",
-  offline: "#9CA3AF",
+const STAT_CARDS = [
+  { label: "Total Vehicles", value: "3", sub: "2 active now", icon: FiTruck, color: "#0D4A47", bg: "#E8F4F3" },
+  { label: "Trips Today", value: "18", sub: "+3 vs yesterday", icon: FiNavigation, color: "#6366F1", bg: "#EEF2FF" },
+  { label: "Active Alerts", value: "3", sub: "1 critical", icon: FiAlertTriangle, color: "#EF4444", bg: "#FEF2F2" },
+  { label: "Km Driven Today", value: "61.1", sub: "Across all vehicles", icon: FiActivity, color: "#F59E0B", bg: "#FFFBEB" },
+  { label: "Avg Speed", value: "47 km/h", sub: "Moving vehicles", icon: FiZap, color: "#22C55E", bg: "#F0FDF4" },
+];
+
+const WEEK_DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
+const CHART_DATA: Record<string, number[]> = {
+  distance: [312, 278, 410, 365, 290, 180, 61],
+  trips: [22, 19, 28, 25, 20, 12, 5],
+  fuel: [48, 42, 61, 55, 44, 28, 10],
+  alerts: [4, 2, 7, 5, 3, 1, 3],
+  idling: [38, 31, 52, 44, 35, 20, 8],
+  speed: [44, 47, 49, 46, 45, 42, 47],
 };
 
-export default function AppHomePage() {
-  const [selected, setSelected] = useState<string>(MOCK_VEHICLES[0].id);
+const RECENT_EVENTS = [
+  { time: "12:34", vehicle: "Truck 12", event: "Speeding alert — 132 km/h", type: "alert" },
+  { time: "11:20", vehicle: "Van 3", event: "Trip started — Chandigarh Industrial", type: "trip" },
+  { time: "09:55", vehicle: "R7_Binder", event: "Ignition ON", type: "info" },
+  { time: "08:12", vehicle: "Truck 12", event: "Low battery — 11.4 V", type: "alert" },
+  { time: "07:30", vehicle: "Van 3", event: "Trip ended — 18.7 km", type: "trip" },
+];
 
-  const vehicle = MOCK_VEHICLES.find((v) => v.id === selected) ?? MOCK_VEHICLES[0];
+const EVENT_COLOR: Record<string, string> = {
+  alert: "#EF4444",
+  trip: "#22C55E",
+  info: "#6366F1",
+};
+
+export default function AnalyticsPage() {
+  const [chartType, setChartType] = useState("distance");
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  const data = CHART_DATA[chartType] ?? CHART_DATA.distance;
+  const maxVal = Math.max(...data, 1);
+  const selectedLabel = CHART_OPTIONS.find((o) => o.value === chartType)?.label ?? "Overview";
 
   return (
-    <div className="flex h-full" style={{ background: "#f3f4f6" }}>
+    <div className="p-6 grid gap-6" style={{ background: "#f3f4f6", minHeight: "100%" }}>
 
-      {/* ── Vehicle list panel ── */}
-      <div
-        className="flex flex-col w-full max-w-xs flex-shrink-0 border-r overflow-hidden"
-        style={{ background: "#fff", borderColor: "#e5e7eb" }}
-      >
-        {/* Panel header */}
-        <div className="px-4 py-3 border-b" style={{ borderColor: "#e5e7eb" }}>
-          <p className="text-xs" style={{ color: "#9ca3af" }}>
-            All Vehicles · {MOCK_VEHICLES.length} Vehicle{MOCK_VEHICLES.length !== 1 ? "s" : ""}
-          </p>
-        </div>
+      {/* Header */}
+      <div>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: "#1A7A75" }}>Dashboard</p>
+        <h1 className="mt-1 text-2xl font-extrabold" style={{ color: "#0D4A47" }}>Analytics Overview</h1>
+        <p className="mt-1 text-sm" style={{ color: "#6b7280" }}>Fleet performance at a glance — updated in real time.</p>
+      </div>
 
-        {/* Vehicle cards */}
-        <div className="flex-1 overflow-y-auto">
-          {MOCK_VEHICLES.map((v) => {
-            const isSelected = v.id === selected;
-            return (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setSelected(v.id)}
-                className="w-full text-left px-4 py-4 border-b transition-colors"
-                style={{
-                  borderColor: "#e5e7eb",
-                  background: isSelected ? "#f0faf9" : "#fff",
-                  borderLeft: isSelected ? "3px solid #0D4A47" : "3px solid transparent",
-                }}
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
+        {STAT_CARDS.map((c) => (
+          <div key={c.label} className="rounded-2xl border p-4 flex flex-col gap-2" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
+            <div className="flex items-center justify-between">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ background: c.bg }}>
+                <c.icon size={17} style={{ color: c.color }} />
+              </div>
+            </div>
+            <div className="text-2xl font-extrabold leading-none" style={{ color: "#111827" }}>{c.value}</div>
+            <div className="text-xs font-semibold" style={{ color: "#374151" }}>{c.label}</div>
+            <div className="text-[11px]" style={{ color: "#9ca3af" }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Chart section */}
+      <div className="rounded-2xl border p-6" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
+        <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
+          <div>
+            <div className="text-sm font-extrabold" style={{ color: "#111827" }}>{selectedLabel}</div>
+            <div className="text-xs" style={{ color: "#9ca3af" }}>Last 7 days</div>
+          </div>
+
+          {/* Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setDropdownOpen((o) => !o)}
+              className="flex items-center gap-2 h-9 px-4 rounded-xl border text-sm font-semibold transition-colors"
+              style={{ borderColor: "#e5e7eb", color: "#374151", background: "#f9fafb" }}
+            >
+              {selectedLabel}
+              <FiChevronDown size={14} style={{ transform: dropdownOpen ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+            </button>
+            {dropdownOpen && (
+              <div
+                className="absolute right-0 mt-1 w-52 rounded-xl border shadow-lg z-20 py-1 overflow-hidden"
+                style={{ background: "#fff", borderColor: "#e5e7eb" }}
               >
-                {/* Row 1: name + actions */}
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>
-                    {v.name}
-                  </span>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    <FiShare2 size={13} style={{ color: "#9ca3af" }} />
-                    <FiUser size={13} style={{ color: "#9ca3af" }} />
-                    <FiRefreshCw size={13} style={{ color: "#9ca3af" }} />
-                    <FiMessageSquare size={13} style={{ color: "#9ca3af" }} />
-                  </div>
-                </div>
-
-                {/* Row 2: status */}
-                <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[v.status] }}>
-                  {v.statusLabel}
-                  <span className="ml-2 font-normal" style={{ color: "#9ca3af" }}>| {v.distance}</span>
-                </p>
-
-                {/* Row 3: last seen */}
-                <p className="mt-0.5 text-xs" style={{ color: "#9ca3af" }}>{v.lastSeen}</p>
-
-                {/* Row 4: location */}
-                <div className="mt-2 flex items-start gap-1">
-                  <FiMapPin size={11} className="mt-0.5 flex-shrink-0" style={{ color: "#6b7280" }} />
-                  <p className="text-xs leading-snug" style={{ color: "#4b5563" }}>{v.location}</p>
-                </div>
-
-                {/* Row 5: stats bar (only when selected) */}
-                {isSelected && (
-                  <div className="mt-3 flex items-center gap-0 rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <StatCell label="Ignition" value={v.ignition} />
-                    <StatCell label="Speed" value={v.speed} divider />
-                    <div className="flex-1 flex items-center justify-between px-3 py-2">
-                      <div>
-                        <p className="text-xs font-bold" style={{ color: "#111827" }}>{v.battery}</p>
-                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Vehicle Battery Voltage</p>
-                      </div>
-                      <FiChevronRight size={14} style={{ color: "#9ca3af" }} />
-                    </div>
-                  </div>
-                )}
-              </button>
-            );
-          })}
+                {CHART_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => { setChartType(opt.value); setDropdownOpen(false); }}
+                    className="w-full text-left px-4 py-2.5 text-sm transition-colors"
+                    style={{
+                      background: chartType === opt.value ? "#E8F4F3" : "transparent",
+                      color: chartType === opt.value ? "#0D4A47" : "#374151",
+                      fontWeight: chartType === opt.value ? 700 : 400,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Show All button */}
-        <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e7eb" }}>
-          <button
-            className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#e5e7eb", color: "#374151" }}
-          >
-            Show All
-          </button>
+        {/* Bar chart */}
+        <div className="flex items-end gap-3 h-40">
+          {data.map((val, i) => (
+            <div key={WEEK_DAYS[i]} className="flex flex-col items-center gap-1 flex-1">
+              <div className="text-[10px] font-semibold" style={{ color: "#9ca3af" }}>
+                {val}
+              </div>
+              <div
+                className="w-full rounded-t-lg transition-all duration-300"
+                style={{
+                  height: `${(val / maxVal) * 120}px`,
+                  background: i === 6 ? "#0D4A47" : "#C5E0DE",
+                  minHeight: 4,
+                }}
+              />
+              <div className="text-[10px] font-semibold" style={{ color: i === 6 ? "#0D4A47" : "#9ca3af" }}>
+                {WEEK_DAYS[i]}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      {/* ── Map area ── */}
-      <div className="flex-1 relative overflow-hidden">
-        {/* Map placeholder — replace with Leaflet component when ready */}
-        <div
-          className="absolute inset-0 flex flex-col items-center justify-center gap-4"
-          style={{ background: "linear-gradient(135deg, #e8f4f3 0%, #d1ece9 50%, #b2d4d2 100%)" }}
-        >
-          {/* Simulated map grid */}
-          <svg className="absolute inset-0 w-full h-full opacity-20" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#0D4A47" strokeWidth="0.5"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+      {/* Bottom row: fleet status + recent events */}
+      <div className="grid gap-4 md:grid-cols-2">
 
-          {/* Vehicle pin on map */}
-          <div className="relative z-10 flex flex-col items-center">
-            <div
-              className="w-14 h-14 rounded-full flex items-center justify-center shadow-lg"
-              style={{ background: STATUS_COLOR[vehicle.status] }}
-            >
-              <span className="text-white text-xl">🚗</span>
+        {/* Fleet status donut-style */}
+        <div className="rounded-2xl border p-6" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
+          <div className="text-sm font-extrabold mb-4" style={{ color: "#111827" }}>Fleet Status</div>
+          <div className="flex items-center gap-6">
+            <div className="relative w-24 h-24 flex-shrink-0">
+              <svg viewBox="0 0 36 36" className="w-full h-full -rotate-90">
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" strokeWidth="3.2" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#22C55E" strokeWidth="3.2"
+                  strokeDasharray="33 67" strokeLinecap="round" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#F59E0B" strokeWidth="3.2"
+                  strokeDasharray="17 83" strokeDashoffset="-33" strokeLinecap="round" />
+                <circle cx="18" cy="18" r="15.9" fill="none" stroke="#EF4444" strokeWidth="3.2"
+                  strokeDasharray="50 50" strokeDashoffset="-50" strokeLinecap="round" />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-lg font-extrabold" style={{ color: "#111827" }}>3</span>
+                <span className="text-[9px]" style={{ color: "#9ca3af" }}>vehicles</span>
+              </div>
             </div>
-            <div
-              className="mt-2 px-3 py-1.5 rounded-xl shadow text-xs font-bold text-white"
-              style={{ background: "#0D4A47" }}
-            >
-              {vehicle.name}
+            <div className="grid gap-2 flex-1">
+              {[
+                { label: "Moving", count: 1, color: "#22C55E" },
+                { label: "Idle", count: 1, color: "#F59E0B" },
+                { label: "Stopped", count: 1, color: "#EF4444" },
+                { label: "Offline", count: 0, color: "#9CA3AF" },
+              ].map((s) => (
+                <div key={s.label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.color }} />
+                    <span className="text-xs" style={{ color: "#374151" }}>{s.label}</span>
+                  </div>
+                  <span className="text-xs font-bold" style={{ color: "#111827" }}>{s.count}</span>
+                </div>
+              ))}
             </div>
           </div>
-
-          {/* "More Options" overlay */}
-          <div
-            className="absolute top-4 right-4 px-4 py-2 rounded-xl shadow text-sm font-semibold flex items-center gap-2"
-            style={{ background: "#fff", color: "#374151", border: "1px solid #e5e7eb" }}
-          >
-            <FiChevronRight size={14} style={{ transform: "rotate(180deg)" }} />
-            More Options
-          </div>
-
-          {/* Map attribution stub */}
-          <div className="absolute bottom-3 left-4 text-xs" style={{ color: "#6b7280" }}>
-            Map data ©2026 · 200 m
-          </div>
-
-          {/* Link to full tracking page */}
-          <Link
-            href="/tracking"
-            className="absolute bottom-4 right-4 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
-            style={{ background: "#0D4A47" }}
-          >
-            Open Live Tracking →
-          </Link>
         </div>
-      </div>
-    </div>
-  );
-}
 
-function StatCell({ label, value, divider }: { label: string; value: string; divider?: boolean }) {
-  return (
-    <div
-      className="flex flex-col items-center px-3 py-2"
-      style={{ borderRight: divider ? "1px solid #e5e7eb" : undefined }}
-    >
-      <p className="text-xs font-bold" style={{ color: "#111827" }}>{value}</p>
-      <p className="text-[10px]" style={{ color: "#9ca3af" }}>{label}</p>
+        {/* Recent events */}
+        <div className="rounded-2xl border p-6" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
+          <div className="text-sm font-extrabold mb-4" style={{ color: "#111827" }}>Recent Events</div>
+          <div className="grid gap-3">
+            {RECENT_EVENTS.map((e, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <span className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0" style={{ background: EVENT_COLOR[e.type] }} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold truncate" style={{ color: "#111827" }}>{e.vehicle}</div>
+                  <div className="text-[11px] truncate" style={{ color: "#6b7280" }}>{e.event}</div>
+                </div>
+                <span className="text-[11px] flex-shrink-0" style={{ color: "#9ca3af" }}>{e.time}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+      </div>
     </div>
   );
 }
