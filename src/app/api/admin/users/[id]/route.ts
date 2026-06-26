@@ -1,32 +1,22 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { proxyAdmin } from "@/lib/adminBackend";
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const body = await req.json().catch(() => null);
-  if (!body) return NextResponse.json({ message: "Invalid request" }, { status: 400 });
-
-  return NextResponse.json({ ok: true, message: `User ${id} updated.` });
-}
-
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
-  const { id } = await params;
-  return NextResponse.json({ ok: true, message: `User ${id} deleted.` });
+  return proxyAdmin(req, `/api/v1/admin/users/${id}`);
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ message: "Invalid request" }, { status: 400 });
+  const path = body.enabled !== undefined
+    ? `/api/v1/admin/users/${id}/enabled`
+    : `/api/v1/admin/users/${id}`;
+  return proxyAdmin(req, path, { method: "PATCH", body: JSON.stringify(body) });
+}
 
-  return NextResponse.json({ ok: true, message: `User ${id} patched.` });
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyAdmin(req, `/api/v1/admin/users/${id}`, { method: "DELETE" });
 }

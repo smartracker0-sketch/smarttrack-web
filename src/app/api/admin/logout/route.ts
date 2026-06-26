@@ -6,3 +6,4 @@ export async function POST() {
   jar.delete("stt_admin_token");
   return NextResponse.json({ ok: true });
 }
+

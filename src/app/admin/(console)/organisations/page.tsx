@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { FiPlus, FiSearch, FiEye, FiSlash, FiTrash2, FiLogIn } from "react-icons/fi";
-import { ORGS, Organisation, OrgPlan, OrgStatus } from "@/admin/data/mockData";
+import { OrgPlan, OrgStatus } from "@/admin/data/mockData";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
 function StatusBadge({ status }: { status: OrgStatus }) {
@@ -27,13 +27,35 @@ function PlanBadge({ plan }: { plan: OrgPlan }) {
   return <span className="inline-flex items-center h-5 px-2 rounded text-[10px] font-bold" style={{ background: s.bg, color: s.color }}>{plan}</span>;
 }
 
-function CreateOrgModal({ onClose }: { onClose: () => void }) {
-  const [form, setForm] = useState({ name: "", adminEmail: "", adminName: "", plan: "Pro", vehicleLimit: 20, trialDays: 14 });
+type OrgRow = { id: string; name: string; adminEmail?: string; status: OrgStatus; plan?: OrgPlan; vehicles?: number; users?: number; createdAt?: string };
 
-  function handleSubmit(e: React.FormEvent) {
+function CreateOrgModal({ onClose, onCreated }: { onClose: () => void; onCreated: () => void }) {
+  const [form, setForm] = useState({ name: "", slug: "", adminEmail: "", plan: "Pro", vehicleLimit: 20 });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    alert(`Organisation "${form.name}" created! Invite sent to ${form.adminEmail}`);
-    onClose();
+    setLoading(true);
+    setError("");
+    try {
+      const resp = await fetch("/api/admin/organisations", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: form.name, slug: form.slug, adminEmail: form.adminEmail, plan: form.plan, vehicleLimit: form.vehicleLimit }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) {
+        setError(data?.message ?? "Failed to create organisation");
+        return;
+      }
+      onCreated();
+      onClose();
+    } catch {
+      setError("Network error — is the backend running?");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -41,10 +63,11 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md rounded-3xl p-6" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.1)" }}>
         <h2 className="text-base font-bold text-white mb-5">New Organisation</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
+          {error && <p className="text-xs text-red-400 bg-red-400/10 rounded-lg px-3 py-2">{error}</p>}
           {[
             { label: "Organisation Name", key: "name", type: "text", placeholder: "Acme Logistics" },
+            { label: "Slug", key: "slug", type: "text", placeholder: "acme-logistics" },
             { label: "Admin Email", key: "adminEmail", type: "email", placeholder: "admin@acme.com" },
-            { label: "Admin Name", key: "adminName", type: "text", placeholder: "John Doe" },
           ].map(({ label, key, type, placeholder }) => (
             <div key={key}>
               <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>{label}</label>
@@ -60,33 +83,16 @@ function CreateOrgModal({ onClose }: { onClose: () => void }) {
             </div>
           ))}
           <div>
-            <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Plan</label>
-            <select
-              value={form.plan}
-              onChange={e => setForm(f => ({ ...f, plan: e.target.value }))}
+            <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Vehicle Limit</label>
+            <input type="number" value={form.vehicleLimit} onChange={e => setForm(f => ({ ...f, vehicleLimit: +e.target.value }))}
               className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
-              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }}
-            >
-              {["Starter", "Pro", "Enterprise"].map(p => <option key={p} value={p}>{p}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Vehicle Limit</label>
-              <input type="number" value={form.vehicleLimit} onChange={e => setForm(f => ({ ...f, vehicleLimit: +e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold mb-1" style={{ color: "#7BBBB8" }}>Trial Days</label>
-              <input type="number" value={form.trialDays} onChange={e => setForm(f => ({ ...f, trialDays: +e.target.value }))}
-                className="w-full h-10 px-3 rounded-xl text-sm text-white outline-none"
-                style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
-            </div>
+              style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
           </div>
           <div className="flex gap-3 pt-2">
             <button type="button" onClick={onClose} className="flex-1 h-10 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,0.06)", color: "#9CA3AF" }}>Cancel</button>
-            <button type="submit" className="flex-1 h-10 rounded-xl text-sm font-bold text-white" style={{ background: "#F97316" }}>Create & Invite</button>
+            <button type="submit" disabled={loading} className="flex-1 h-10 rounded-xl text-sm font-bold text-white" style={{ background: "#F97316", opacity: loading ? 0.7 : 1 }}>
+              {loading ? "Creating…" : "Create Organisation"}
+            </button>
           </div>
         </form>
       </div>
@@ -101,15 +107,33 @@ export default function OrganisationsPage() {
   const [filterPlan, setFilterPlan] = useState("All");
   const [filterStatus, setFilterStatus] = useState("All");
   const [showCreate, setShowCreate] = useState(false);
+  const [orgs, setOrgs] = useState<OrgRow[]>([]);
+  const [loadingOrgs, setLoadingOrgs] = useState(true);
 
-  const filtered = ORGS.filter(o => {
-    const matchSearch = o.name.toLowerCase().includes(search.toLowerCase()) || o.adminEmail.toLowerCase().includes(search.toLowerCase());
+  async function loadOrgs() {
+    setLoadingOrgs(true);
+    try {
+      const resp = await fetch("/api/admin/organisations?size=100");
+      if (resp.ok) {
+        const data = await resp.json();
+        setOrgs(data?.content ?? data ?? []);
+      }
+    } finally {
+      setLoadingOrgs(false);
+    }
+  }
+
+  useEffect(() => { loadOrgs(); }, []);
+
+  const filtered = orgs.filter(o => {
+    const q = search.toLowerCase();
+    const matchSearch = o.name.toLowerCase().includes(q) || (o.adminEmail ?? "").toLowerCase().includes(q);
     const matchPlan = filterPlan === "All" || o.plan === filterPlan;
     const matchStatus = filterStatus === "All" || o.status === filterStatus;
     return matchSearch && matchPlan && matchStatus;
   });
 
-  function handleImpersonate(o: Organisation) {
+  function handleImpersonate(o: OrgRow) {
     if (confirm(`You are about to view the platform as "${o.name}". This action will be logged.`)) {
       startImpersonation({ orgId: o.id, orgName: o.name });
       router.push("/app");
@@ -118,7 +142,7 @@ export default function OrganisationsPage() {
 
   return (
     <div className="space-y-5">
-      {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} />}
+      {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} onCreated={loadOrgs} />}
 
       {/* Toolbar */}
       <div className="flex flex-wrap items-center gap-3">
@@ -165,17 +189,21 @@ export default function OrganisationsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((o) => (
+              {loadingOrgs ? (
+                <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: "#4A8A87" }}>Loading…</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={7} className="px-4 py-6 text-center" style={{ color: "#4A8A87" }}>No organisations found.</td></tr>
+              ) : filtered.map((o) => (
                 <tr key={o.id} className="hover:bg-white/[0.03] transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
                   <td className="px-4 py-3">
                     <div className="text-white font-semibold">{o.name}</div>
-                    <div style={{ color: "#4A8A87" }}>{o.adminEmail}</div>
+                    <div style={{ color: "#4A8A87" }}>{o.adminEmail ?? "—"}</div>
                   </td>
-                  <td className="px-4 py-3"><PlanBadge plan={o.plan} /></td>
-                  <td className="px-4 py-3 text-white">{o.vehicles}</td>
-                  <td className="px-4 py-3 text-white">{o.users}</td>
-                  <td className="px-4 py-3"><StatusBadge status={o.status} /></td>
-                  <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{o.onboarded}</td>
+                  <td className="px-4 py-3">{o.plan ? <PlanBadge plan={o.plan} /> : "—"}</td>
+                  <td className="px-4 py-3 text-white">{o.vehicles ?? "—"}</td>
+                  <td className="px-4 py-3 text-white">{o.users ?? "—"}</td>
+                  <td className="px-4 py-3"><StatusBadge status={o.status ?? "Active"} /></td>
+                  <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{o.createdAt ? new Date(o.createdAt).toLocaleDateString() : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button onClick={() => router.push(`/admin/organisations/${o.id}`)} title="View Details"
@@ -198,7 +226,7 @@ export default function OrganisationsPage() {
           </table>
         </div>
         <div className="px-4 py-3 text-xs" style={{ color: "#4A8A87", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
-          {filtered.length} of {ORGS.length} organisations
+          {filtered.length} of {orgs.length} organisations
         </div>
       </div>
     </div>

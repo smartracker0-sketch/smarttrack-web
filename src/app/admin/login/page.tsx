@@ -4,9 +4,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiLock, FiMail, FiEye, FiEyeOff } from "react-icons/fi";
+import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { login } = useAdminAuthStore();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPass, setShowPass] = useState(false);
@@ -28,6 +30,7 @@ export default function AdminLoginPage() {
         setError(data.message || "Invalid credentials");
         return;
       }
+      login("", data.displayName ?? data.email ?? email, data.email ?? email);
       router.replace("/admin/overview");
     } catch {
       setError("Network error. Try again.");

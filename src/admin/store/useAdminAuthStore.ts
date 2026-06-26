@@ -38,7 +38,7 @@ export const useAdminAuthStore = create<AdminAuthState>()(
       stopImpersonation: () => set({ impersonating: null }),
     }),
     {
-      name: "stt_admin_token",
+      name: "stt_admin_session",
     }
   )
 );

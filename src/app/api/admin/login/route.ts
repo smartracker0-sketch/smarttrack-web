@@ -1,39 +1,53 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
-
-const MOCK_ADMINS = [
-  { email: "admin@smarttracker.cloud", password: "admin123!", name: "Platform Admin", role: "SUPER_ADMIN" },
-  { email: "emeka@smarttracker.cloud", password: "admin123!", name: "Emeka Okonkwo", role: "SUPER_ADMIN" },
-];
+import { backendUrl } from "@/lib/adminBackend";
 
 export async function POST(req: Request) {
-  const { email, password } = await req.json();
+  const body = await req.json().catch(() => null);
+  const email: string = body?.email ?? "";
+  const password: string = body?.password ?? "";
 
-  const admin = MOCK_ADMINS.find(
-    (a) => a.email === email && a.password === password
-  );
+  if (!email || !password) {
+    return NextResponse.json({ message: "Email and password are required" }, { status: 400 });
+  }
 
-  if (!admin) {
+  let upstream: Response;
+  try {
+    upstream = await fetch(`${backendUrl()}/api/v1/auth/login`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email, password }),
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json({ message: "Backend unavailable" }, { status: 503 });
+  }
+
+  const data = await upstream.json().catch(() => null);
+  if (!upstream.ok) {
     return NextResponse.json(
-      { message: "Invalid credentials" },
-      { status: 401 }
+      { message: data?.message ?? "Invalid credentials" },
+      { status: upstream.status === 401 ? 401 : upstream.status }
     );
   }
 
-  const token = Buffer.from(`${admin.email}:${admin.role}:${Date.now()}`).toString("base64");
+  const accessToken: string | undefined = data?.accessToken;
+  if (!accessToken) {
+    return NextResponse.json({ message: "Invalid auth response from backend" }, { status: 502 });
+  }
 
-  const jar = await cookies();
-  jar.set("stt_admin_token", token, {
+  const roles: string[] = data?.roles ?? [];
+  console.log("[admin/login] user roles:", roles);
+  if (!roles.includes("SUPER_ADMIN")) {
+    return NextResponse.json({ message: "Access denied: Super Admin role required" }, { status: 403 });
+  }
+
+  const resp = NextResponse.json({ ok: true, email });
+  resp.cookies.set("stt_admin_token", accessToken, {
     httpOnly: true,
     path: "/",
     maxAge: 60 * 60 * 8,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
   });
-
-  return NextResponse.json({
-    ok: true,
-    name: admin.name,
-    email: admin.email,
-    token,
-  });
+  return resp;
 }

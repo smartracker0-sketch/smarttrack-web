@@ -1,21 +1,23 @@
 import { NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/requireAdmin";
+import { proxyAdmin } from "@/lib/adminBackend";
 
-export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyAdmin(req, `/api/v1/admin/devices/${id}`);
+}
 
+export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ message: "Invalid request" }, { status: 400 });
-
-  return NextResponse.json({ ok: true, message: `Device ${id} updated.` });
+  const action = body.organisationId ? "assign" : "unassign";
+  return proxyAdmin(req, `/api/v1/admin/devices/${id}/${action}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  const denied = await requireAdmin();
-  if (denied) return denied;
-
+export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return NextResponse.json({ ok: true, message: `Device ${id} removed from inventory.` });
+  return proxyAdmin(req, `/api/v1/admin/devices/${id}`, { method: "DELETE" });
 }
