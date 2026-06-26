@@ -111,7 +111,8 @@ export default function MapboxMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function addMarker(m: MarkerData, mapboxgl: typeof import("mapbox-gl"), map: mapboxgl.Map) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  function addMarker(m: MarkerData, mapboxgl: any, map: mapboxgl.Map) {
     const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0);
 
     const popup = new mapboxgl.Popup({ offset: 20, maxWidth: "300px", closeButton: true })
