@@ -140,6 +140,23 @@ export default function OrganisationsPage() {
     }
   }
 
+  async function handleSuspend(o: OrgRow) {
+    const newStatus = o.status === "Suspended" ? "Active" : "Suspended";
+    if (!confirm(`${newStatus === "Suspended" ? "Suspend" : "Reactivate"} "${o.name}"?`)) return;
+    const res = await fetch(`/api/admin/organisations/${o.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    if (res.ok) loadOrgs();
+  }
+
+  async function handleDelete(o: OrgRow) {
+    if (!confirm(`Permanently delete "${o.name}" and all its data? This cannot be undone.`)) return;
+    await fetch(`/api/admin/organisations/${o.id}`, { method: "DELETE" });
+    loadOrgs();
+  }
+
   return (
     <div className="space-y-5">
       {showCreate && <CreateOrgModal onClose={() => setShowCreate(false)} onCreated={loadOrgs} />}
@@ -212,10 +229,11 @@ export default function OrganisationsPage() {
                       <button onClick={() => handleImpersonate(o)} title="Impersonate"
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
                         style={{ color: "#F97316" }}><FiLogIn size={13} /></button>
-                      <button title="Suspend"
+                      <button title={o.status === "Suspended" ? "Reactivate" : "Suspend"}
+                        onClick={() => handleSuspend(o)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
-                        style={{ color: "#F59E0B" }}><FiSlash size={13} /></button>
-                      <button title="Delete"
+                        style={{ color: o.status === "Suspended" ? "#22C55E" : "#F59E0B" }}><FiSlash size={13} /></button>
+                      <button title="Delete" onClick={() => handleDelete(o)}
                         className="w-7 h-7 rounded-lg flex items-center justify-center transition-colors hover:bg-white/10"
                         style={{ color: "#EF4444" }}><FiTrash2 size={13} /></button>
                     </div>

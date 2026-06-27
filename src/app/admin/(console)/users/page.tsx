@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { FiSearch, FiPlus, FiRefreshCw, FiSlash, FiTrash2 } from "react-icons/fi";
+import { FiSearch, FiPlus, FiSlash, FiTrash2 } from "react-icons/fi";
 
 const ROLE_COLORS: Record<string, { bg: string; color: string }> = {
   "SUPER_ADMIN": { bg: "#F974161a", color: "#F97316" },
@@ -94,6 +94,22 @@ export default function GlobalUsersPage() {
 
   useEffect(() => { loadUsers(); }, []);
 
+  async function handleToggleEnabled(u: UserRow) {
+    const newEnabled = u.enabled === false ? true : false;
+    await fetch(`/api/admin/users/${u.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ enabled: newEnabled }),
+    });
+    setUsers(prev => prev.map(x => x.id === u.id ? { ...x, enabled: newEnabled } : x));
+  }
+
+  async function handleDelete(u: UserRow) {
+    if (!confirm(`Delete user "${u.displayName}"? This cannot be undone.`)) return;
+    await fetch(`/api/admin/users/${u.id}`, { method: "DELETE" });
+    setUsers(prev => prev.filter(x => x.id !== u.id));
+  }
+
   const filtered = users.filter(u => {
     const q = search.toLowerCase();
     const matchSearch = u.displayName.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
@@ -168,9 +184,15 @@ export default function GlobalUsersPage() {
                     <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button title="Reset Password" className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10" style={{ color: "#7BBBB8" }}><FiRefreshCw size={12} /></button>
-                        <button title="Deactivate" className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10" style={{ color: "#F59E0B" }}><FiSlash size={12} /></button>
-                        <button title="Delete" className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10" style={{ color: "#EF4444" }}><FiTrash2 size={12} /></button>
+                        <button title={u.enabled === false ? "Activate" : "Deactivate"}
+                          onClick={() => handleToggleEnabled(u)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10"
+                          style={{ color: u.enabled === false ? "#22C55E" : "#F59E0B" }}>
+                          <FiSlash size={12} />
+                        </button>
+                        <button title="Delete" onClick={() => handleDelete(u)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10"
+                          style={{ color: "#EF4444" }}><FiTrash2 size={12} /></button>
                       </div>
                     </td>
                   </tr>
