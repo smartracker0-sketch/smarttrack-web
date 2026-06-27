@@ -321,9 +321,11 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
   );
 }
 
+type DeviceEx = Device & { ownerId?: string | null; ownerName?: string | null };
+
 // Map backend AdminDeviceDto → local Device shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function fromApiDto(d: any): Device {
+function fromApiDto(d: any): DeviceEx {
   return {
     id: d.id,
     imei: d.imei ?? d.name ?? "—",
@@ -332,27 +334,32 @@ function fromApiDto(d: any): Device {
     vehicle: d.vehiclePlate ?? "—",
     orgId: d.organisationId ?? null,
     orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
+    ownerId: d.ownerId ?? null,
+    ownerName: d.ownerName ?? null,
     status: (d.status === "Assigned" ? "Online" : d.status) as Device["status"],
     lastPing: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Never",
   };
 }
 
 export default function DeviceManagerPage() {
-  const [devices, setDevices] = useState<Device[]>([]);
+  const [devices, setDevices] = useState<DeviceEx[]>([]);
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ id: string; displayName: string; email: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiAvailable, setApiAvailable] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [assigningId, setAssigningId] = useState<string | null>(null);
+  const [assignMode, setAssignMode] = useState<Record<string, "org" | "user">>({});
 
   async function loadDevices() {
     setLoading(true);
     try {
-      const [dRes, oRes] = await Promise.allSettled([
+      const [dRes, oRes, uRes] = await Promise.allSettled([
         fetch("/api/admin/devices?size=500"),
         fetch("/api/admin/organisations?size=100"),
+        fetch("/api/admin/users?size=200"),
       ]);
       if (dRes.status === "fulfilled" && dRes.value.ok) {
         const data = await dRes.value.json();
@@ -363,6 +370,10 @@ export default function DeviceManagerPage() {
       if (oRes.status === "fulfilled" && oRes.value.ok) {
         const data = await oRes.value.json();
         setOrgs((data?.content ?? data ?? []).map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })));
+      }
+      if (uRes.status === "fulfilled" && uRes.value.ok) {
+        const data = await uRes.value.json();
+        setUsers((data?.content ?? data ?? []).map((u: { id: string; displayName: string; email: string }) => ({ id: u.id, displayName: u.displayName, email: u.email })));
       }
     } catch {
       // silently stay empty
@@ -424,6 +435,22 @@ export default function DeviceManagerPage() {
           method: "PATCH",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ organisationId: orgId }),
+        });
+        if (res.ok) await loadDevices();
+      } finally {
+        setAssigningId(null);
+      }
+    }
+  }
+
+  async function handleAssignUser(id: string, userId: string) {
+    if (apiAvailable) {
+      setAssigningId(id);
+      try {
+        const res = await fetch(`/api/admin/devices/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ userId }),
         });
         if (res.ok) await loadDevices();
       } finally {
@@ -499,7 +526,7 @@ export default function DeviceManagerPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Status", "Last Ping", "Actions"].map(h => (
+                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Owner", "Status", "Last Ping", "Actions"].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -507,7 +534,7 @@ export default function DeviceManagerPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-8 text-center text-xs" style={{ color: "#4A8A87" }}>
+                  <td colSpan={9} className="px-4 py-8 text-center text-xs" style={{ color: "#4A8A87" }}>
                     No devices match your search.
                   </td>
                 </tr>
@@ -525,12 +552,13 @@ export default function DeviceManagerPage() {
                         {d.status}
                       </span>
                     </td>
+                    <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.ownerName ?? "—"}</td>
                     <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.lastPing}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        {d.orgId ? (
+                        {(d.orgId || d.ownerId) ? (
                           <button
-                            title="Unassign from org"
+                            title="Unassign"
                             disabled={assigningId === d.id}
                             onClick={() => handleUnassign(d.id)}
                             className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-40"
@@ -538,16 +566,39 @@ export default function DeviceManagerPage() {
                             <FiSlash size={12} />
                           </button>
                         ) : (
-                          <select
-                            disabled={assigningId === d.id}
-                            defaultValue=""
-                            onChange={e => e.target.value && handleAssign(d.id, e.target.value)}
-                            className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
-                            style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
-                            title="Assign to organisation">
-                            <option value="">Assign…</option>
-                            {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                          </select>
+                          <div className="flex items-center gap-1">
+                            {/* Toggle assign mode */}
+                            <button
+                              title={assignMode[d.id] === "user" ? "Switch to org" : "Switch to user"}
+                              onClick={() => setAssignMode(m => ({ ...m, [d.id]: m[d.id] === "user" ? "org" : "user" }))}
+                              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 text-[9px] font-bold"
+                              style={{ color: "#7BBBB8", border: "1px solid rgba(255,255,255,0.1)" }}>
+                              {assignMode[d.id] === "user" ? "U" : "O"}
+                            </button>
+                            {assignMode[d.id] === "user" ? (
+                              <select
+                                disabled={assigningId === d.id}
+                                defaultValue=""
+                                onChange={e => e.target.value && handleAssignUser(d.id, e.target.value)}
+                                className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                                style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818CF8" }}
+                                title="Assign to user">
+                                <option value="">→ User…</option>
+                                {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
+                              </select>
+                            ) : (
+                              <select
+                                disabled={assigningId === d.id}
+                                defaultValue=""
+                                onChange={e => e.target.value && handleAssign(d.id, e.target.value)}
+                                className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
+                                title="Assign to organisation">
+                                <option value="">→ Org…</option>
+                                {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                              </select>
+                            )}
+                          </div>
                         )}
                         <button
                           title="Delete device"
