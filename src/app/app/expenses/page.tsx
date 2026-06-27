@@ -8,20 +8,12 @@ export default function ExpensesPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Expense log</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { desc: 'Fuel — Truck 12', amount: '₹4,200', date: 'Today', color: '#F97316' },
-            { desc: 'Toll — Van 3', amount: '₹120', date: 'Yesterday', color: '#F59E0B' },
-            { desc: 'Oil change — Car 5', amount: '₹800', date: '3 days ago', color: '#1A7A75' },
-          ].map((e) => (
-            <div key={e.desc} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{e.desc}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{e.date}</div>
-              </div>
-              <div className="text-sm font-bold" style={{ color: e.color }}>{e.amount}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">💰</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No expenses yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Fuel, toll, and maintenance expenses will appear here once the expenses module is connected to the backend.</div>
         </div>
       </div>
     </div>

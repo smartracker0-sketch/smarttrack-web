@@ -8,21 +8,12 @@ export default function ServiceSchedulesPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Scheduled services</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { vehicle: 'Truck 12', service: 'Oil Change', interval: 'Every 5,000 km', next: 'In 320 km', color: '#22C55E' },
-            { vehicle: 'Van 3', service: 'Tyre Rotation', interval: 'Every 10,000 km', next: 'In 1,240 km', color: '#1A7A75' },
-            { vehicle: 'Car 5', service: 'Brake Inspection', interval: 'Every 6 months', next: 'Overdue 12 days', color: '#EF4444' },
-            { vehicle: 'Truck 12', service: 'Air Filter', interval: 'Every 15,000 km', next: 'In 4,100 km', color: '#22C55E' },
-          ].map((s) => (
-            <div key={s.vehicle + s.service} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{s.vehicle} — {s.service}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{s.interval}</div>
-              </div>
-              <div className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: s.color + '1a', color: s.color }}>{s.next}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">📅</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No service schedules yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Recurring service intervals will appear here once the maintenance module is connected to the backend.</div>
         </div>
       </div>
     </div>

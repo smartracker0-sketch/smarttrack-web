@@ -8,20 +8,12 @@ export default function VendorsPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Vendor list</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { name: 'HP Petrol Station', type: 'Fuel', contact: '+91 98765 43210' },
-            { name: 'AutoCare Workshop', type: 'Maintenance', contact: '+91 98123 45678' },
-            { name: 'FastTyre Co.', type: 'Tyres', contact: '+91 99887 76655' },
-          ].map((v) => (
-            <div key={v.name} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{v.name}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{v.contact}</div>
-              </div>
-              <div className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: '#E8F4F3', color: '#0D4A47' }}>{v.type}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">🏪</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No vendors yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Fuel, maintenance, and service vendors will appear here once the vendors module is connected to the backend.</div>
         </div>
       </div>
     </div>

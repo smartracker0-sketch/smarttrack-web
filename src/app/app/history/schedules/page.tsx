@@ -8,20 +8,12 @@ export default function TripSchedulesPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Upcoming schedules</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { name: 'Warehouse → Site A', vehicle: 'Truck 12', time: 'Today 08:00', status: 'Scheduled', color: '#1A7A75' },
-            { name: 'Depot → Client HQ', vehicle: 'Van 3', time: 'Tomorrow 09:30', status: 'Confirmed', color: '#22C55E' },
-            { name: 'Site B → Warehouse', vehicle: 'Car 5', time: 'Jun 22 14:00', status: 'Pending', color: '#F59E0B' },
-          ].map((s) => (
-            <div key={s.name} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{s.name}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{s.vehicle} · {s.time}</div>
-              </div>
-              <div className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: s.color + '1a', color: s.color }}>{s.status}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">🗓️</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No trip schedules yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Planned and recurring trip schedules will appear here once the scheduling module is connected to the backend.</div>
         </div>
       </div>
     </div>

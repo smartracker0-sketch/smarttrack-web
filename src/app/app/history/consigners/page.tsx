@@ -8,20 +8,12 @@ export default function ConsignersPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Consigner list</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { name: 'Agro Supply Co.', type: 'Consignor', contact: '+91 98001 11222', trips: 14 },
-            { name: 'Metro Traders', type: 'Consignee', contact: '+91 98002 33444', trips: 9 },
-            { name: 'North Parts Ltd.', type: 'Consignor', contact: '+91 98003 55666', trips: 21 },
-          ].map((c) => (
-            <div key={c.name} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{c.name}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{c.contact} · {c.trips} trips</div>
-              </div>
-              <div className="text-xs font-semibold px-3 py-1 rounded-full" style={{ background: '#E8F4F3', color: '#0D4A47' }}>{c.type}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">👥</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No consigners yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Consignors and consignees linked to your fleet trips will appear here once the consigner module is connected to the backend.</div>
         </div>
       </div>
     </div>

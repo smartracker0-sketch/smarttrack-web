@@ -8,20 +8,12 @@ export default function ReportSchedulesPage() {
       </div>
       <div className="rounded-3xl border border-divider bg-surface p-6">
         <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>Scheduled reports</div>
-        <div className="mt-4 grid gap-3">
-          {[
-            { name: 'Daily Fleet Summary', frequency: 'Daily · 07:00 AM', recipients: '3 recipients', status: 'Active', color: '#22C55E' },
-            { name: 'Weekly Mileage Report', frequency: 'Every Monday · 08:00 AM', recipients: '2 recipients', status: 'Active', color: '#22C55E' },
-            { name: 'Monthly Fuel Report', frequency: '1st of month · 09:00 AM', recipients: '5 recipients', status: 'Paused', color: '#F59E0B' },
-          ].map((r) => (
-            <div key={r.name} className="flex items-center justify-between rounded-2xl border p-4" style={{ borderColor: '#C5E0DE', background: '#fff' }}>
-              <div>
-                <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{r.name}</div>
-                <div className="mt-0.5 text-xs" style={{ color: '#1A7A75' }}>{r.frequency} · {r.recipients}</div>
-              </div>
-              <div className="text-xs font-bold px-3 py-1 rounded-full" style={{ background: r.color + '1a', color: r.color }}>{r.status}</div>
-            </div>
-          ))}
+        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
+          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
+            <span className="text-xl">📧</span>
+          </div>
+          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No scheduled reports yet</div>
+          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Automated report schedules will appear here once the report delivery module is connected to the backend.</div>
         </div>
       </div>
     </div>
