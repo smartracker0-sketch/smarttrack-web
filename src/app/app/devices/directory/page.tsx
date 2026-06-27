@@ -1,5 +1,181 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
+
+const VEHICLE_ICONS = [
+  { label: "Truck", svg: <svg viewBox="0 0 36 20" fill="none" className="w-8 h-5"><rect x="1" y="4" width="22" height="12" rx="2" fill="#3b82f6"/><rect x="23" y="7" width="10" height="9" rx="1.5" fill="#60a5fa"/><circle cx="7" cy="17" r="2.5" fill="#1e3a5f"/><circle cx="27" cy="17" r="2.5" fill="#1e3a5f"/></svg> },
+  { label: "Van",   svg: <svg viewBox="0 0 36 20" fill="none" className="w-8 h-5"><rect x="1" y="5" width="32" height="11" rx="2" fill="#10b981"/><rect x="2" y="6" width="14" height="6" rx="1" fill="#6ee7b7"/><circle cx="8" cy="17" r="2.5" fill="#065f46"/><circle cx="28" cy="17" r="2.5" fill="#065f46"/></svg> },
+  { label: "Car",   svg: <svg viewBox="0 0 36 20" fill="none" className="w-8 h-5"><rect x="4" y="7" width="28" height="9" rx="2" fill="#f59e0b"/><rect x="8" y="5" width="18" height="6" rx="1.5" fill="#fcd34d"/><circle cx="10" cy="17" r="2.5" fill="#78350f"/><circle cx="26" cy="17" r="2.5" fill="#78350f"/></svg> },
+  { label: "Bus",   svg: <svg viewBox="0 0 36 20" fill="none" className="w-8 h-5"><rect x="1" y="3" width="34" height="13" rx="2" fill="#8b5cf6"/><rect x="3" y="5" width="6" height="5" rx="1" fill="#c4b5fd"/><rect x="11" y="5" width="6" height="5" rx="1" fill="#c4b5fd"/><circle cx="8" cy="17" r="2.5" fill="#4c1d95"/><circle cx="28" cy="17" r="2.5" fill="#4c1d95"/></svg> },
+];
+
+const VEHICLE_TYPES = ["HCV", "LCV", "Sedan", "SUV", "Bus", "Motorcycle", "Other"];
+const FUEL_TYPES = ["Petrol", "Diesel", "Electric", "CNG", "Hybrid"];
+
+const EMPTY_FORM = { reg: "", icon: 0, displayName: "", odometer: "", make: "", year: "", vehicleType: "", vin: "", fuelType: "", mileage: "", color: "#3949ab" };
+
+function AddVehicleModal({ onClose, onAdd }: { onClose: () => void; onAdd: (v: typeof EMPTY_FORM) => void }) {
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [errors, setErrors] = useState<{ reg?: string }>({});
+  const overlayRef = useRef<HTMLDivElement>(null);
+
+  const set = (k: keyof typeof EMPTY_FORM, v: string | number) =>
+    setForm((f) => ({ ...f, [k]: v }));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!form.reg.trim()) { setErrors({ reg: "Registration number is required" }); return; }
+    onAdd(form);
+    onClose();
+  };
+
+  return (
+    <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => e.target === overlayRef.current && onClose()}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        {/* Modal header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <h2 className="text-lg font-bold text-gray-900">Add Vehicle</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+          {/* Registration Number */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Registration Number <span className="text-red-500">*</span></label>
+            <input value={form.reg} onChange={(e) => { set("reg", e.target.value); setErrors({}); }}
+              placeholder="Enter Registration Number"
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 ${errors.reg ? "border-red-400" : "border-gray-200"}`} />
+            {errors.reg && <p className="mt-1 text-xs text-red-500">{errors.reg}</p>}
+          </div>
+
+          {/* Vehicle Icon */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Choose Vehicle Icon</label>
+            <div className="flex gap-3">
+              {VEHICLE_ICONS.map((ic, idx) => (
+                <button key={ic.label} type="button" onClick={() => set("icon", idx)}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${form.icon === idx ? "border-[#3949ab] bg-[#e8eaf6]" : "border-gray-200 hover:border-[#3949ab]/40"}`}>
+                  {ic.svg}
+                  <span className="text-[10px] text-gray-500">{ic.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Display Number */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Display Number</label>
+            <input value={form.displayName} onChange={(e) => set("displayName", e.target.value)}
+              placeholder="Enter Display Number"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+          </div>
+
+          {/* Odometer */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Odometer Reading</label>
+            <input value={form.odometer} onChange={(e) => set("odometer", e.target.value)}
+              placeholder="Enter Odometer Reading"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+          </div>
+
+          {/* Make */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Make</label>
+            <input value={form.make} onChange={(e) => set("make", e.target.value)}
+              placeholder="Enter Vehicle Make"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+          </div>
+
+          {/* Model Year */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Model Year</label>
+            <input value={form.year} onChange={(e) => set("year", e.target.value)}
+              placeholder="Model Year" type="number" min="1990" max="2030"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+          </div>
+
+          {/* Vehicle Type */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Type</label>
+            <select value={form.vehicleType} onChange={(e) => set("vehicleType", e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500">
+              <option value="">Choose from the below</option>
+              {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* VIN */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">VIN / Chassis Number</label>
+            <input value={form.vin} onChange={(e) => set("vin", e.target.value)}
+              placeholder="Identification Number / Chassis Number"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+          </div>
+
+          {/* Divider */}
+          <div className="sm:col-span-2 border-t border-gray-100 pt-1">
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fuel Type &amp; Expected Mileage</p>
+          </div>
+
+          {/* Fuel Type */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Fuel Type</label>
+            <select value={form.fuelType} onChange={(e) => set("fuelType", e.target.value)}
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500">
+              <option value="">Fuel Type</option>
+              {FUEL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          {/* Mileage */}
+          <div>
+            <label className="block text-xs font-semibold text-gray-700 mb-1">Expected Mileage</label>
+            <div className="flex items-center gap-2">
+              <input value={form.mileage} onChange={(e) => set("mileage", e.target.value)}
+                placeholder="Expected Mileage" type="number" min="0"
+                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
+              <span className="text-sm text-gray-500 shrink-0">km/L</span>
+            </div>
+          </div>
+
+          {/* Vehicle Color */}
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-semibold text-gray-700 mb-2">Vehicle Color</label>
+            <div className="flex items-center gap-3">
+              {["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].map((c) => (
+                <button key={c} type="button" onClick={() => set("color", c)}
+                  className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === c ? "border-gray-800 scale-110" : "border-transparent"}`}
+                  style={{ background: c }} />
+              ))}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="color" value={form.color} onChange={(e) => set("color", e.target.value)} className="sr-only" />
+                <span className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-[#3949ab]"
+                  style={{ background: !["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? form.color : "transparent" }}>
+                  {["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? "+" : ""}
+                </span>
+                <span className="text-xs text-gray-500">Pick Custom Color</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="sm:col-span-2 flex justify-end gap-3 pt-2 border-t border-gray-100">
+            <button type="button" onClick={onClose}
+              className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
+              Cancel
+            </button>
+            <button type="submit"
+              className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#3949ab" }}>
+              Add Vehicle
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 const MOCK_VEHICLES = [
   { id: 1, displayName: "R7_Binder Singh_PB10...", reg: "PB10GK1292", odometer: "Not Added", make: "N/A", year: "N/A", vin: "N/A" },
@@ -14,8 +190,25 @@ export default function VehicleDirectoryPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
+  const [showModal, setShowModal] = useState(false);
+  const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
 
-  const filtered = MOCK_VEHICLES.filter(
+  const handleAdd = (form: typeof EMPTY_FORM) => {
+    setVehicles((prev) => [
+      ...prev,
+      {
+        id: prev.length + 1,
+        displayName: form.displayName || form.reg,
+        reg: form.reg,
+        odometer: form.odometer || "Not Added",
+        make: form.make || "N/A",
+        year: form.year || "N/A",
+        vin: form.vin || "N/A",
+      },
+    ]);
+  };
+
+  const filtered = vehicles.filter(
     (v) =>
       v.displayName.toLowerCase().includes(search.toLowerCase()) ||
       v.reg.toLowerCase().includes(search.toLowerCase())
@@ -30,6 +223,7 @@ export default function VehicleDirectoryPage() {
 
   return (
     <div className="p-6 flex flex-col gap-4">
+      {showModal && <AddVehicleModal onClose={() => setShowModal(false)} onAdd={handleAdd} />}
       {/* Header */}
       <div>
         <p className="text-xs text-muted">Vehicles</p>
@@ -68,7 +262,7 @@ export default function VehicleDirectoryPage() {
           </button>
 
           {/* Add Vehicle */}
-          <button className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: '#3949ab' }}>
+          <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: '#3949ab' }}>
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path d="M12 5v14M5 12h14" />
             </svg>
