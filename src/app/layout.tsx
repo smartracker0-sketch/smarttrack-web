@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   title: "Smart Tracker Telematics | Fleet Intelligence Platform",
   description:
     "Smart Tracker Telematics — the all-in-one platform to track, monitor, and manage your vehicles, assets, fuel, and drivers.",
+  icons: {
+    icon: "/logo.png",
+    shortcut: "/logo.png",
+    apple: "/logo.png",
+  },
 };
 
 export default function RootLayout({
