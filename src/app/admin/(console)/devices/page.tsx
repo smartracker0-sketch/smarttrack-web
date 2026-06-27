@@ -1,13 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { FiSearch, FiPlus, FiX, FiTrash2, FiLink, FiSlash, FiCheckCircle, FiRefreshCw } from "react-icons/fi";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap } from "react-icons/fi";
 import { Device } from "@/admin/data/mockData";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   Online:     { bg: "#22C55E1a", color: "#22C55E" },
   Offline:    { bg: "rgba(255,255,255,0.06)", color: "#9CA3AF" },
   Unassigned: { bg: "#F59E0B1a", color: "#F59E0B" },
+};
+
+const ACTIVATION_COLORS: Record<string, { bg: string; color: string; label: string; pulse?: boolean }> = {
+  UNACTIVATED:   { bg: "rgba(156,163,175,0.12)", color: "#9CA3AF",  label: "Not Checked" },
+  PENDING:       { bg: "rgba(245,158,11,0.12)",  color: "#F59E0B",  label: "Checking…",    pulse: true },
+  ACTIVE:        { bg: "rgba(34,197,94,0.12)",   color: "#22C55E",  label: "Live" },
+  MISCONFIGURED: { bg: "rgba(249,115,22,0.12)",  color: "#F97316",  label: "Check Config" },
+  UNREACHABLE:   { bg: "rgba(239,68,68,0.12)",   color: "#EF4444",  label: "No Response" },
 };
 
 const DEVICE_TYPES = ["GPS Tracker", "Dashcam", "Fuel Sensor"] as const;
@@ -321,9 +329,21 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
   );
 }
 
-type DeviceEx = Device & { ownerId?: string | null; ownerName?: string | null };
+type DeviceEx = Device & {
+  ownerId?: string | null;
+  ownerName?: string | null;
+  simNumber?: string | null;
+  manufacturer?: string | null;
+  activationStatus: string;
+  activationAttempts: number;
+  activationAttemptedAt?: string | null;
+  activationConfirmedAt?: string | null;
+  lastSmsReply?: string | null;
+  serverConfigured: boolean;
+  apnConfigured: boolean;
+};
 
-// Map backend AdminDeviceDto → local Device shape
+// Map backend AdminDeviceDto → local DeviceEx shape
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function fromApiDto(d: any): DeviceEx {
   return {
@@ -336,6 +356,15 @@ function fromApiDto(d: any): DeviceEx {
     orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
     ownerId: d.ownerId ?? null,
     ownerName: d.ownerName ?? null,
+    simNumber: d.simNumber ?? null,
+    manufacturer: d.manufacturer ?? null,
+    activationStatus: d.activationStatus ?? "UNACTIVATED",
+    activationAttempts: d.activationAttempts ?? 0,
+    activationAttemptedAt: d.activationAttemptedAt ?? null,
+    activationConfirmedAt: d.activationConfirmedAt ?? null,
+    lastSmsReply: d.lastSmsReply ?? null,
+    serverConfigured: d.serverConfigured ?? false,
+    apnConfigured: d.apnConfigured ?? false,
     status: (d.status === "Assigned" ? "Online" : d.status) as Device["status"],
     lastPing: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Never",
   };
@@ -352,6 +381,9 @@ export default function DeviceManagerPage() {
   const [showModal, setShowModal] = useState(false);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignMode, setAssignMode] = useState<Record<string, "org" | "user">>({});
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
 
   async function loadDevices() {
     setLoading(true);
@@ -383,6 +415,58 @@ export default function DeviceManagerPage() {
   }
 
   useEffect(() => { loadDevices(); }, []);
+
+  // WebSocket subscription — live activation status updates
+  useEffect(() => {
+    const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+    const wsUrl = backendBase.replace(/^http/, "ws") + "/ws/websocket";
+    let sock: WebSocket;
+    let stompBuffer = "";
+    try {
+      sock = new WebSocket(wsUrl);
+      wsRef.current = sock;
+      sock.onopen = () => {
+        // STOMP CONNECT frame
+        sock.send("CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0");
+      };
+      sock.onmessage = (evt) => {
+        stompBuffer += evt.data;
+        if (stompBuffer.includes("CONNECTED")) {
+          sock.send("SUBSCRIBE\nid:sub-activation\ndestination:/topic/admin/device-activation\n\n\0");
+          stompBuffer = "";
+        }
+        // Parse MESSAGE frames
+        const msgMatch = stompBuffer.match(/MESSAGE[\s\S]*?\n\n([\s\S]*?)\0/);
+        if (msgMatch) {
+          try {
+            const event = JSON.parse(msgMatch[1]);
+            if (event?.imei && event?.activationStatus) {
+              setDevices(prev => prev.map(d =>
+                d.imei === event.imei
+                  ? { ...d, activationStatus: event.activationStatus }
+                  : d
+              ));
+            }
+          } catch { /* ignore malformed */ }
+          stompBuffer = "";
+        }
+      };
+      sock.onerror = () => { /* silently ignore if WS unavailable */ };
+    } catch { /* silently ignore */ }
+    return () => { wsRef.current?.close(); };
+  }, []);
+
+  const handleCheckNow = useCallback(async (imei: string) => {
+    setCheckingId(imei);
+    try {
+      await fetch(`/api/admin/devices/${imei}/check`, { method: "POST" });
+      setDevices(prev => prev.map(d =>
+        d.imei === imei ? { ...d, activationStatus: "PENDING" } : d
+      ));
+    } finally {
+      setCheckingId(null);
+    }
+  }, []);
 
   const filtered = devices.filter(d => {
     const q = search.toLowerCase();
@@ -526,7 +610,7 @@ export default function DeviceManagerPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Owner", "Status", "Last Ping", "Actions"].map(h => (
+                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Owner", "Activation", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -534,26 +618,35 @@ export default function DeviceManagerPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-8 text-center text-xs" style={{ color: "#4A8A87" }}>
+                  <td colSpan={10} className="px-4 py-8 text-center text-xs" style={{ color: "#4A8A87" }}>
                     No devices match your search.
                   </td>
                 </tr>
               ) : filtered.map(d => {
                 const sc = STATUS_COLORS[d.status] ?? STATUS_COLORS.Offline;
+                const ac = ACTIVATION_COLORS[d.activationStatus] ?? ACTIVATION_COLORS.UNACTIVATED;
+                const isExpanded = expandedId === d.id;
                 return (
-                  <tr key={d.id} className="hover:bg-white/[0.03] transition-colors" style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <>
+                  <tr key={d.id} className="hover:bg-white/[0.03] transition-colors" style={{ borderBottom: isExpanded ? "none" : "1px solid rgba(255,255,255,0.04)" }}>
                     <td className="px-4 py-3 font-mono text-white">{d.imei}</td>
                     <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.type}</td>
                     <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.firmware}</td>
                     <td className="px-4 py-3 text-white">{d.vehicle}</td>
                     <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.orgName}</td>
+                    <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.ownerName ?? "—"}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-flex items-center h-5 px-2 rounded text-[10px] font-bold gap-1${ac.pulse ? " animate-pulse" : ""}`}
+                        style={{ background: ac.bg, color: ac.color }}>
+                        {ac.label}
+                      </span>
+                    </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center h-5 px-2 rounded text-[10px] font-bold" style={{ background: sc.bg, color: sc.color }}>
                         {d.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.ownerName ?? "—"}</td>
-                    <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.lastPing}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         {(d.orgId || d.ownerId) ? (
@@ -607,9 +700,67 @@ export default function DeviceManagerPage() {
                           style={{ color: "#EF4444" }}>
                           <FiTrash2 size={12} />
                         </button>
+                        <button
+                          title="Check activation now"
+                          disabled={checkingId === d.imei || d.activationStatus === "PENDING"}
+                          onClick={() => handleCheckNow(d.imei)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-30"
+                          style={{ color: "#F59E0B" }}>
+                          <FiZap size={12} className={checkingId === d.imei ? "animate-pulse" : ""} />
+                        </button>
+                        <button
+                          title={isExpanded ? "Collapse" : "Expand details"}
+                          onClick={() => setExpandedId(isExpanded ? null : d.id)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                          style={{ color: "#7BBBB8" }}>
+                          {isExpanded ? <FiChevronUp size={12} /> : <FiChevronDown size={12} />}
+                        </button>
                       </div>
                     </td>
                   </tr>
+                  {isExpanded && (
+                    <tr key={`${d.id}-detail`} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                      <td colSpan={10} className="px-6 pb-4 pt-1">
+                        <div className="rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-[11px]" style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)" }}>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">SIM Number</div>
+                            <div className="text-white font-mono">{d.simNumber ?? "—"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Manufacturer</div>
+                            <div className="text-white">{d.manufacturer ?? "—"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Server Configured</div>
+                            <div style={{ color: d.serverConfigured ? "#22C55E" : "#EF4444" }} className="font-bold">{d.serverConfigured ? "Yes" : "No"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">APN Configured</div>
+                            <div style={{ color: d.apnConfigured ? "#22C55E" : "#EF4444" }} className="font-bold">{d.apnConfigured ? "Yes" : "No"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Last Checked</div>
+                            <div className="text-white">{d.activationAttemptedAt ? new Date(d.activationAttemptedAt).toLocaleString() : "Never"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Confirmed Live</div>
+                            <div className="text-white">{d.activationConfirmedAt ? new Date(d.activationConfirmedAt).toLocaleString() : "—"}</div>
+                          </div>
+                          <div>
+                            <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Retry Attempts</div>
+                            <div className="text-white">{d.activationAttempts}</div>
+                          </div>
+                          {d.lastSmsReply && (
+                            <div className="col-span-2 sm:col-span-4">
+                              <div style={{ color: "#4A8A87" }} className="mb-0.5 font-semibold">Last SMS Reply</div>
+                              <div className="font-mono text-[10px] px-2 py-1.5 rounded-lg break-all" style={{ background: "rgba(255,255,255,0.05)", color: "#7BBBB8" }}>{d.lastSmsReply}</div>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 );
               })}
             </tbody>
@@ -617,7 +768,12 @@ export default function DeviceManagerPage() {
         </div>
         <div className="px-4 py-3 text-xs flex items-center justify-between" style={{ color: "#4A8A87", borderTop: "1px solid rgba(255,255,255,0.05)" }}>
           <span>{filtered.length} of {devices.length} devices</span>
-          <span>{devices.filter(d => d.status === "Unassigned").length} unassigned</span>
+          <span className="flex gap-3">
+            <span>{devices.filter(d => d.status === "Unassigned").length} unassigned</span>
+            <span style={{ color: "#22C55E" }}>{devices.filter(d => d.activationStatus === "ACTIVE").length} live</span>
+            <span style={{ color: "#F59E0B" }}>{devices.filter(d => d.activationStatus === "PENDING").length} checking</span>
+            <span style={{ color: "#EF4444" }}>{devices.filter(d => d.activationStatus === "UNREACHABLE").length} unreachable</span>
+          </span>
         </div>
       </div>
     </div>
