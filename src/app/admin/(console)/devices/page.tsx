@@ -649,7 +649,8 @@ export default function DeviceManagerPage() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        {(d.orgId || d.ownerId) ? (
+                        {/* Unassign — only when assigned */}
+                        {(d.orgId || d.ownerId) && (
                           <button
                             title="Unassign"
                             disabled={assigningId === d.id}
@@ -658,41 +659,40 @@ export default function DeviceManagerPage() {
                             style={{ color: "#F59E0B" }}>
                             <FiSlash size={12} />
                           </button>
-                        ) : (
-                          <div className="flex items-center gap-1">
-                            {/* Toggle assign mode */}
-                            <button
-                              title={assignMode[d.id] === "user" ? "Switch to org" : "Switch to user"}
-                              onClick={() => setAssignMode(m => ({ ...m, [d.id]: m[d.id] === "user" ? "org" : "user" }))}
-                              className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 text-[9px] font-bold"
-                              style={{ color: "#7BBBB8", border: "1px solid rgba(255,255,255,0.1)" }}>
-                              {assignMode[d.id] === "user" ? "U" : "O"}
-                            </button>
-                            {assignMode[d.id] === "user" ? (
-                              <select
-                                disabled={assigningId === d.id}
-                                defaultValue=""
-                                onChange={e => e.target.value && handleAssignUser(d.id, e.target.value)}
-                                className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
-                                style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818CF8" }}
-                                title="Assign to user">
-                                <option value="">→ User…</option>
-                                {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
-                              </select>
-                            ) : (
-                              <select
-                                disabled={assigningId === d.id}
-                                defaultValue=""
-                                onChange={e => e.target.value && handleAssign(d.id, e.target.value)}
-                                className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
-                                style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
-                                title="Assign to organisation">
-                                <option value="">→ Org…</option>
-                                {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                              </select>
-                            )}
-                          </div>
                         )}
+                        {/* Toggle assign mode + dropdown — always visible */}
+                        <div className="flex items-center gap-1">
+                          <button
+                            title={assignMode[d.id] === "user" ? "Switch to org" : "Switch to user"}
+                            onClick={() => setAssignMode(m => ({ ...m, [d.id]: m[d.id] === "user" ? "org" : "user" }))}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 text-[9px] font-bold"
+                            style={{ color: "#7BBBB8", border: "1px solid rgba(255,255,255,0.1)" }}>
+                            {assignMode[d.id] === "user" ? "U" : "O"}
+                          </button>
+                          {assignMode[d.id] === "user" ? (
+                            <select
+                              disabled={assigningId === d.id}
+                              defaultValue=""
+                              onChange={e => e.target.value && handleAssignUser(d.id, e.target.value)}
+                              className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                              style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818CF8" }}
+                              title="Assign to user">
+                              <option value="">→ User…</option>
+                              {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
+                            </select>
+                          ) : (
+                            <select
+                              disabled={assigningId === d.id}
+                              defaultValue=""
+                              onChange={e => e.target.value && handleAssign(d.id, e.target.value)}
+                              className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                              style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
+                              title="Assign to organisation">
+                              <option value="">→ Org…</option>
+                              {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                            </select>
+                          )}
+                        </div>
                         <button
                           title="Delete device"
                           onClick={() => handleDelete(d.id)}
