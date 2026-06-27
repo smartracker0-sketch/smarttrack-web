@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 const VEHICLE_ICONS = [
   { label: "Truck", svg: <svg viewBox="0 0 36 20" fill="none" className="w-8 h-5"><rect x="1" y="4" width="22" height="12" rx="2" fill="#3b82f6"/><rect x="23" y="7" width="10" height="9" rx="1.5" fill="#60a5fa"/><circle cx="7" cy="17" r="2.5" fill="#1e3a5f"/><circle cx="27" cy="17" r="2.5" fill="#1e3a5f"/></svg> },
@@ -89,6 +89,18 @@ export default function VehicleDirectoryPage() {
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const bulkRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!bulkOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (bulkRef.current && !bulkRef.current.contains(e.target as Node)) {
+        setBulkOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [bulkOpen]);
 
   const handleAdd = (form: typeof EMPTY_FORM) => {
     setVehicles((prev) => [...prev, { id: Date.now(), displayName: form.displayName || form.reg, reg: form.reg, odometer: form.odometer || "Not Added", make: form.make || "N/A", year: form.year || "N/A", vin: form.vin || "N/A" }]);
@@ -161,7 +173,7 @@ export default function VehicleDirectoryPage() {
           </button>
 
           {/* Bulk Action */}
-          <div className="relative">
+          <div className="relative" ref={bulkRef}>
             <button onClick={() => setBulkOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg border border-divider bg-surface px-3 py-2 text-sm text-foreground hover:bg-divider">
               Bulk Action
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
@@ -169,7 +181,7 @@ export default function VehicleDirectoryPage() {
               </svg>
             </button>
             {bulkOpen && (
-              <div className="absolute right-0 mt-1 z-20 w-44 rounded-xl border border-divider bg-white shadow-lg py-1">
+              <div className="absolute right-0 mt-1 z-30 w-44 rounded-xl border border-divider bg-white shadow-lg py-1">
                 <button onClick={handleDeleteSelected} disabled={selected.length === 0}
                   className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed">
                   Delete selected ({selected.length})
