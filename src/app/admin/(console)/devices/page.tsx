@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { FiSearch, FiPlus, FiX, FiTrash2, FiLink, FiSlash, FiCheckCircle } from "react-icons/fi";
+import { useState, useEffect } from "react";
+import { FiSearch, FiPlus, FiX, FiTrash2, FiLink, FiSlash, FiCheckCircle, FiRefreshCw } from "react-icons/fi";
 import { DEVICES, ORGS, Device } from "@/admin/data/mockData";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -320,11 +320,51 @@ function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
   );
 }
 
+// Map backend AdminDeviceDto → local Device shape
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fromApiDto(d: any): Device {
+  return {
+    id: d.id,
+    imei: d.imei ?? d.name ?? "—",
+    type: (d.deviceType as Device["type"]) ?? "GPS Tracker",
+    firmware: d.firmware ?? "—",
+    vehicle: d.vehiclePlate ?? "—",
+    orgId: d.organisationId ?? null,
+    orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
+    status: (d.status === "Assigned" ? "Online" : d.status) as Device["status"],
+    lastPing: d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "Never",
+  };
+}
+
 export default function DeviceManagerPage() {
   const [devices, setDevices] = useState<Device[]>(DEVICES);
+  const [loading, setLoading] = useState(true);
+  const [apiAvailable, setApiAvailable] = useState(false);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [showModal, setShowModal] = useState(false);
+  const [assigningId, setAssigningId] = useState<string | null>(null);
+
+  async function loadDevices() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/devices?size=200");
+      if (res.ok) {
+        const data = await res.json();
+        const list = data?.content ?? data ?? [];
+        if (Array.isArray(list) && list.length > 0) {
+          setDevices(list.map(fromApiDto));
+          setApiAvailable(true);
+        }
+      }
+    } catch {
+      // fall back to mock data silently
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { loadDevices(); }, []);
 
   const filtered = devices.filter(d => {
     const q = search.toLowerCase();
@@ -334,16 +374,55 @@ export default function DeviceManagerPage() {
   });
 
   function handleSuccess(newDevices: Device[]) {
-    setDevices(prev => [...newDevices, ...prev]);
+    if (apiAvailable) {
+      loadDevices();
+    } else {
+      setDevices(prev => [...newDevices, ...prev]);
+    }
   }
 
-  function handleDelete(id: string) {
+  async function handleDelete(id: string) {
     if (!confirm("Remove this device from inventory?")) return;
-    setDevices(prev => prev.filter(d => d.id !== id));
+    if (apiAvailable) {
+      await fetch(`/api/admin/devices/${id}`, { method: "DELETE" });
+      setDevices(prev => prev.filter(d => d.id !== id));
+    } else {
+      setDevices(prev => prev.filter(d => d.id !== id));
+    }
   }
 
-  function handleUnassign(id: string) {
-    setDevices(prev => prev.map(d => d.id === id ? { ...d, orgId: null, orgName: "Unassigned", vehicle: "—", status: "Unassigned" } : d));
+  async function handleUnassign(id: string) {
+    if (apiAvailable) {
+      setAssigningId(id);
+      try {
+        const res = await fetch(`/api/admin/devices/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({}),
+        });
+        if (res.ok) await loadDevices();
+      } finally {
+        setAssigningId(null);
+      }
+    } else {
+      setDevices(prev => prev.map(d => d.id === id ? { ...d, orgId: null, orgName: "—", vehicle: "—", status: "Unassigned" } : d));
+    }
+  }
+
+  async function handleAssign(id: string, orgId: string) {
+    if (apiAvailable) {
+      setAssigningId(id);
+      try {
+        const res = await fetch(`/api/admin/devices/${id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ organisationId: orgId }),
+        });
+        if (res.ok) await loadDevices();
+      } finally {
+        setAssigningId(null);
+      }
+    }
   }
 
   return (
@@ -375,8 +454,13 @@ export default function DeviceManagerPage() {
           </button>
         ))}
 
-        {/* Stats pills */}
-        <div className="flex gap-2 ml-auto">
+        {/* Stats pills + API indicator */}
+        <div className="flex gap-2 ml-auto items-center">
+          <span className="hidden sm:flex items-center gap-1 text-[10px] px-2 h-6 rounded-lg font-semibold"
+            style={{ background: apiAvailable ? "rgba(34,197,94,0.1)" : "rgba(245,158,11,0.1)", color: apiAvailable ? "#22C55E" : "#F59E0B" }}>
+            <span className="w-1.5 h-1.5 rounded-full" style={{ background: apiAvailable ? "#22C55E" : "#F59E0B" }} />
+            {apiAvailable ? "Live" : "Demo"}
+          </span>
           {[
             { label: "Online", color: "#22C55E" },
             { label: "Offline", color: "#9CA3AF" },
@@ -387,6 +471,11 @@ export default function DeviceManagerPage() {
               {devices.filter(d => d.status === label).length} {label}
             </span>
           ))}
+          <button onClick={loadDevices} title="Refresh"
+            className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10"
+            style={{ color: "#7BBBB8" }}>
+            <FiRefreshCw size={13} className={loading ? "animate-spin" : ""} />
+          </button>
         </div>
 
         <button onClick={() => setShowModal(true)}
@@ -431,13 +520,27 @@ export default function DeviceManagerPage() {
                     <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.lastPing}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
-                        <button
-                          title={d.orgId ? "Unassign from org" : "Assign to org"}
-                          onClick={() => d.orgId ? handleUnassign(d.id) : setShowModal(true)}
-                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
-                          style={{ color: d.orgId ? "#F59E0B" : "#22C55E" }}>
-                          {d.orgId ? <FiSlash size={12} /> : <FiLink size={12} />}
-                        </button>
+                        {d.orgId ? (
+                          <button
+                            title="Unassign from org"
+                            disabled={assigningId === d.id}
+                            onClick={() => handleUnassign(d.id)}
+                            className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-40"
+                            style={{ color: "#F59E0B" }}>
+                            <FiSlash size={12} />
+                          </button>
+                        ) : (
+                          <select
+                            disabled={assigningId === d.id}
+                            defaultValue=""
+                            onChange={e => e.target.value && handleAssign(d.id, e.target.value)}
+                            className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                            style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
+                            title="Assign to organisation">
+                            <option value="">Assign…</option>
+                            {ORGS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                          </select>
+                        )}
                         <button
                           title="Delete device"
                           onClick={() => handleDelete(d.id)}
