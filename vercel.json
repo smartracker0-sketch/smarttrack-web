@@ -5,6 +5,6 @@
   "installCommand": "npm install",
   "regions": ["iad1"],
   "env": {
-    "NEXT_PUBLIC_API_BASE_URL": "https://api.trackpro.example.com"
+    "NEXT_PUBLIC_API_BASE_URL": "https://api.smarttracker.cloud"
   }
 }
