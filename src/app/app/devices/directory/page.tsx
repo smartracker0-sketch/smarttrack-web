@@ -13,168 +13,63 @@ const FUEL_TYPES = ["Petrol", "Diesel", "Electric", "CNG", "Hybrid"];
 
 const EMPTY_FORM = { reg: "", icon: 0, displayName: "", odometer: "", make: "", year: "", vehicleType: "", vin: "", fuelType: "", mileage: "", color: "#3949ab" };
 
-function AddVehicleModal({ onClose, onAdd }: { onClose: () => void; onAdd: (v: typeof EMPTY_FORM) => void }) {
-  const [form, setForm] = useState(EMPTY_FORM);
+type Vehicle = { id: number; displayName: string; reg: string; odometer: string; make: string; year: string; vin: string; };
+
+function VehicleForm({ initial, onClose, onSave, title }: { initial: typeof EMPTY_FORM; onClose: () => void; onSave: (v: typeof EMPTY_FORM) => void; title: string }) {
+  const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState<{ reg?: string }>({});
   const overlayRef = useRef<HTMLDivElement>(null);
-
-  const set = (k: keyof typeof EMPTY_FORM, v: string | number) =>
-    setForm((f) => ({ ...f, [k]: v }));
-
+  const set = (k: keyof typeof EMPTY_FORM, v: string | number) => setForm((f) => ({ ...f, [k]: v }));
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.reg.trim()) { setErrors({ reg: "Registration number is required" }); return; }
-    onAdd(form);
-    onClose();
+    onSave(form); onClose();
   };
-
   return (
     <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4" onClick={(e) => e.target === overlayRef.current && onClose()}>
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        {/* Modal header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">Add Vehicle</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>
-          </button>
+          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
+          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-500"><svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
         </div>
-
         <form onSubmit={handleSubmit} className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-5">
-
-          {/* Registration Number */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Registration Number <span className="text-red-500">*</span></label>
-            <input value={form.reg} onChange={(e) => { set("reg", e.target.value); setErrors({}); }}
-              placeholder="Enter Registration Number"
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 ${errors.reg ? "border-red-400" : "border-gray-200"}`} />
+            <input value={form.reg} onChange={(e) => { set("reg", e.target.value); setErrors({}); }} placeholder="Enter Registration Number" className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 ${errors.reg ? "border-red-400" : "border-gray-200"}`} />
             {errors.reg && <p className="mt-1 text-xs text-red-500">{errors.reg}</p>}
           </div>
-
-          {/* Vehicle Icon */}
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-gray-700 mb-2">Choose Vehicle Icon</label>
-            <div className="flex gap-3">
-              {VEHICLE_ICONS.map((ic, idx) => (
-                <button key={ic.label} type="button" onClick={() => set("icon", idx)}
-                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${form.icon === idx ? "border-[#3949ab] bg-[#e8eaf6]" : "border-gray-200 hover:border-[#3949ab]/40"}`}>
-                  {ic.svg}
-                  <span className="text-[10px] text-gray-500">{ic.label}</span>
-                </button>
-              ))}
-            </div>
+            <div className="flex gap-3">{VEHICLE_ICONS.map((ic, idx) => (<button key={ic.label} type="button" onClick={() => set("icon", idx)} className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl border-2 transition-all ${form.icon === idx ? "border-[#3949ab] bg-[#e8eaf6]" : "border-gray-200 hover:border-[#3949ab]/40"}`}>{ic.svg}<span className="text-[10px] text-gray-500">{ic.label}</span></button>))}</div>
           </div>
-
-          {/* Display Number */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Display Number</label>
-            <input value={form.displayName} onChange={(e) => set("displayName", e.target.value)}
-              placeholder="Enter Display Number"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-          </div>
-
-          {/* Odometer */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Odometer Reading</label>
-            <input value={form.odometer} onChange={(e) => set("odometer", e.target.value)}
-              placeholder="Enter Odometer Reading"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-          </div>
-
-          {/* Make */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Make</label>
-            <input value={form.make} onChange={(e) => set("make", e.target.value)}
-              placeholder="Enter Vehicle Make"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-          </div>
-
-          {/* Model Year */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Model Year</label>
-            <input value={form.year} onChange={(e) => set("year", e.target.value)}
-              placeholder="Model Year" type="number" min="1990" max="2030"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-          </div>
-
-          {/* Vehicle Type */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Type</label>
-            <select value={form.vehicleType} onChange={(e) => set("vehicleType", e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500">
-              <option value="">Choose from the below</option>
-              {VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          {/* VIN */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">VIN / Chassis Number</label>
-            <input value={form.vin} onChange={(e) => set("vin", e.target.value)}
-              placeholder="Identification Number / Chassis Number"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-          </div>
-
-          {/* Divider */}
-          <div className="sm:col-span-2 border-t border-gray-100 pt-1">
-            <p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fuel Type &amp; Expected Mileage</p>
-          </div>
-
-          {/* Fuel Type */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Fuel Type</label>
-            <select value={form.fuelType} onChange={(e) => set("fuelType", e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500">
-              <option value="">Fuel Type</option>
-              {FUEL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </div>
-
-          {/* Mileage */}
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Expected Mileage</label>
-            <div className="flex items-center gap-2">
-              <input value={form.mileage} onChange={(e) => set("mileage", e.target.value)}
-                placeholder="Expected Mileage" type="number" min="0"
-                className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" />
-              <span className="text-sm text-gray-500 shrink-0">km/L</span>
-            </div>
-          </div>
-
-          {/* Vehicle Color */}
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Display Number</label><input value={form.displayName} onChange={(e) => set("displayName", e.target.value)} placeholder="Enter Display Number" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Odometer Reading</label><input value={form.odometer} onChange={(e) => set("odometer", e.target.value)} placeholder="Enter Odometer Reading" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Make</label><input value={form.make} onChange={(e) => set("make", e.target.value)} placeholder="Enter Vehicle Make" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Model Year</label><input value={form.year} onChange={(e) => set("year", e.target.value)} placeholder="Model Year" type="number" min="1990" max="2030" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Vehicle Type</label><select value={form.vehicleType} onChange={(e) => set("vehicleType", e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500"><option value="">Choose from the below</option>{VEHICLE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">VIN / Chassis Number</label><input value={form.vin} onChange={(e) => set("vin", e.target.value)} placeholder="Identification Number / Chassis Number" className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /></div>
+          <div className="sm:col-span-2 border-t border-gray-100 pt-1"><p className="text-xs font-bold text-gray-500 uppercase tracking-wider">Fuel Type &amp; Expected Mileage</p></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Fuel Type</label><select value={form.fuelType} onChange={(e) => set("fuelType", e.target.value)} className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 bg-white text-gray-500"><option value="">Fuel Type</option>{FUEL_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}</select></div>
+          <div><label className="block text-xs font-semibold text-gray-700 mb-1">Expected Mileage</label><div className="flex items-center gap-2"><input value={form.mileage} onChange={(e) => set("mileage", e.target.value)} placeholder="Expected Mileage" type="number" min="0" className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30" /><span className="text-sm text-gray-500 shrink-0">km/L</span></div></div>
           <div className="sm:col-span-2">
             <label className="block text-xs font-semibold text-gray-700 mb-2">Vehicle Color</label>
             <div className="flex items-center gap-3">
-              {["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].map((c) => (
-                <button key={c} type="button" onClick={() => set("color", c)}
-                  className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === c ? "border-gray-800 scale-110" : "border-transparent"}`}
-                  style={{ background: c }} />
-              ))}
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="color" value={form.color} onChange={(e) => set("color", e.target.value)} className="sr-only" />
-                <span className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-[#3949ab]"
-                  style={{ background: !["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? form.color : "transparent" }}>
-                  {["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? "+" : ""}
-                </span>
-                <span className="text-xs text-gray-500">Pick Custom Color</span>
-              </label>
+              {["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].map((c) => (<button key={c} type="button" onClick={() => set("color", c)} className={`w-7 h-7 rounded-full border-2 transition-all ${form.color === c ? "border-gray-800 scale-110" : "border-transparent"}`} style={{ background: c }} />))}
+              <label className="flex items-center gap-2 cursor-pointer"><input type="color" value={form.color} onChange={(e) => set("color", e.target.value)} className="sr-only" /><span className="w-7 h-7 rounded-full border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400 text-xs hover:border-[#3949ab]" style={{ background: !["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? form.color : "transparent" }}>{["#ef4444","#f97316","#eab308","#22c55e","#3b82f6","#8b5cf6","#ec4899","#1e293b"].includes(form.color) ? "+" : ""}</span><span className="text-xs text-gray-500">Pick Custom Color</span></label>
             </div>
           </div>
-
-          {/* Actions */}
           <div className="sm:col-span-2 flex justify-end gap-3 pt-2 border-t border-gray-100">
-            <button type="button" onClick={onClose}
-              className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">
-              Cancel
-            </button>
-            <button type="submit"
-              className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#3949ab" }}>
-              Add Vehicle
-            </button>
+            <button type="button" onClick={onClose} className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
+            <button type="submit" className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#3949ab" }}>{title}</button>
           </div>
         </form>
       </div>
     </div>
   );
+}
+
+function AddVehicleModal({ onClose, onAdd }: { onClose: () => void; onAdd: (v: typeof EMPTY_FORM) => void }) {
+  return <VehicleForm initial={EMPTY_FORM} onClose={onClose} onSave={onAdd} title="Add Vehicle" />;
 }
 
 const MOCK_VEHICLES = [
@@ -191,21 +86,32 @@ export default function VehicleDirectoryPage() {
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<number[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
   const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const handleAdd = (form: typeof EMPTY_FORM) => {
-    setVehicles((prev) => [
-      ...prev,
-      {
-        id: prev.length + 1,
-        displayName: form.displayName || form.reg,
-        reg: form.reg,
-        odometer: form.odometer || "Not Added",
-        make: form.make || "N/A",
-        year: form.year || "N/A",
-        vin: form.vin || "N/A",
-      },
-    ]);
+    setVehicles((prev) => [...prev, { id: Date.now(), displayName: form.displayName || form.reg, reg: form.reg, odometer: form.odometer || "Not Added", make: form.make || "N/A", year: form.year || "N/A", vin: form.vin || "N/A" }]);
+  };
+
+  const handleEdit = (id: number, form: typeof EMPTY_FORM) => {
+    setVehicles((prev) => prev.map((v) => v.id === id ? { ...v, displayName: form.displayName || form.reg, reg: form.reg, odometer: form.odometer || "Not Added", make: form.make || "N/A", year: form.year || "N/A", vin: form.vin || "N/A" } : v));
+  };
+
+  const handleDeleteSelected = () => {
+    setVehicles((prev) => prev.filter((v) => !selected.includes(v.id)));
+    setSelected([]);
+    setBulkOpen(false);
+  };
+
+  const handleDownloadCSV = () => {
+    const headers = ["Display Number","Registration","Odometer","Make","Year","VIN"];
+    const rows = vehicles.map((v) => [v.displayName, v.reg, v.odometer, v.make, v.year, v.vin]);
+    const csv = [headers, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a"); a.href = url; a.download = "vehicles.csv"; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const filtered = vehicles.filter(
@@ -224,6 +130,7 @@ export default function VehicleDirectoryPage() {
   return (
     <div className="p-6 flex flex-col gap-4">
       {showModal && <AddVehicleModal onClose={() => setShowModal(false)} onAdd={handleAdd} />}
+      {editVehicle && <EditVehicleModal vehicle={editVehicle} onClose={() => setEditVehicle(null)} onSave={handleEdit} />}
       {/* Header */}
       <div>
         <p className="text-xs text-muted">Vehicles</p>
@@ -254,12 +161,30 @@ export default function VehicleDirectoryPage() {
           </button>
 
           {/* Bulk Action */}
-          <button className="flex items-center gap-1.5 rounded-lg border border-divider bg-surface px-3 py-2 text-sm text-foreground hover:bg-divider">
-            Bulk Action
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-              <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
-            </svg>
-          </button>
+          <div className="relative">
+            <button onClick={() => setBulkOpen((o) => !o)} className="flex items-center gap-1.5 rounded-lg border border-divider bg-surface px-3 py-2 text-sm text-foreground hover:bg-divider">
+              Bulk Action
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <circle cx="5" cy="12" r="1" /><circle cx="12" cy="12" r="1" /><circle cx="19" cy="12" r="1" />
+              </svg>
+            </button>
+            {bulkOpen && (
+              <div className="absolute right-0 mt-1 z-20 w-44 rounded-xl border border-divider bg-white shadow-lg py-1">
+                <button onClick={handleDeleteSelected} disabled={selected.length === 0}
+                  className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-40 disabled:cursor-not-allowed">
+                  Delete selected ({selected.length})
+                </button>
+                <button onClick={() => { setSelected(paged.map((v) => v.id)); setBulkOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-divider">
+                  Select all on page
+                </button>
+                <button onClick={() => { setSelected([]); setBulkOpen(false); }}
+                  className="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-divider">
+                  Clear selection
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Add Vehicle */}
           <button onClick={() => setShowModal(true)} className="flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold text-white" style={{ background: '#3949ab' }}>
@@ -270,7 +195,7 @@ export default function VehicleDirectoryPage() {
           </button>
 
           {/* Download */}
-          <button className="flex items-center rounded-lg border border-divider bg-surface p-2 hover:bg-divider">
+          <button onClick={handleDownloadCSV} title="Download CSV" className="flex items-center rounded-lg border border-divider bg-surface p-2 hover:bg-divider">
             <svg className="w-4 h-4 text-foreground" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
               <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2M7 10l5 5 5-5M12 15V3" />
             </svg>
@@ -339,7 +264,7 @@ export default function VehicleDirectoryPage() {
                   <td className="px-4 py-3 text-muted">{v.vin === "N/A" ? "N/A" : v.vin.slice(0, 8) + "..."}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <button className="p-1.5 rounded hover:bg-[#e8f0fe] text-muted hover:text-[#3949ab] transition-colors">
+                      <button onClick={() => setEditVehicle(v)} title="Edit" className="p-1.5 rounded hover:bg-[#e8f0fe] text-muted hover:text-[#3949ab] transition-colors">
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
