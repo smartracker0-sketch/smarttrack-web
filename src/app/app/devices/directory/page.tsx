@@ -72,6 +72,11 @@ function AddVehicleModal({ onClose, onAdd }: { onClose: () => void; onAdd: (v: t
   return <VehicleForm initial={EMPTY_FORM} onClose={onClose} onSave={onAdd} title="Add Vehicle" />;
 }
 
+function EditVehicleModal({ vehicle, onClose, onSave }: { vehicle: Vehicle; onClose: () => void; onSave: (id: number, v: typeof EMPTY_FORM) => void }) {
+  const initial = { ...EMPTY_FORM, reg: vehicle.reg, displayName: vehicle.displayName, odometer: vehicle.odometer, make: vehicle.make, year: vehicle.year, vin: vehicle.vin === "N/A" ? "" : vehicle.vin };
+  return <VehicleForm initial={initial} onClose={onClose} onSave={(form) => onSave(vehicle.id, form)} title="Edit Vehicle" />;
+}
+
 const MOCK_VEHICLES = [
   { id: 1, displayName: "R7_Binder Singh_PB10...", reg: "PB10GK1292", odometer: "Not Added", make: "N/A", year: "N/A", vin: "N/A" },
   { id: 2, displayName: "Truck 12", reg: "PB10GK1234", odometer: "45,200 km", make: "Tata", year: "2021", vin: "1HGBH41JXMN109186" },
