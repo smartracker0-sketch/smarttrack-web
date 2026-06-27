@@ -11,9 +11,13 @@ type Device = {
   createdAt?: string;
 };
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Telemetry = Record<string, any> | null;
+
 export default function DeviceDetailPage({ params }: { params: { id: string } }) {
   const router = useRouter();
   const [device, setDevice] = useState<Device | null>(null);
+  const [telem, setTelem]   = useState<Telemetry>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string>("");
   const [name, setName] = useState("");
@@ -34,6 +38,9 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
       const d = (await resp.json()) as Device;
       setDevice(d);
       setName(d.name ?? "");
+      // Fetch latest telemetry
+      const tr = await fetch(`/api/telemetry?type=latest&deviceId=${params.id}`).catch(() => null);
+      if (tr?.ok) setTelem(await tr.json().catch(() => null));
     } catch {
       setError("Failed to load device");
       setDevice(null);
@@ -132,12 +139,19 @@ export default function DeviceDetailPage({ params }: { params: { id: string } })
               </div>
 
               <div className="mt-8 rounded-3xl border border-divider bg-background p-6">
-                <div className="text-sm font-extrabold">Overview</div>
+                <div className="text-sm font-extrabold">Live Overview</div>
                 <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
-                  <Metric label="Status" value="Moving" />
-                  <Metric label="Speed" value="45 km/h" />
-                  <Metric label="Last update" value="2m ago" />
+                  <Metric label="Speed" value={telem?.speed != null ? `${telem.speed} km/h` : "—"} />
+                  <Metric label="Ignition" value={telem ? (telem.ignition ? "ON" : "OFF") : "—"} />
+                  <Metric label="Last update" value={telem?.timestamp ? new Date(telem.timestamp).toLocaleTimeString() : "—"} />
                 </div>
+                {telem?.batteryVoltage != null && (
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+                    <Metric label="Battery" value={`${(telem.batteryVoltage / 1000).toFixed(2)} V`} />
+                    {telem.latitude != null && <Metric label="Lat / Lng" value={`${Number(telem.latitude).toFixed(4)}, ${Number(telem.longitude).toFixed(4)}`} />}
+                  </div>
+                )}
+                {!telem && <p className="mt-3 text-xs" style={{ color: "#9ca3af" }}>No telemetry data yet — data will appear once the device connects.</p>}
               </div>
             </div>
 

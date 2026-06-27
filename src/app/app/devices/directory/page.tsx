@@ -77,13 +77,6 @@ function EditVehicleModal({ vehicle, onClose, onSave }: { vehicle: Vehicle; onCl
   return <VehicleForm initial={initial} onClose={onClose} onSave={(form) => onSave(vehicle.id, form)} title="Edit Vehicle" />;
 }
 
-const MOCK_VEHICLES = [
-  { id: 1, displayName: "R7_Binder Singh_PB10...", reg: "PB10GK1292", odometer: "Not Added", make: "N/A", year: "N/A", vin: "N/A" },
-  { id: 2, displayName: "Truck 12", reg: "PB10GK1234", odometer: "45,200 km", make: "Tata", year: "2021", vin: "1HGBH41JXMN109186" },
-  { id: 3, displayName: "Van 3", reg: "PB07CA5678", odometer: "22,100 km", make: "Mahindra", year: "2022", vin: "2T1BURHE0JC034781" },
-  { id: 4, displayName: "Car 5", reg: "PB08AB9012", odometer: "11,300 km", make: "Maruti", year: "2020", vin: "3VWFE21C04M000001" },
-];
-
 const PAGE_SIZE = 10;
 
 export default function VehicleDirectoryPage() {
@@ -92,9 +85,36 @@ export default function VehicleDirectoryPage() {
   const [selected, setSelected] = useState<number[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [editVehicle, setEditVehicle] = useState<Vehicle | null>(null);
-  const [vehicles, setVehicles] = useState(MOCK_VEHICLES);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [loading, setLoading] = useState(true);
   const [bulkOpen, setBulkOpen] = useState(false);
   const bulkRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function loadDevices() {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/devices");
+        if (res.ok) {
+          const data = await res.json();
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const list: any[] = Array.isArray(data) ? data : data?.content ?? [];
+          setVehicles(list.map((d, i) => ({
+            id: i + 1,
+            displayName: d.name ?? d.vehiclePlate ?? d.imei,
+            reg: d.vehiclePlate ?? d.imei ?? "—",
+            odometer: "Not Added",
+            make: d.deviceType ?? "N/A",
+            year: "N/A",
+            vin: d.imei ?? "N/A",
+          })));
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadDevices();
+  }, []);
 
   useEffect(() => {
     if (!bulkOpen) return;
@@ -244,7 +264,9 @@ export default function VehicleDirectoryPage() {
             </tr>
           </thead>
           <tbody>
-            {paged.length === 0 ? (
+            {loading ? (
+              <tr><td colSpan={9} className="px-4 py-10 text-center text-muted text-sm">Loading devices…</td></tr>
+            ) : paged.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-10 text-center text-muted text-sm">No vehicles found.</td>
               </tr>

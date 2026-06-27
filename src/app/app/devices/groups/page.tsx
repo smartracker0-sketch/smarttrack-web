@@ -3,12 +3,6 @@ import { useState, useRef } from "react";
 
 type Group = { id: number; name: string; vehicles: string };
 
-const MOCK_GROUPS: Group[] = [
-  { id: 1, name: "route no. 7(khanna route)", vehicles: "R7_Binder Singh_PB10GK1292" },
-  { id: 2, name: "North Zone", vehicles: "Truck 12, Van 3" },
-  { id: 3, name: "South Zone", vehicles: "Car 5" },
-];
-
 const PAGE_SIZE = 10;
 
 
@@ -79,7 +73,7 @@ function GroupFormModal({
 }
 
 export default function VehicleGroupsPage() {
-  const [groups, setGroups] = useState<Group[]>(MOCK_GROUPS);
+  const [groups, setGroups] = useState<Group[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [showAdd, setShowAdd] = useState(false);
