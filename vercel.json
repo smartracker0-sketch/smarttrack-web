@@ -6,6 +6,7 @@
   "regions": ["iad1"],
   "env": {
     "NEXT_PUBLIC_API_BASE_URL": "https://api.smarttracker.cloud",
-    "TRACKPRO_API_BASE_URL": "https://api.smarttracker.cloud"
+    "TRACKPRO_API_BASE_URL": "https://api.smarttracker.cloud",
+    "NEXT_PUBLIC_MAPBOX_TOKEN": "pk.eyJ1Ijoic21hcnR0cmFja2VyMCIsImEiOiJjbXF1eTk2bGcwNGNtMnNxd2tzZW5nZTM4In0.pzFSR_dskItoPYIxDODVrA"
   }
 }
