@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FiShare2, FiUser, FiRefreshCw, FiMessageSquare, FiMapPin, FiChevronRight } from "react-icons/fi";
+import { FiShare2, FiUser, FiRefreshCw, FiMessageSquare, FiMapPin, FiChevronRight, FiX } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
@@ -72,9 +72,54 @@ function StatCell({ label, value, divider }: { label: string; value: string; div
   );
 }
 
+function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, [onDone]);
+  return (
+    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-sm text-white font-medium" style={{ background: "#3949ab" }}>
+      {msg}
+      <button onClick={onDone}><FiX size={14} /></button>
+    </div>
+  );
+}
+
 export default function AllVehiclesPage() {
   const [selected, setSelected] = useState<string>(MOCK_VEHICLES[0].id);
-  const vehicle = MOCK_VEHICLES.find((v) => v.id === selected) ?? MOCK_VEHICLES[0];
+  const [showAll, setShowAll] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState<string | null>(null);
+
+  const displayedVehicles = showAll ? MOCK_VEHICLES : MOCK_VEHICLES.filter((v) => v.id === selected);
+
+  const notify = (msg: string) => setToast(msg);
+
+  const handleRefresh = (e: React.MouseEvent, vehicleId: string, vehicleName: string) => {
+    e.stopPropagation();
+    setRefreshing(vehicleId);
+    setTimeout(() => {
+      setRefreshing(null);
+      notify(`Location refreshed for ${vehicleName}`);
+    }, 1200);
+  };
+
+  const handleShare = (e: React.MouseEvent, v: typeof MOCK_VEHICLES[0]) => {
+    e.stopPropagation();
+    const text = `${v.name} — ${v.location}\nStatus: ${v.statusLabel} | Speed: ${v.speed}`;
+    if (navigator.share) {
+      navigator.share({ title: v.name, text }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(text).then(() => notify(`Location copied for ${v.name}`));
+    }
+  };
+
+  const handleDriver = (e: React.MouseEvent, vehicleName: string) => {
+    e.stopPropagation();
+    notify(`Driver info for ${vehicleName} — feature coming soon`);
+  };
+
+  const handleMessage = (e: React.MouseEvent, vehicleName: string) => {
+    e.stopPropagation();
+    notify(`Message sent to driver of ${vehicleName}`);
+  };
 
   const markers: MarkerData[] = useMemo(() =>
     MOCK_VEHICLES.map((v) => ({
@@ -101,6 +146,7 @@ export default function AllVehiclesPage() {
 
   return (
     <div className="flex h-full" style={{ background: "#f3f4f6" }}>
+      {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
       {/* ── Vehicle list panel ── */}
       <div
@@ -114,8 +160,9 @@ export default function AllVehiclesPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {MOCK_VEHICLES.map((v) => {
+          {displayedVehicles.map((v) => {
             const isSelected = v.id === selected;
+            const isRefreshing = refreshing === v.id;
             return (
               <button
                 key={v.id}
@@ -124,8 +171,8 @@ export default function AllVehiclesPage() {
                 className="w-full text-left px-4 py-4 border-b transition-colors"
                 style={{
                   borderColor: "#e5e7eb",
-                  background: isSelected ? "#f0faf9" : "#fff",
-                  borderLeft: isSelected ? "3px solid #0D4A47" : "3px solid transparent",
+                  background: isSelected ? "#eef0fb" : "#fff",
+                  borderLeft: isSelected ? "3px solid #3949ab" : "3px solid transparent",
                 }}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -133,10 +180,35 @@ export default function AllVehiclesPage() {
                     {v.name}
                   </span>
                   <div className="flex gap-1.5 flex-shrink-0">
-                    <FiShare2 size={13} style={{ color: "#9ca3af" }} />
-                    <FiUser size={13} style={{ color: "#9ca3af" }} />
-                    <FiRefreshCw size={13} style={{ color: "#9ca3af" }} />
-                    <FiMessageSquare size={13} style={{ color: "#9ca3af" }} />
+                    <button
+                      onClick={(e) => handleShare(e, v)}
+                      title="Share location"
+                      className="p-0.5 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <FiShare2 size={13} style={{ color: "#9ca3af" }} />
+                    </button>
+                    <button
+                      onClick={(e) => handleDriver(e, v.name)}
+                      title="Driver info"
+                      className="p-0.5 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <FiUser size={13} style={{ color: "#9ca3af" }} />
+                    </button>
+                    <button
+                      onClick={(e) => handleRefresh(e, v.id, v.name)}
+                      title="Refresh location"
+                      className="p-0.5 rounded hover:bg-gray-100 transition-colors"
+                      style={{ animation: isRefreshing ? "spin 0.8s linear infinite" : undefined }}
+                    >
+                      <FiRefreshCw size={13} style={{ color: isRefreshing ? "#3949ab" : "#9ca3af" }} />
+                    </button>
+                    <button
+                      onClick={(e) => handleMessage(e, v.name)}
+                      title="Message driver"
+                      className="p-0.5 rounded hover:bg-gray-100 transition-colors"
+                    >
+                      <FiMessageSquare size={13} style={{ color: "#9ca3af" }} />
+                    </button>
                   </div>
                 </div>
                 <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[v.status] }}>
@@ -150,12 +222,12 @@ export default function AllVehiclesPage() {
                 </div>
                 {isSelected && (
                   <div className="mt-3 flex items-center gap-0 rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <StatCell label="Ignition" value={v.ignition} />
+                    <StatCell label="Ignition" value={v.ignition} divider />
                     <StatCell label="Speed" value={v.speed} divider />
                     <div className="flex-1 flex items-center justify-between px-3 py-2">
                       <div>
                         <p className="text-xs font-bold" style={{ color: "#111827" }}>{v.battery}</p>
-                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Vehicle Battery Voltage</p>
+                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Battery Voltage</p>
                       </div>
                       <FiChevronRight size={14} style={{ color: "#9ca3af" }} />
                     </div>
@@ -168,10 +240,11 @@ export default function AllVehiclesPage() {
 
         <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e7eb" }}>
           <button
+            onClick={() => setShowAll((s) => !s)}
             className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#e5e7eb", color: "#374151" }}
+            style={{ borderColor: "#3949ab", color: "#3949ab" }}
           >
-            Show All
+            {showAll ? "Show Selected Only" : "Show All"}
           </button>
         </div>
       </div>
@@ -188,13 +261,15 @@ export default function AllVehiclesPage() {
           onMarkerClick={setSelected}
         />
         <Link
-          href="/tracking"
+          href="/app/map"
           className="absolute bottom-4 right-4 z-10 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
-          style={{ background: "#0D4A47" }}
+          style={{ background: "#3949ab" }}
         >
           Open Live Tracking →
         </Link>
       </div>
+
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
 }

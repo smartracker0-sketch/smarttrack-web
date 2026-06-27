@@ -47,22 +47,34 @@ export default function MapboxMap({
   const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0) => {
     const el = document.createElement("div");
     el.style.cssText = `
-      width: 32px; height: 32px; cursor: pointer; position: relative;
+      width: 40px; height: 40px; cursor: pointer; position: relative;
       display: flex; align-items: center; justify-content: center;
     `;
     el.innerHTML = `
       ${pulsing ? `
         <span style="
           position:absolute; inset:0; border-radius:50%;
-          background:${color}; opacity:0.25;
+          background:${color}; opacity:0.22;
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
-      <svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg"
-        style="transform:rotate(${heading}deg)">
-        <circle cx="16" cy="16" r="10" fill="${color}" stroke="white" stroke-width="2.5"/>
-        <path d="M10 16 L15 12 L22 16 L15 20 Z" fill="white" opacity="0.9"/>
-      </svg>
+      <div style="
+        width:36px; height:36px; border-radius:50%;
+        background:white; box-shadow:0 2px 8px rgba(0,0,0,0.35);
+        display:flex; align-items:center; justify-content:center;
+        transform:rotate(${heading}deg);
+      ">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="7" y="4" width="10" height="16" rx="3" fill="${color}"/>
+          <rect x="8.5" y="5.5" width="7" height="5" rx="1.5" fill="white" opacity="0.7"/>
+          <rect x="7" y="15" width="3.5" height="3" rx="1" fill="white" opacity="0.5"/>
+          <rect x="13.5" y="15" width="3.5" height="3" rx="1" fill="white" opacity="0.5"/>
+          <rect x="5.5" y="8" width="2" height="5" rx="1" fill="${color}" stroke="white" stroke-width="0.5"/>
+          <rect x="16.5" y="8" width="2" height="5" rx="1" fill="${color}" stroke="white" stroke-width="0.5"/>
+          <circle cx="9.5" cy="18.5" r="1.5" fill="#1e293b"/>
+          <circle cx="14.5" cy="18.5" r="1.5" fill="#1e293b"/>
+        </svg>
+      </div>
     `;
     return el;
   }, []);
