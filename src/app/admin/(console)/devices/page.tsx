@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FiSearch, FiPlus, FiX, FiTrash2, FiLink, FiSlash, FiCheckCircle, FiRefreshCw } from "react-icons/fi";
-import { DEVICES, ORGS, Device } from "@/admin/data/mockData";
+import { Device } from "@/admin/data/mockData";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   Online:     { bg: "#22C55E1a", color: "#22C55E" },
@@ -18,6 +18,7 @@ type FormMode = "single" | "bulk";
 interface AddDeviceModalProps {
   onClose: () => void;
   onSuccess: (devices: Device[]) => void;
+  orgs: { id: string; name: string }[];
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -51,7 +52,7 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   );
 }
 
-function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
+function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
   const [mode, setMode] = useState<FormMode>("single");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -94,7 +95,7 @@ function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
         setError(d?.message ?? "Failed to add device.");
         return;
       }
-      const org = ORGS.find(o => o.id === assignOrg);
+      const org = orgs.find(o => o.id === assignOrg);
       const newDevice: Device = {
         id: `d${Date.now()}`,
         imei: imei.trim(),
@@ -133,7 +134,7 @@ function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
         setError(d?.message ?? "Failed to add devices.");
         return;
       }
-      const org = ORGS.find(o => o.id === bulkOrg);
+      const org = orgs.find(o => o.id === bulkOrg);
       const newDevices: Device[] = lines.map((im, i) => ({
         id: `d${Date.now()}${i}`,
         imei: im,
@@ -226,7 +227,7 @@ function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
                     <Field label="Assign to Organisation">
                       <Select value={assignOrg} onChange={e => setAssignOrg(e.target.value)}>
                         <option value="">— Unassigned —</option>
-                        {ORGS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                       </Select>
                     </Field>
                     <Field label="Vehicle Plate / Name">
@@ -293,7 +294,7 @@ function AddDeviceModal({ onClose, onSuccess }: AddDeviceModalProps) {
                 <Field label="Assign all to Organisation (optional)">
                   <Select value={bulkOrg} onChange={e => setBulkOrg(e.target.value)}>
                     <option value="">— Unassigned —</option>
-                    {ORGS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                   </Select>
                 </Field>
 
@@ -337,7 +338,8 @@ function fromApiDto(d: any): Device {
 }
 
 export default function DeviceManagerPage() {
-  const [devices, setDevices] = useState<Device[]>(DEVICES);
+  const [devices, setDevices] = useState<Device[]>([]);
+  const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [apiAvailable, setApiAvailable] = useState(false);
   const [search, setSearch] = useState("");
@@ -348,17 +350,22 @@ export default function DeviceManagerPage() {
   async function loadDevices() {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/devices?size=200");
-      if (res.ok) {
-        const data = await res.json();
+      const [dRes, oRes] = await Promise.allSettled([
+        fetch("/api/admin/devices?size=500"),
+        fetch("/api/admin/organisations?size=100"),
+      ]);
+      if (dRes.status === "fulfilled" && dRes.value.ok) {
+        const data = await dRes.value.json();
         const list = data?.content ?? data ?? [];
-        if (Array.isArray(list) && list.length > 0) {
-          setDevices(list.map(fromApiDto));
-          setApiAvailable(true);
-        }
+        setDevices(Array.isArray(list) ? list.map(fromApiDto) : []);
+        setApiAvailable(true);
+      }
+      if (oRes.status === "fulfilled" && oRes.value.ok) {
+        const data = await oRes.value.json();
+        setOrgs((data?.content ?? data ?? []).map((o: { id: string; name: string }) => ({ id: o.id, name: o.name })));
       }
     } catch {
-      // fall back to mock data silently
+      // silently stay empty
     } finally {
       setLoading(false);
     }
@@ -431,6 +438,7 @@ export default function DeviceManagerPage() {
         <AddDeviceModal
           onClose={() => setShowModal(false)}
           onSuccess={(d) => { handleSuccess(d); setShowModal(false); }}
+          orgs={orgs}
         />
       )}
 
@@ -538,7 +546,7 @@ export default function DeviceManagerPage() {
                             style={{ background: "rgba(34,197,94,0.1)", border: "1px solid rgba(34,197,94,0.3)", color: "#22C55E" }}
                             title="Assign to organisation">
                             <option value="">Assign…</option>
-                            {ORGS.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                            {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                           </select>
                         )}
                         <button
