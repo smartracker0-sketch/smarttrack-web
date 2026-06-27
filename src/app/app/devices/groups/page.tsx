@@ -11,6 +11,7 @@ const MOCK_GROUPS: Group[] = [
 
 const PAGE_SIZE = 10;
 
+
 function GroupFormModal({
   initial,
   title,
