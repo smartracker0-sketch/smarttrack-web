@@ -76,7 +76,8 @@ export default function MapboxMap({
     }
 
     import("mapbox-gl").then((mbgl) => {
-      const mapboxgl = mbgl.default ?? mbgl;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mapboxgl = (mbgl.default ?? mbgl) as any;
       mapboxgl.accessToken = token;
 
       containerRef.current!.innerHTML = "";
@@ -97,7 +98,7 @@ export default function MapboxMap({
       initializedRef.current = true;
 
       map.on("load", () => {
-        markers.forEach((m) => addMarker(m, mapboxgl, map));
+        markers.forEach((m) => addMarker(m, mapboxgl, map as mapboxgl.Map));
       });
     });
 
@@ -112,14 +113,14 @@ export default function MapboxMap({
   }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function addMarker(m: MarkerData, mapboxgl: any, map: mapboxgl.Map) {
+  function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
     const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0);
 
-    const popup = new mapboxgl.Popup({ offset: 20, maxWidth: "300px", closeButton: true })
+    const popup = new mgl.Popup({ offset: 20, maxWidth: "300px", closeButton: true })
       .setHTML(m.popupHtml);
     popupsRef.current.set(m.id, popup);
 
-    const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+    const marker = new mgl.Marker({ element: el, anchor: "center" })
       .setLngLat([m.lng, m.lat])
       .setPopup(popup)
       .addTo(map);
