@@ -21,13 +21,17 @@ export async function POST(req: Request) {
     : String(body.imeis).split("\n").map((s: string) => s.trim()).filter(Boolean);
 
   const payload: Record<string, unknown> = { imeis };
-  if (body.type)        payload.deviceType    = body.type;
-  if (body.firmware)    payload.firmware      = body.firmware;
-  if (body.simCard)     payload.simCard       = body.simCard;
-  if (body.serialNo)    payload.serialNo      = body.serialNo;
-  if (body.orgId)       payload.organisationId = body.orgId;
-  if (body.vehicle)     payload.vehiclePlate  = body.vehicle;
-  if (body.notes)       payload.notes         = body.notes;
+  if (body.type)         payload.deviceType     = body.type;
+  if (body.firmware)     payload.firmware       = body.firmware;
+  if (body.simCard)      payload.simCard        = body.simCard;
+  if (body.serialNo)     payload.serialNo       = body.serialNo;
+  if (body.orgId)        payload.organisationId = body.orgId;
+  if (body.userId)       payload.userId         = body.userId;
+  if (body.vehicle)      payload.vehiclePlate   = body.vehicle;
+  if (body.notes)        payload.notes          = body.notes;
+  if (body.simNumber)    payload.simNumber      = body.simNumber;
+  if (body.simApn)       payload.simApn         = body.simApn;
+  if (body.manufacturer) payload.manufacturer   = body.manufacturer;
 
   return proxyAdmin(req, "/api/v1/admin/devices/bulk", {
     method: "POST",

@@ -27,6 +27,7 @@ interface AddDeviceModalProps {
   onClose: () => void;
   onSuccess: (devices: Device[]) => void;
   orgs: { id: string; name: string }[];
+  users: { id: string; displayName: string; email: string }[];
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -60,27 +61,36 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   );
 }
 
-function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
+function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps) {
   const [mode, setMode] = useState<FormMode>("single");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
   /* ── Single mode fields ── */
-  const [imei, setImei]           = useState("");
-  const [type, setType]           = useState<string>("GPS Tracker");
-  const [firmware, setFirmware]   = useState("v4.2.1");
-  const [simCard, setSimCard]     = useState("");
-  const [serialNo, setSerialNo]   = useState("");
-  const [assignOrg, setAssignOrg] = useState("");
+  const [imei, setImei]               = useState("");
+  const [type, setType]               = useState<string>("GPS Tracker");
+  const [firmware, setFirmware]       = useState("v4.2.1");
+  const [simCard, setSimCard]         = useState("");
+  const [simNumber, setSimNumber]     = useState("");
+  const [simApn, setSimApn]           = useState("");
+  const [manufacturer, setManufacturer] = useState("");
+  const [serialNo, setSerialNo]       = useState("");
+  const [assignMode, setAssignMode]   = useState<"org" | "user">("org");
+  const [assignOrg, setAssignOrg]     = useState("");
+  const [assignUser, setAssignUser]   = useState("");
   const [assignVehicle, setAssignVehicle] = useState("");
-  const [notes, setNotes]         = useState("");
+  const [notes, setNotes]             = useState("");
 
   /* ── Bulk mode fields ── */
-  const [bulkImeis, setBulkImeis] = useState("");
-  const [bulkType, setBulkType]   = useState<string>("GPS Tracker");
+  const [bulkImeis, setBulkImeis]     = useState("");
+  const [bulkType, setBulkType]       = useState<string>("GPS Tracker");
   const [bulkFirmware, setBulkFirmware] = useState("v4.2.1");
-  const [bulkOrg, setBulkOrg]     = useState("");
+  const [bulkAssignMode, setBulkAssignMode] = useState<"org" | "user">("org");
+  const [bulkOrg, setBulkOrg]         = useState("");
+  const [bulkUser, setBulkUser]       = useState("");
+  const [bulkSimNumber, setBulkSimNumber] = useState("");
+  const [bulkManufacturer, setBulkManufacturer] = useState("");
 
   function validateImei(v: string) {
     return /^\d{15}$/.test(v.trim());
@@ -93,10 +103,18 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
 
     setLoading(true);
     try {
+      const payload: Record<string, unknown> = {
+        imeis: [imei.trim()], type, firmware, simCard, serialNo,
+        vehicle: assignVehicle, notes,
+        simNumber, simApn, manufacturer,
+      };
+      if (assignMode === "org" && assignOrg) payload.orgId = assignOrg;
+      if (assignMode === "user" && assignUser) payload.userId = assignUser;
+
       const resp = await fetch("/api/admin/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imeis: [imei.trim()], type, firmware, simCard, serialNo, orgId: assignOrg, vehicle: assignVehicle, notes }),
+        body: JSON.stringify(payload),
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => null) as { message?: string } | null;
@@ -104,6 +122,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
         return;
       }
       const org = orgs.find(o => o.id === assignOrg);
+      const user = users.find(u => u.id === assignUser);
       const newDevice: Device = {
         id: `d${Date.now()}`,
         imei: imei.trim(),
@@ -115,6 +134,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
         status: "Unassigned",
         lastPing: "Never",
       };
+      void user;
       setSuccess(true);
       onSuccess([newDevice]);
     } finally {
@@ -132,10 +152,17 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
 
     setLoading(true);
     try {
+      const bulkPayload: Record<string, unknown> = {
+        imeis: lines, type: bulkType, firmware: bulkFirmware,
+        simNumber: bulkSimNumber, manufacturer: bulkManufacturer,
+      };
+      if (bulkAssignMode === "org" && bulkOrg) bulkPayload.orgId = bulkOrg;
+      if (bulkAssignMode === "user" && bulkUser) bulkPayload.userId = bulkUser;
+
       const resp = await fetch("/api/admin/devices", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ imeis: lines, type: bulkType, firmware: bulkFirmware, orgId: bulkOrg }),
+        body: JSON.stringify(bulkPayload),
       });
       if (!resp.ok) {
         const d = await resp.json().catch(() => null) as { message?: string } | null;
@@ -229,15 +256,54 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
                   </Field>
                 </div>
 
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="SIM Phone Number">
+                    <Input placeholder="e.g. 2348012345678" value={simNumber} onChange={e => setSimNumber(e.target.value)} />
+                  </Field>
+                  <Field label="Manufacturer">
+                    <Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}>
+                      <option value="">— Generic —</option>
+                      <option value="TELTONIKA">Teltonika</option>
+                      <option value="CONCOX">Concox / Queclink</option>
+                      <option value="COBAN">Coban</option>
+                      <option value="MEITRACK">Meitrack</option>
+                    </Select>
+                  </Field>
+                  <Field label="SIM APN">
+                    <Input placeholder="e.g. internet" value={simApn} onChange={e => setSimApn(e.target.value)} />
+                  </Field>
+                </div>
+
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
-                  <div className="text-xs font-bold mb-3" style={{ color: "#4A8A87" }}>ASSIGNMENT (optional — can be done later)</div>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold" style={{ color: "#4A8A87" }}>ASSIGNMENT (optional)</div>
+                    <div className="flex rounded-lg overflow-hidden text-[10px] font-bold" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                      {(["org", "user"] as const).map(m => (
+                        <button key={m} type="button"
+                          onClick={() => setAssignMode(m)}
+                          className="h-7 px-3 transition-colors"
+                          style={{ background: assignMode === m ? "#0D4A47" : "transparent", color: assignMode === m ? "#fff" : "#7BBBB8" }}>
+                          {m === "org" ? "Organisation" : "User"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Assign to Organisation">
-                      <Select value={assignOrg} onChange={e => setAssignOrg(e.target.value)}>
-                        <option value="">— Unassigned —</option>
-                        {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                      </Select>
-                    </Field>
+                    {assignMode === "org" ? (
+                      <Field label="Assign to Organisation">
+                        <Select value={assignOrg} onChange={e => setAssignOrg(e.target.value)}>
+                          <option value="">— None —</option>
+                          {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                        </Select>
+                      </Field>
+                    ) : (
+                      <Field label="Assign to User">
+                        <Select value={assignUser} onChange={e => setAssignUser(e.target.value)}>
+                          <option value="">— None —</option>
+                          {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
+                        </Select>
+                      </Field>
+                    )}
                     <Field label="Vehicle Plate / Name">
                       <Input placeholder="e.g. LAS-001-AA" value={assignVehicle} onChange={e => setAssignVehicle(e.target.value)} />
                     </Field>
@@ -297,17 +363,49 @@ function AddDeviceModal({ onClose, onSuccess, orgs }: AddDeviceModalProps) {
                       {FIRMWARE_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                     </Select>
                   </Field>
+                  <Field label="SIM Phone Number (all)">
+                    <Input placeholder="e.g. 2348012345678" value={bulkSimNumber} onChange={e => setBulkSimNumber(e.target.value)} />
+                  </Field>
+                  <Field label="Manufacturer">
+                    <Select value={bulkManufacturer} onChange={e => setBulkManufacturer(e.target.value)}>
+                      <option value="">— Generic —</option>
+                      <option value="TELTONIKA">Teltonika</option>
+                      <option value="CONCOX">Concox / Queclink</option>
+                      <option value="COBAN">Coban</option>
+                      <option value="MEITRACK">Meitrack</option>
+                    </Select>
+                  </Field>
                 </div>
 
-                <Field label="Assign all to Organisation (optional)">
-                  <Select value={bulkOrg} onChange={e => setBulkOrg(e.target.value)}>
-                    <option value="">— Unassigned —</option>
-                    {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-                  </Select>
-                </Field>
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-xs font-bold" style={{ color: "#4A8A87" }}>ASSIGN ALL TO (optional)</div>
+                    <div className="flex rounded-lg overflow-hidden text-[10px] font-bold" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
+                      {(["org", "user"] as const).map(m => (
+                        <button key={m} type="button"
+                          onClick={() => setBulkAssignMode(m)}
+                          className="h-7 px-3 transition-colors"
+                          style={{ background: bulkAssignMode === m ? "#0D4A47" : "transparent", color: bulkAssignMode === m ? "#fff" : "#7BBBB8" }}>
+                          {m === "org" ? "Organisation" : "User"}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {bulkAssignMode === "org" ? (
+                    <Select value={bulkOrg} onChange={e => setBulkOrg(e.target.value)}>
+                      <option value="">— None —</option>
+                      {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
+                    </Select>
+                  ) : (
+                    <Select value={bulkUser} onChange={e => setBulkUser(e.target.value)}>
+                      <option value="">— None —</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
+                    </Select>
+                  )}
+                </div>
 
                 <div className="rounded-xl px-4 py-3 text-xs" style={{ background: "rgba(249,115,22,0.08)", border: "1px solid rgba(249,115,22,0.2)", color: "#F97316" }}>
-                  All devices will be added as <strong>Unassigned</strong> unless an organisation is selected. Vehicle assignment must be done individually after import.
+                  All devices will be added as <strong>Unassigned</strong> unless an org or user is selected. Vehicle assignment must be done individually after import.
                 </div>
 
                 <div className="flex gap-3 pt-2">
@@ -475,11 +573,18 @@ export default function DeviceManagerPage() {
     return matchSearch && matchStatus;
   });
 
-  function handleSuccess(newDevices: Device[]) {
+  function handleSuccess(_newDevices: Device[]) {
     if (apiAvailable) {
       loadDevices();
     } else {
-      setDevices(prev => [...newDevices, ...prev]);
+      const extended: DeviceEx[] = _newDevices.map(d => ({
+        ...d,
+        activationStatus: "UNACTIVATED",
+        activationAttempts: 0,
+        serverConfigured: false,
+        apnConfigured: false,
+      }));
+      setDevices(prev => [...extended, ...prev]);
     }
   }
 
@@ -550,6 +655,7 @@ export default function DeviceManagerPage() {
           onClose={() => setShowModal(false)}
           onSuccess={(d) => { handleSuccess(d); setShowModal(false); }}
           orgs={orgs}
+          users={users}
         />
       )}
 
