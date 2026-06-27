@@ -54,7 +54,7 @@ function GroupFormModal({
               value={name}
               onChange={(e) => { setName(e.target.value); setError(""); }}
               placeholder="Enter group name"
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#00bcd4]/30 ${error ? "border-red-400" : "border-gray-200"}`}
+              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 ${error ? "border-red-400" : "border-gray-200"}`}
             />
             {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
           </div>
@@ -64,12 +64,12 @@ function GroupFormModal({
               value={vehicles}
               onChange={(e) => setVehicles(e.target.value)}
               placeholder="e.g. R7_Binder Singh_PB10GK1292"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#00bcd4]/30"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30"
             />
           </div>
           <div className="flex justify-end gap-3 pt-1">
             <button type="button" onClick={onClose} className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button type="submit" className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#00bcd4" }}>{title}</button>
+            <button type="submit" className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#3949ab" }}>{title}</button>
           </div>
         </form>
       </div>
@@ -154,7 +154,7 @@ export default function VehicleGroupsPage() {
           <button
             onClick={() => setShowAdd(true)}
             className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ background: "#00bcd4" }}
+            style={{ background: "#3949ab" }}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
               <path d="M12 5v14M5 12h14" />
@@ -189,7 +189,7 @@ export default function VehicleGroupsPage() {
                       <button
                         onClick={() => setEditGroup(g)}
                         title="Edit"
-                        className="p-1.5 rounded hover:bg-[#e0f7fa] text-muted hover:text-[#00bcd4] transition-colors"
+                        className="p-1.5 rounded hover:bg-[#e8eaf6] text-muted hover:text-[#3949ab] transition-colors"
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
