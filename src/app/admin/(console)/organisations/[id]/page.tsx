@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { FiArrowLeft, FiLogIn, FiSlash } from "react-icons/fi";
-import { ORGS, VEHICLES, USERS, ALERTS } from "@/admin/data/mockData";
+import { FiArrowLeft, FiLogIn, FiSlash, FiRefreshCw } from "react-icons/fi";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
-type Tab = "overview" | "vehicles" | "users" | "billing" | "activity";
+type Tab = "overview" | "devices" | "users";
 
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { bg: string; color: string }> = {
@@ -19,32 +18,75 @@ function StatusBadge({ status }: { status: string }) {
   return <span className="inline-flex items-center h-5 px-2 rounded text-[10px] font-bold" style={{ background: s.bg, color: s.color }}>{status}</span>;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRow = Record<string, any>;
+
 export default function OrgDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const { startImpersonation } = useAdminAuthStore();
   const [tab, setTab] = useState<Tab>("overview");
 
-  const org = ORGS.find(o => o.id === id);
-  const orgVehicles = VEHICLES.filter(v => v.orgId === id);
-  const orgUsers = USERS.filter(u => u.orgId === id);
-  const orgAlerts = ALERTS.filter(a => a.orgId === id);
+  const [org, setOrg]         = useState<AnyRow | null>(null);
+  const [devices, setDevices] = useState<AnyRow[]>([]);
+  const [users, setUsers]     = useState<AnyRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [oRes, dRes, uRes] = await Promise.allSettled([
+        fetch(`/api/admin/organisations/${id}`),
+        fetch(`/api/admin/devices?size=500`),
+        fetch(`/api/admin/users?size=500`),
+      ]);
+      if (oRes.status === "fulfilled") {
+        if (oRes.value.status === 404) { setNotFound(true); return; }
+        if (oRes.value.ok) setOrg(await oRes.value.json());
+      }
+      if (dRes.status === "fulfilled" && dRes.value.ok) {
+        const data = await dRes.value.json();
+        const all: AnyRow[] = data?.content ?? data ?? [];
+        setDevices(all.filter((d: AnyRow) => d.organisationId === id));
+      }
+      if (uRes.status === "fulfilled" && uRes.value.ok) {
+        const data = await uRes.value.json();
+        const all: AnyRow[] = data?.content ?? data ?? [];
+        setUsers(all.filter((u: AnyRow) => u.organisationId === id));
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, [id]);
 
   const TABS: { key: Tab; label: string }[] = [
     { key: "overview", label: "Overview" },
-    { key: "vehicles", label: `Vehicles (${orgVehicles.length})` },
-    { key: "users", label: `Users (${orgUsers.length})` },
-    { key: "billing", label: "Billing" },
-    { key: "activity", label: "Activity Log" },
+    { key: "devices",  label: `Devices (${devices.length})` },
+    { key: "users",    label: `Users (${users.length})` },
   ];
 
-  if (!org) return <div className="text-white p-8">Organisation not found.</div>;
+  if (loading) return <div className="text-center py-16 text-xs" style={{ color: "#4A8A87" }}>Loading…</div>;
+  if (notFound || !org) return <div className="text-white p-8">Organisation not found.</div>;
 
   function handleImpersonate() {
     if (confirm(`You are about to view the platform as "${org!.name}". This action will be logged.`)) {
       startImpersonation({ orgId: org!.id, orgName: org!.name });
       router.push("/app");
     }
+  }
+
+  async function handleSuspend() {
+    const newStatus = org!.status === "Suspended" ? "Active" : "Suspended";
+    if (!confirm(`${newStatus === "Suspended" ? "Suspend" : "Reactivate"} "${org!.name}"?`)) return;
+    await fetch(`/api/admin/organisations/${id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    });
+    load();
   }
 
   return (
@@ -65,11 +107,14 @@ export default function OrgDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={load} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-white/10" style={{ color: "#7BBBB8" }}>
+            <FiRefreshCw size={13} />
+          </button>
           <button onClick={handleImpersonate} className="flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold" style={{ background: "#F974161a", color: "#F97316", border: "1px solid #F9741633" }}>
             <FiLogIn size={13} /> Impersonate
           </button>
-          <button className="flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold" style={{ background: "#EF44441a", color: "#EF4444", border: "1px solid #EF444433" }}>
-            <FiSlash size={13} /> Suspend
+          <button onClick={handleSuspend} className="flex items-center gap-2 h-9 px-4 rounded-xl text-xs font-bold" style={{ background: "#EF44441a", color: org?.status === "Suspended" ? "#22C55E" : "#EF4444", border: "1px solid #EF444433" }}>
+            <FiSlash size={13} /> {org?.status === "Suspended" ? "Reactivate" : "Suspend"}
           </button>
         </div>
       </div>
@@ -88,12 +133,11 @@ export default function OrgDetailPage() {
       {/* Tab content */}
       {tab === "overview" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
             {[
-              { label: "Vehicles", value: org.vehicles },
-              { label: "Users", value: org.users },
-              { label: "Alerts This Month", value: orgAlerts.length },
-              { label: "MRR (₦)", value: org.mrr.toLocaleString() },
+              { label: "Devices",  value: devices.length },
+              { label: "Users",    value: users.length },
+              { label: "Status",   value: org.status ?? "Active" },
             ].map(s => (
               <div key={s.label} className="rounded-2xl p-4" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
                 <div className="text-xl font-extrabold text-white">{s.value}</div>
@@ -102,13 +146,16 @@ export default function OrgDetailPage() {
             ))}
           </div>
           <div className="rounded-2xl p-5" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
-            <div className="text-sm font-bold text-white mb-3">Recent Activity</div>
-            <div className="space-y-3">
-              {["Org created", "First device assigned", "Admin user invited", "First trip recorded"].map((e, i) => (
-                <div key={i} className="flex items-center gap-3 text-xs">
-                  <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#1A7A75" }} />
-                  <span className="text-white">{e}</span>
-                  <span style={{ color: "#4A8A87" }} className="ml-auto">{org.onboarded}</span>
+            <div className="text-sm font-bold text-white mb-3">Organisation Details</div>
+            <div className="space-y-2">
+              {[
+                { label: "Created",  value: org.createdAt ? new Date(org.createdAt).toLocaleDateString() : "—" },
+                { label: "Slug",     value: org.slug ?? "—" },
+                { label: "Plan",     value: org.plan ?? "—" },
+              ].map(r => (
+                <div key={r.label} className="flex justify-between text-xs py-1.5" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+                  <span style={{ color: "#4A8A87" }}>{r.label}</span>
+                  <span className="text-white font-medium">{r.value}</span>
                 </div>
               ))}
             </div>
@@ -116,24 +163,26 @@ export default function OrgDetailPage() {
         </div>
       )}
 
-      {tab === "vehicles" && (
+      {tab === "devices" && (
         <div className="rounded-2xl overflow-hidden" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["Plate", "Driver", "Status", "IMEI", "Last Seen"].map(h => (
+                {["IMEI", "Type", "Vehicle Plate", "Status", "Added"].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {orgVehicles.map(v => (
-                <tr key={v.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <td className="px-4 py-3 text-white font-semibold">{v.plate}</td>
-                  <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{v.driver}</td>
-                  <td className="px-4 py-3"><StatusBadge status={v.status} /></td>
-                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{v.imei}</td>
-                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{v.lastSeen}</td>
+              {devices.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: "#4A8A87" }}>No devices assigned to this organisation</td></tr>
+              ) : devices.map(d => (
+                <tr key={d.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
+                  <td className="px-4 py-3 font-mono text-white">{d.imei}</td>
+                  <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.deviceType ?? "—"}</td>
+                  <td className="px-4 py-3 text-white">{d.vehiclePlate ?? "—"}</td>
+                  <td className="px-4 py-3"><StatusBadge status={d.status ?? "Unknown"} /></td>
+                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : "—"}</td>
                 </tr>
               ))}
             </tbody>
@@ -146,55 +195,25 @@ export default function OrgDetailPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["Name", "Email", "Role", "Status", "Last Login"].map(h => (
+                {["Name", "Email", "Role", "Status", "Joined"].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {orgUsers.map(u => (
+              {users.length === 0 ? (
+                <tr><td colSpan={5} className="px-4 py-8 text-center" style={{ color: "#4A8A87" }}>No users in this organisation</td></tr>
+              ) : users.map(u => (
                 <tr key={u.id} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
-                  <td className="px-4 py-3 text-white font-semibold">{u.name}</td>
+                  <td className="px-4 py-3 text-white font-semibold">{u.displayName ?? u.name ?? "—"}</td>
                   <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{u.email}</td>
-                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{u.role}</td>
-                  <td className="px-4 py-3"><StatusBadge status={u.status} /></td>
-                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{u.lastLogin}</td>
+                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{(u.roles ?? []).join(", ") || "—"}</td>
+                  <td className="px-4 py-3"><StatusBadge status={u.enabled !== false ? "Active" : "Suspended"} /></td>
+                  <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{u.createdAt ? new Date(u.createdAt).toLocaleDateString() : "—"}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
-
-      {tab === "billing" && (
-        <div className="rounded-2xl p-5" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="text-sm font-bold text-white mb-4">Billing Details</div>
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              { label: "Current Plan", value: org.plan },
-              { label: "MRR", value: `₦${org.mrr.toLocaleString()}` },
-              { label: "Vehicle Limit", value: org.vehicleLimit },
-              { label: "Payment Method", value: "•••• 4242 (Visa)" },
-            ].map(i => (
-              <div key={i.label} className="rounded-xl p-4" style={{ background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.06)" }}>
-                <div className="text-xs" style={{ color: "#4A8A87" }}>{i.label}</div>
-                <div className="text-white font-bold mt-1">{i.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tab === "activity" && (
-        <div className="rounded-2xl p-5 space-y-3" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
-          <div className="text-sm font-bold text-white mb-2">Activity Log</div>
-          {["Org onboarded", "Admin invited", "First vehicle added", "First trip recorded", "Monthly report generated"].map((e, i) => (
-            <div key={i} className="flex items-center gap-3 text-xs py-2" style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-              <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "#F97316" }} />
-              <span className="text-white">{e}</span>
-              <span className="ml-auto" style={{ color: "#4A8A87" }}>{org.onboarded}</span>
-            </div>
-          ))}
         </div>
       )}
     </div>
