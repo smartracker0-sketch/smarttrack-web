@@ -191,6 +191,9 @@ export default function AllVehiclesPage() {
                     <p className="text-xs" style={{ color: "#4b5563" }}>{d.vehiclePlate}</p>
                   </div>
                 )}
+                {d.organisationName && (
+                  <p className="mt-0.5 text-[11px]" style={{ color: "#6b7280" }}>Org: {d.organisationName}</p>
+                )}
                 {t?.updatedAt && <p className="mt-0.5 text-[11px]" style={{ color: "#9ca3af" }}>Updated {new Date(t.updatedAt).toLocaleTimeString()}</p>}
                 {isSelected && t && (
                   <div className="mt-3 flex items-center rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
