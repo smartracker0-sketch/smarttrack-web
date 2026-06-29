@@ -44,6 +44,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: "Backend unavailable" }, { status: 503 });
   }
 
+  if (upstream.status === 204) return new NextResponse(null, { status: 204 });
   const data = await upstream.json().catch(() => null);
   return NextResponse.json(data, { status: upstream.status });
 }
