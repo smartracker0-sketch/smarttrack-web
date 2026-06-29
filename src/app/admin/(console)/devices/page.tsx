@@ -516,8 +516,8 @@ export default function DeviceManagerPage() {
 
   // WebSocket subscription — live activation status updates
   useEffect(() => {
-    const backendBase = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
-    const wsUrl = backendBase.replace(/^http/, "ws") + "/ws/websocket";
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    const wsUrl = `${proto}://${window.location.host}/ws/websocket`;
     let sock: WebSocket;
     let stompBuffer = "";
     try {
