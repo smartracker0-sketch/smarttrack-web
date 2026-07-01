@@ -259,7 +259,7 @@ export default function PricingPage() {
     <div className="min-h-screen" style={{ fontFamily: "Inter, ui-sans-serif, system-ui, sans-serif" }}>
       <Navbar />
 
-      <main className="pt-24 sm:pt-28">
+      <main>
         {/* Hero */}
         <section
           className="relative text-center px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20 overflow-hidden"
@@ -279,7 +279,7 @@ export default function PricingPage() {
             <div className="absolute bottom-1/4 -right-40 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#F97316" }} />
           </div>
 
-          <div className="relative max-w-4xl mx-auto">
+          <div className="relative max-w-4xl mx-auto pt-28 sm:pt-32">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ background: "rgba(255,255,255,0.15)", color: "#B2D4D2" }}>
               <FiTrendingUp size={14} />
               Trusted by 500+ fleets across Africa
