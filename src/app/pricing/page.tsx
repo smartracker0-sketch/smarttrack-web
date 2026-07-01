@@ -261,8 +261,25 @@ export default function PricingPage() {
 
       <main className="pt-24 sm:pt-28">
         {/* Hero */}
-        <section className="text-center px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20" style={{ background: `linear-gradient(180deg, ${BRAND.primary} 0%, ${BRAND.dark} 100%)` }}>
-          <div className="max-w-4xl mx-auto">
+        <section
+          className="relative text-center px-4 sm:px-6 lg:px-8 pb-16 sm:pb-20 overflow-hidden"
+          style={{ background: "radial-gradient(ellipse at 60% 40%, #1A7A75 0%, #0D4A47 50%, #072E2C 100%)" }}
+        >
+          {/* Animated grid background */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <svg className="absolute inset-0 w-full h-full opacity-10" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <pattern id="pricing-grid" width="60" height="60" patternUnits="userSpaceOnUse">
+                  <path d="M 60 0 L 0 0 0 60" fill="none" stroke="white" strokeWidth="0.5" />
+                </pattern>
+              </defs>
+              <rect width="100%" height="100%" fill="url(#pricing-grid)" />
+            </svg>
+            <div className="absolute top-1/4 -left-40 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#1A7A75" }} />
+            <div className="absolute bottom-1/4 -right-40 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#F97316" }} />
+          </div>
+
+          <div className="relative max-w-4xl mx-auto">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-semibold mb-6" style={{ background: "rgba(255,255,255,0.15)", color: "#B2D4D2" }}>
               <FiTrendingUp size={14} />
               Trusted by 500+ fleets across Africa
