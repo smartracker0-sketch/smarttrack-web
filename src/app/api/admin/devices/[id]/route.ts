@@ -6,6 +6,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   return proxyAdmin(req, `/api/v1/admin/devices/${id}`);
 }
 
+export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const body = await req.json().catch(() => null);
+  if (!body) return NextResponse.json({ message: "Invalid request" }, { status: 400 });
+  return proxyAdmin(req, `/api/v1/admin/devices/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json().catch(() => null);

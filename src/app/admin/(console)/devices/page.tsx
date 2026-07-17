@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap } from "react-icons/fi";
+import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap, FiEdit2 } from "react-icons/fi";
 import { Device } from "@/admin/data/mockData";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
@@ -427,10 +427,94 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
   );
 }
 
+interface EditDeviceModalProps {
+  device: DeviceEx;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
+  const [name, setName] = useState(device.name ?? "");
+  const [deviceType, setDeviceType] = useState(device.type ?? "GPS Tracker");
+  const [firmware, setFirmware] = useState(device.firmware ?? "");
+  const [simCard, setSimCard] = useState(device.simCard ?? "");
+  const [serialNo, setSerialNo] = useState(device.serialNo ?? "");
+  const [vehiclePlate, setVehiclePlate] = useState(device.vehicle === "—" ? "" : device.vehicle);
+  const [simNumber, setSimNumber] = useState(device.simNumber ?? "");
+  const [simApn, setSimApn] = useState(device.simApn ?? "");
+  const [manufacturer, setManufacturer] = useState(device.manufacturer ?? "");
+  const [notes, setNotes] = useState(device.notes ?? "");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!name.trim()) {
+      setError("Device name is required.");
+      return;
+    }
+    setError("");
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/admin/devices/${device.id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, deviceType, firmware, simCard, serialNo, vehiclePlate, simNumber, simApn, manufacturer, notes }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => null) as { message?: string } | null;
+        setError(data?.message ?? "Failed to update device.");
+        return;
+      }
+      onSuccess();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+      <form onSubmit={submit} className="w-full max-w-lg rounded-3xl" style={{ background: "#071E1C", border: "1px solid rgba(255,255,255,0.1)", maxHeight: "90vh", overflowY: "auto" }}>
+        <div className="flex items-center justify-between px-6 pt-6 pb-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.07)" }}>
+          <div>
+            <h2 className="text-base font-bold text-white">Edit Device</h2>
+            <p className="text-xs mt-0.5 font-mono" style={{ color: "#4A8A87" }}>{device.imei}</p>
+          </div>
+          <button type="button" onClick={onClose} className="w-8 h-8 rounded-lg flex items-center justify-center hover:bg-white/10" style={{ color: "#7BBBB8" }}><FiX size={15} /></button>
+        </div>
+        <div className="p-6 space-y-4">
+          {error && <div className="rounded-xl px-4 py-3 text-xs font-semibold" style={{ background: "#EF44441a", color: "#EF4444", border: "1px solid #EF444433" }}>{error}</div>}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2"><Field label="Device Name *"><Input required value={name} onChange={e => setName(e.target.value)} /></Field></div>
+            <Field label="Device Type"><Select value={deviceType} onChange={e => setDeviceType(e.target.value)}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
+            <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
+            <Field label="SIM Card Number"><Input value={simCard} onChange={e => setSimCard(e.target.value)} /></Field>
+            <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
+            <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
+            <Field label="SIM APN"><Input value={simApn} onChange={e => setSimApn(e.target.value)} /></Field>
+            <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option></Select></Field>
+            <Field label="Vehicle Plate / Name"><Input value={vehiclePlate} onChange={e => setVehiclePlate(e.target.value)} /></Field>
+          </div>
+          <Field label="Notes"><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", resize: "none" }} /></Field>
+          <div className="flex gap-3 pt-2">
+            <button type="button" onClick={onClose} className="flex-1 h-10 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,0.06)", color: "#9CA3AF" }}>Cancel</button>
+            <button type="submit" disabled={loading} className="flex-1 h-10 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: "#F97316" }}>{loading ? "Saving…" : "Save Changes"}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 type DeviceEx = Device & {
+  name?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
+  simCard?: string | null;
+  serialNo?: string | null;
+  notes?: string | null;
   simNumber?: string | null;
+  simApn?: string | null;
   manufacturer?: string | null;
   activationStatus: string;
   activationAttempts: number;
@@ -447,15 +531,20 @@ function fromApiDto(d: any): DeviceEx {
   return {
     id: d.id,
     imei: d.imei ?? d.name ?? "—",
+    name: d.name ?? d.imei ?? "",
     type: (d.deviceType as Device["type"]) ?? "GPS Tracker",
-    firmware: d.firmware ?? "—",
-    vehicle: d.vehiclePlate ?? "—",
+    firmware: d.firmware ?? "",
+    simCard: d.simCard ?? "",
+    serialNo: d.serialNo ?? "",
+    notes: d.notes ?? "",
+    simNumber: d.simNumber ?? "",
+    simApn: d.simApn ?? "",
+    manufacturer: d.manufacturer ?? "",
+    vehicle: d.vehiclePlate ?? "", 
     orgId: d.organisationId ?? null,
     orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
     ownerId: d.ownerId ?? null,
     ownerName: d.ownerName ?? null,
-    simNumber: d.simNumber ?? null,
-    manufacturer: d.manufacturer ?? null,
     activationStatus: d.activationStatus ?? "UNACTIVATED",
     activationAttempts: d.activationAttempts ?? 0,
     activationAttemptedAt: d.activationAttemptedAt ?? null,
@@ -477,6 +566,7 @@ export default function DeviceManagerPage() {
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("All");
   const [showModal, setShowModal] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<DeviceEx | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignMode, setAssignMode] = useState<Record<string, "org" | "user">>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -591,6 +681,11 @@ export default function DeviceManagerPage() {
     }
   }
 
+  async function handleDeviceUpdated() {
+    setEditingDevice(null);
+    await loadDevices();
+  }
+
   async function handleDelete(id: string) {
     if (!confirm("Remove this device from inventory?")) return;
     if (apiAvailable) {
@@ -659,6 +754,13 @@ export default function DeviceManagerPage() {
           onSuccess={(d) => { handleSuccess(d); setShowModal(false); }}
           orgs={orgs}
           users={users}
+        />
+      )}
+      {editingDevice && (
+        <EditDeviceModal
+          device={editingDevice}
+          onClose={() => setEditingDevice(null)}
+          onSuccess={handleDeviceUpdated}
         />
       )}
 
@@ -802,6 +904,13 @@ export default function DeviceManagerPage() {
                             </select>
                           )}
                         </div>
+                        <button
+                          title="Edit device"
+                          onClick={() => setEditingDevice(d)}
+                          className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/10 transition-colors"
+                          style={{ color: "#60A5FA" }}>
+                          <FiEdit2 size={12} />
+                        </button>
                         <button
                           title="Delete device"
                           onClick={() => handleDelete(d.id)}
