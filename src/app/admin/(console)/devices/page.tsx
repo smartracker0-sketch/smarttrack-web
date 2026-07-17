@@ -69,12 +69,16 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
 
   /* ── Single mode fields ── */
   const [imei, setImei]               = useState("");
+  const [name, setName]               = useState("");
   const [type, setType]               = useState<string>("GPS Tracker");
   const [firmware, setFirmware]       = useState("v4.2.1");
-  const [simCard, setSimCard]         = useState("");
   const [simNumber, setSimNumber]     = useState("");
   const [simApn, setSimApn]           = useState("");
-  const [manufacturer, setManufacturer] = useState("");
+  const [manufacturer, setManufacturer] = useState("GENERIC");
+  const [model, setModel]             = useState("");
+  const [simIccid, setSimIccid]       = useState("");
+  const [mobileCarrier, setMobileCarrier] = useState("");
+  const [smsCommandPassword, setSmsCommandPassword] = useState("");
   const [serialNo, setSerialNo]       = useState("");
   const [assignMode, setAssignMode]   = useState<"org" | "user">("org");
   const [assignOrg, setAssignOrg]     = useState("");
@@ -104,9 +108,9 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
     setLoading(true);
     try {
       const payload: Record<string, unknown> = {
-        imeis: [imei.trim()], type, firmware, simCard, serialNo,
+        imeis: [imei.trim()], name, type, firmware, serialNo,
         vehicle: assignVehicle, notes,
-        simNumber, simApn, manufacturer,
+        simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, smsCommandPassword,
       };
       if (assignMode === "org" && assignOrg) payload.orgId = assignOrg;
       if (assignMode === "user" && assignUser) payload.userId = assignUser;
@@ -234,6 +238,11 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
               <form onSubmit={handleSingleSubmit} className="p-6 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
+                    <Field label="Device Name *">
+                      <Input required placeholder="e.g. Delivery Van 12" value={name} onChange={e => setName(e.target.value)} maxLength={120} />
+                    </Field>
+                  </div>
+                  <div className="col-span-2">
                     <Field label="IMEI Number *">
                       <Input required placeholder="352749081299010" value={imei} onChange={e => setImei(e.target.value)} maxLength={15} />
                     </Field>
@@ -248,8 +257,8 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       {FIRMWARE_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                     </Select>
                   </Field>
-                  <Field label="SIM Card Number">
-                    <Input placeholder="e.g. 08012345678" value={simCard} onChange={e => setSimCard(e.target.value)} />
+                  <Field label="SIM ICCID">
+                    <Input placeholder="e.g. 8901…" value={simIccid} onChange={e => setSimIccid(e.target.value)} />
                   </Field>
                   <Field label="Serial Number">
                     <Input placeholder="e.g. SN-00123456" value={serialNo} onChange={e => setSerialNo(e.target.value)} />
@@ -257,26 +266,35 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="SIM Phone Number">
-                    <Input placeholder="e.g. 2348012345678" value={simNumber} onChange={e => setSimNumber(e.target.value)} />
+                  <Field label="SIM Phone Number *">
+                    <Input required placeholder="e.g. 2348012345678" value={simNumber} onChange={e => setSimNumber(e.target.value)} />
                   </Field>
-                  <Field label="Manufacturer">
-                    <Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}>
-                      <option value="">— Generic —</option>
+                  <Field label="Manufacturer *">
+                    <Select required value={manufacturer} onChange={e => setManufacturer(e.target.value)}>
+                      <option value="GENERIC">Generic</option>
                       <option value="TELTONIKA">Teltonika</option>
                       <option value="CONCOX">Concox / Queclink</option>
                       <option value="COBAN">Coban</option>
                       <option value="MEITRACK">Meitrack</option>
                     </Select>
                   </Field>
-                  <Field label="SIM APN">
-                    <Input placeholder="e.g. internet" value={simApn} onChange={e => setSimApn(e.target.value)} />
+                  <Field label="Device Model *">
+                    <Input required placeholder="e.g. GT06N or FMB920" value={model} onChange={e => setModel(e.target.value)} />
+                  </Field>
+                  <Field label="SIM APN *">
+                    <Input required placeholder="e.g. internet" value={simApn} onChange={e => setSimApn(e.target.value)} />
+                  </Field>
+                  <Field label="Mobile Carrier">
+                    <Input placeholder="e.g. MTN" value={mobileCarrier} onChange={e => setMobileCarrier(e.target.value)} />
+                  </Field>
+                  <Field label="Tracker SMS Password">
+                    <Input type="password" placeholder="Optional; encrypted" value={smsCommandPassword} onChange={e => setSmsCommandPassword(e.target.value)} />
                   </Field>
                 </div>
 
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-xs font-bold" style={{ color: "#4A8A87" }}>ASSIGNMENT (optional)</div>
+                    <div className="text-xs font-bold" style={{ color: "#4A8A87" }}>ASSIGNMENT *</div>
                     <div className="flex rounded-lg overflow-hidden text-[10px] font-bold" style={{ border: "1px solid rgba(255,255,255,0.1)" }}>
                       {(["org", "user"] as const).map(m => (
                         <button key={m} type="button"
@@ -291,21 +309,21 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                   <div className="grid grid-cols-2 gap-3">
                     {assignMode === "org" ? (
                       <Field label="Assign to Organisation">
-                        <Select value={assignOrg} onChange={e => setAssignOrg(e.target.value)}>
+                        <Select required value={assignOrg} onChange={e => setAssignOrg(e.target.value)}>
                           <option value="">— None —</option>
                           {orgs.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
                         </Select>
                       </Field>
                     ) : (
                       <Field label="Assign to User">
-                        <Select value={assignUser} onChange={e => setAssignUser(e.target.value)}>
+                        <Select required value={assignUser} onChange={e => setAssignUser(e.target.value)}>
                           <option value="">— None —</option>
                           {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
                         </Select>
                       </Field>
                     )}
                     <Field label="Vehicle Plate / Name">
-                      <Input placeholder="e.g. LAS-001-AA" value={assignVehicle} onChange={e => setAssignVehicle(e.target.value)} />
+                      <Input required placeholder="e.g. LAS-001-AA" value={assignVehicle} onChange={e => setAssignVehicle(e.target.value)} />
                     </Field>
                   </div>
                 </div>
@@ -435,14 +453,17 @@ interface EditDeviceModalProps {
 
 function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
   const [name, setName] = useState(device.name ?? "");
-  const [deviceType, setDeviceType] = useState(device.type ?? "GPS Tracker");
+  const [deviceType, setDeviceType] = useState<string>(device.type ?? "GPS Tracker");
   const [firmware, setFirmware] = useState(device.firmware ?? "");
-  const [simCard, setSimCard] = useState(device.simCard ?? "");
   const [serialNo, setSerialNo] = useState(device.serialNo ?? "");
   const [vehiclePlate, setVehiclePlate] = useState(device.vehicle === "—" ? "" : device.vehicle);
   const [simNumber, setSimNumber] = useState(device.simNumber ?? "");
   const [simApn, setSimApn] = useState(device.simApn ?? "");
   const [manufacturer, setManufacturer] = useState(device.manufacturer ?? "");
+  const [model, setModel] = useState(device.model ?? "");
+  const [simIccid, setSimIccid] = useState(device.simIccid ?? "");
+  const [mobileCarrier, setMobileCarrier] = useState(device.mobileCarrier ?? "");
+  const [smsCommandPassword, setSmsCommandPassword] = useState("");
   const [notes, setNotes] = useState(device.notes ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -459,7 +480,7 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
       const response = await fetch(`/api/admin/devices/${device.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, deviceType, firmware, simCard, serialNo, vehiclePlate, simNumber, simApn, manufacturer, notes }),
+        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null) as { message?: string } | null;
@@ -488,11 +509,14 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
             <div className="col-span-2"><Field label="Device Name *"><Input required value={name} onChange={e => setName(e.target.value)} /></Field></div>
             <Field label="Device Type"><Select value={deviceType} onChange={e => setDeviceType(e.target.value)}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
             <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
-            <Field label="SIM Card Number"><Input value={simCard} onChange={e => setSimCard(e.target.value)} /></Field>
+            <Field label="SIM ICCID"><Input value={simIccid} onChange={e => setSimIccid(e.target.value)} /></Field>
             <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
             <Field label="SIM APN"><Input value={simApn} onChange={e => setSimApn(e.target.value)} /></Field>
             <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option></Select></Field>
+            <Field label="Device Model"><Input value={model} onChange={e => setModel(e.target.value)} /></Field>
+            <Field label="Mobile Carrier"><Input value={mobileCarrier} onChange={e => setMobileCarrier(e.target.value)} /></Field>
+            <Field label={device.hasSmsCommandPassword ? "Replace Tracker SMS Password" : "Tracker SMS Password"}><Input type="password" placeholder={device.hasSmsCommandPassword ? "Leave blank to keep current password" : "Optional; encrypted"} value={smsCommandPassword} onChange={e => setSmsCommandPassword(e.target.value)} /></Field>
             <Field label="Vehicle Plate / Name"><Input value={vehiclePlate} onChange={e => setVehiclePlate(e.target.value)} /></Field>
           </div>
           <Field label="Notes"><textarea rows={3} value={notes} onChange={e => setNotes(e.target.value)} className="w-full px-3 py-2 rounded-xl text-sm text-white outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", resize: "none" }} /></Field>
@@ -516,6 +540,10 @@ type DeviceEx = Device & {
   simNumber?: string | null;
   simApn?: string | null;
   manufacturer?: string | null;
+  model?: string | null;
+  simIccid?: string | null;
+  mobileCarrier?: string | null;
+  hasSmsCommandPassword?: boolean;
   activationStatus: string;
   activationAttempts: number;
   activationAttemptedAt?: string | null;
@@ -540,6 +568,10 @@ function fromApiDto(d: any): DeviceEx {
     simNumber: d.simNumber ?? "",
     simApn: d.simApn ?? "",
     manufacturer: d.manufacturer ?? "",
+    model: d.model ?? "",
+    simIccid: d.simIccid ?? "",
+    mobileCarrier: d.mobileCarrier ?? "",
+    hasSmsCommandPassword: d.hasSmsCommandPassword ?? false,
     vehicle: d.vehiclePlate ?? "", 
     orgId: d.organisationId ?? null,
     orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
