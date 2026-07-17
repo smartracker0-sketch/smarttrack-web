@@ -1,26 +1,9 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Link from "next/link";
 import { FiArrowRight } from "react-icons/fi";
-
-const INDUSTRIES = [
-  { name: "Oil & Gas", keyword: "oil-refinery", span: "col-span-2 row-span-1" },
-  { name: "Supply Chain & Logistics", keyword: "logistics-warehouse", span: "col-span-1 row-span-2" },
-  { name: "Emergency Services", keyword: "ambulance", span: "col-span-1 row-span-1" },
-  { name: "Food & Beverage", keyword: "food-delivery", span: "col-span-1 row-span-1" },
-  { name: "Construction", keyword: "construction-site", span: "col-span-1 row-span-1" },
-  { name: "School Bus", keyword: "school-bus", span: "col-span-1 row-span-1" },
-  { name: "Consumer Goods", keyword: "retail-store", span: "col-span-1 row-span-1" },
-  { name: "Pharmaceutical", keyword: "laboratory", span: "col-span-2 row-span-1" },
-  { name: "Passenger Transit", keyword: "bus-transit", span: "col-span-1 row-span-1" },
-  { name: "Agriculture", keyword: "agriculture-farm", span: "col-span-1 row-span-1" },
-  { name: "Mining", keyword: "mining", span: "col-span-1 row-span-1" },
-  { name: "eCommerce", keyword: "ecommerce-delivery", span: "col-span-1 row-span-1" },
-  { name: "Telecom", keyword: "telecommunications", span: "col-span-1 row-span-1" },
-  { name: "Banking", keyword: "bank-finance", span: "col-span-1 row-span-1" },
-  { name: "Vehicle Leasing", keyword: "car-rental", span: "col-span-1 row-span-1" },
-  { name: "Mobility as a Service", keyword: "ride-sharing", span: "col-span-2 row-span-1" },
-];
+import { industries } from "../../industries/industryData";
 
 /* Fallback gradient palettes so we never show a broken image */
 const GRADIENTS = [
@@ -73,20 +56,20 @@ export default function IndustriesGrid() {
           transition={{ duration: 0.7, delay: 0.1 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-3 auto-rows-[160px]"
         >
-          {INDUSTRIES.map((industry, i) => (
-            <div
+          {industries.map((industry, i) => (
+            <Link
               key={industry.name}
+              href={`/industries/${industry.slug}`}
               className={`relative rounded-2xl overflow-hidden group cursor-pointer ${industry.span}`}
             >
-              {/* Background image via Unsplash – with gradient fallback */}
+              {/* Background image with gradient fallback */}
               <div
                 className={`absolute inset-0 bg-gradient-to-br ${GRADIENTS[i % GRADIENTS.length]}`}
               />
-              <img
-                src={`https://images.unsplash.com/photo-${1500000000000 + i * 7654321}?auto=format&fit=crop&w=800&q=70`}
-                alt={industry.name}
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-40 transition-opacity duration-500"
-                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+              <div
+                aria-hidden="true"
+                className="absolute inset-0 bg-cover bg-center opacity-60 group-hover:opacity-40 transition-opacity duration-500"
+                style={{ backgroundImage: `url(${industry.imageUrl})` }}
               />
 
               {/* Dark overlay gradient */}
@@ -97,14 +80,13 @@ export default function IndustriesGrid() {
                 <div className="text-white font-bold text-sm lg:text-base leading-tight">
                   {industry.name}
                 </div>
-                <a
-                  href="#"
+                <span
                   className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold opacity-0 group-hover:opacity-100 transition-all translate-y-1 group-hover:translate-y-0 duration-300" style={{ color: '#B2D4D2' }}
                 >
                   Learn More <FiArrowRight size={11} />
-                </a>
+                </span>
               </div>
-            </div>
+            </Link>
           ))}
         </motion.div>
       </div>

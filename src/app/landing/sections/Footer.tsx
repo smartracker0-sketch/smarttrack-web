@@ -4,8 +4,21 @@ import Link from "next/link";
 import Image from "next/image";
 import { FiTwitter, FiLinkedin, FiFacebook, FiYoutube } from "react-icons/fi";
 
-const PRODUCTS = ["Fleet Management", "Video Telematics", "Fuel Monitoring", "EV Management", "E-Lock", "EagleAI"];
-const COMPANY = ["About Us", "Careers", "Blog", "Press", "Contact Us"];
+const PRODUCTS = [
+  { label: "Fleet Management", href: "/products/fleet-management" },
+  { label: "Video Telematics", href: "/products/video-telematics" },
+  { label: "Fuel Monitoring", href: "/products/fuel-monitoring" },
+  { label: "EV Management", href: "/products/ev-management" },
+  { label: "E-Lock", href: "/products/e-lock" },
+  { label: "EagleAI", href: "/products/eagleai" },
+];
+
+const COMPANY = [
+  { label: "About Us", href: "/company/about-us" },
+  { label: "Careers", href: "/company/careers" },
+  { label: "Blog", href: "/resources/blog" },
+  { label: "Contact Us", href: "/company/contact-us" },
+];
 
 export default function Footer() {
   return (
@@ -56,13 +69,13 @@ export default function Footer() {
             <h4 className="text-white font-bold text-sm mb-4">Products</h4>
             <ul className="space-y-3">
               {PRODUCTS.map((p) => (
-                <li key={p}>
-                  <a
-                    href="#"
+                <li key={p.label}>
+                  <Link
+                    href={p.href}
                     className="text-sm hover:text-white transition-colors" style={{ color: '#B2D4D2' }}
                   >
-                    {p}
-                  </a>
+                    {p.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -73,13 +86,13 @@ export default function Footer() {
             <h4 className="text-white font-bold text-sm mb-4">Company</h4>
             <ul className="space-y-3">
               {COMPANY.map((c) => (
-                <li key={c}>
-                  <a
-                    href="#"
+                <li key={c.label}>
+                  <Link
+                    href={c.href}
                     className="text-sm hover:text-white transition-colors" style={{ color: '#B2D4D2' }}
                   >
-                    {c}
-                  </a>
+                    {c.label}
+                  </Link>
                 </li>
               ))}
             </ul>
@@ -133,9 +146,9 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs" style={{ color: '#B2D4D2' }}>
           <span>© {new Date().getFullYear()} Smart Tracker Telematics. All rights reserved.</span>
           <div className="flex gap-5">
-            <a href="#" className="hover:text-white transition-colors">Privacy Policy</a>
-            <a href="#" className="hover:text-white transition-colors">Terms of Service</a>
-            <a href="#" className="hover:text-white transition-colors">Cookie Policy</a>
+            <Link href="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link href="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
+            <Link href="/cookie-policy" className="hover:text-white transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>

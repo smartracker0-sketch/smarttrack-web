@@ -4,40 +4,31 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { FiMenu, FiX, FiChevronDown } from "react-icons/fi";
+import { navSections } from "../../navContent";
 
-const NAV_ITEMS = [
-  {
-    label: "Products",
-    items: ["Fleet Management", "Video Telematics", "Fuel Monitoring", "EV Management", "E-Lock", "EagleAI"],
-  },
-  {
-    label: "Solutions",
-    items: ["Transportation", "Oil & Gas", "Construction", "Pharmaceutical", "Emergency Services", "Passenger Transit", "Food & Beverage", "Logistics"],
-  },
-  {
-    label: "Resources",
-    items: ["Blog", "FAQs", "Partner With Us", "API Docs"],
-  },
-  {
-    label: "Company",
-    items: ["About Us", "Contact Us", "Careers"],
-  },
-];
-
-function DropdownMenu({ items }: { items: string[] }) {
+function DropdownMenu({ section }: { section: typeof navSections[number] }) {
   return (
     <div className="absolute top-full left-0 mt-2 w-52 bg-white rounded-xl shadow-2xl py-2 z-50" style={{ border: "1px solid #E8F4F3" }}>
-      {items.map((item) => (
-        <a
-          key={item}
-          href="#"
+      <Link
+        href={section.href}
+        className="block border-b border-[#E8F4F3] px-4 py-2.5 text-sm font-black transition-colors"
+        style={{ color: "#0D4A47" }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#E8F4F3"; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; }}
+      >
+        View {section.label}
+      </Link>
+      {section.pages.map((item) => (
+        <Link
+          key={item.slug}
+          href={`/${section.key}/${item.slug}`}
           className="block px-4 py-2.5 text-sm font-medium transition-colors"
           style={{ color: "#0D4A47" }}
           onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = "#E8F4F3"; }}
           onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = ""; }}
         >
-          {item}
-        </a>
+          {item.label}
+        </Link>
       ))}
     </div>
   );
@@ -89,14 +80,15 @@ export default function Navbar() {
 
           {/* Desktop nav */}
           <div className="hidden lg:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
+            {navSections.map((item) => (
               <div
                 key={item.label}
                 className="relative"
                 onMouseEnter={() => handleMouseEnter(item.label)}
                 onMouseLeave={handleMouseLeave}
               >
-                <button
+                <Link
+                  href={item.href}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                     scrolled
                       ? "text-white/90 hover:text-white hover:bg-white/10"
@@ -108,8 +100,8 @@ export default function Navbar() {
                     size={14}
                     className={`transition-transform ${openDropdown === item.label ? "rotate-180" : ""}`}
                   />
-                </button>
-                {openDropdown === item.label && <DropdownMenu items={item.items} />}
+                </Link>
+                {openDropdown === item.label && <DropdownMenu section={item} />}
               </div>
             ))}
           </div>
@@ -145,20 +137,25 @@ export default function Navbar() {
       {mobileOpen && (
         <div className="lg:hidden border-t shadow-xl" style={{ background: "#0D4A47", borderColor: "#1A7A75" }}>
           <div className="px-4 py-4 space-y-1">
-            {NAV_ITEMS.map((group) => (
+            {navSections.map((group) => (
               <div key={group.label}>
-                <p className="text-xs font-bold uppercase tracking-wider px-3 pt-3 pb-1" style={{ color: "#B2D4D2" }}>
+                <Link
+                  href={group.href}
+                  className="block px-3 pt-3 pb-1 text-xs font-bold uppercase tracking-wider"
+                  style={{ color: "#B2D4D2" }}
+                  onClick={() => setMobileOpen(false)}
+                >
                   {group.label}
-                </p>
-                {group.items.map((item) => (
-                  <a
-                    key={item}
-                    href="#"
+                </Link>
+                {group.pages.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/${group.key}/${item.slug}`}
                     className="block px-3 py-2 text-sm text-white/80 hover:text-white hover:bg-white/10 rounded-lg"
                     onClick={() => setMobileOpen(false)}
                   >
-                    {item}
-                  </a>
+                    {item.label}
+                  </Link>
                 ))}
               </div>
             ))}
