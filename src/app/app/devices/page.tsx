@@ -65,6 +65,7 @@ export default function AllVehiclesPage() {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   const notify = (msg: string) => setToast(msg);
 
@@ -204,6 +205,7 @@ export default function AllVehiclesPage() {
             const isRef = refreshing === d.id;
             const isDragged = draggedId === d.id;
             const isDragOver = dragOverId === d.id;
+            const isHovered = hoveredId === d.id;
             const sk = statKey(d, t);
             const sl = statusLabel(d, t);
             return (
@@ -213,7 +215,9 @@ export default function AllVehiclesPage() {
                 onDragOver={(e) => handleDragOver(e, d.id)}
                 onDragEnd={handleDragEnd}
                 onDrop={(e) => handleDrop(e, d.id)}
-                className="w-full text-left px-4 py-4 border-b transition-colors cursor-grab active:cursor-grabbing"
+                onMouseEnter={() => setHoveredId(d.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                className="w-full text-left px-4 py-4 border-b transition-all cursor-grab active:cursor-grabbing"
                 style={{
                   borderColor: "#e5e7eb",
                   background: isSelected ? "#eef0fb" : isDragOver ? "#f0f4ff" : "#fff",
@@ -243,7 +247,7 @@ export default function AllVehiclesPage() {
                   <p className="mt-0.5 text-[11px]" style={{ color: "#6b7280" }}>Org: {d.organisationName}</p>
                 )}
                 {t?.receivedAt && <p className="mt-0.5 text-[11px]" style={{ color: "#9ca3af" }}>Updated {new Date(t.receivedAt ?? t.eventTime).toLocaleTimeString()}</p>}
-                {isSelected && t && (
+                {(isHovered || isSelected) && t && (
                   <div className="mt-3 flex items-center rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
                     <StatCell label="Speed" value={`${t.speedKph ?? 0} km/h`} divider />
                     <StatCell label="Battery" value={t.voltageMv != null ? `${(t.voltageMv / 1000).toFixed(2)} V` : "—"} divider />
