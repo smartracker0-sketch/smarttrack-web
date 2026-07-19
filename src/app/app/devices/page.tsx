@@ -63,6 +63,8 @@ export default function AllVehiclesPage() {
   const [showAll, setShowAll]   = useState(true);
   const [toast, setToast]       = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
 
   const notify = (msg: string) => setToast(msg);
 
@@ -113,6 +115,39 @@ export default function AllVehiclesPage() {
     const text = `${d.name ?? d.imei}\nPlate: ${d.vehiclePlate ?? "—"} | Speed: ${t?.speedKph ?? 0} km/h`;
     if (navigator.share) navigator.share({ title: d.name ?? d.imei, text }).catch(() => {});
     else navigator.clipboard.writeText(text).then(() => notify(`Info copied for ${d.name ?? d.imei}`));
+  };
+
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    setDraggedId(id);
+    e.dataTransfer.effectAllowed = "move";
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (draggedId && draggedId !== id) {
+      setDragOverId(id);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedId(null);
+    setDragOverId(null);
+  };
+
+  const handleDrop = (e: React.DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedId || draggedId === targetId) return;
+
+    const fromIndex = devices.findIndex(d => d.id === draggedId);
+    const toIndex = devices.findIndex(d => d.id === targetId);
+    if (fromIndex === -1 || toIndex === -1) return;
+
+    const newDevices = [...devices];
+    const [moved] = newDevices.splice(fromIndex, 1);
+    newDevices.splice(toIndex, 0, moved);
+    setDevices(newDevices);
+    setDraggedId(null);
+    setDragOverId(null);
   };
 
   const displayed = showAll ? devices : devices.filter(d => d.id === selected);
@@ -167,12 +202,25 @@ export default function AllVehiclesPage() {
             const t = telemetry[d.id] ?? null;
             const isSelected = d.id === selected;
             const isRef = refreshing === d.id;
+            const isDragged = draggedId === d.id;
+            const isDragOver = dragOverId === d.id;
             const sk = statKey(d, t);
             const sl = statusLabel(d, t);
             return (
               <button key={d.id} type="button" onClick={() => setSelected(d.id)}
-                className="w-full text-left px-4 py-4 border-b transition-colors"
-                style={{ borderColor: "#e5e7eb", background: isSelected ? "#eef0fb" : "#fff", borderLeft: isSelected ? "3px solid #3949ab" : "3px solid transparent" }}>
+                draggable
+                onDragStart={(e) => handleDragStart(e, d.id)}
+                onDragOver={(e) => handleDragOver(e, d.id)}
+                onDragEnd={handleDragEnd}
+                onDrop={(e) => handleDrop(e, d.id)}
+                className="w-full text-left px-4 py-4 border-b transition-colors cursor-grab active:cursor-grabbing"
+                style={{
+                  borderColor: "#e5e7eb",
+                  background: isSelected ? "#eef0fb" : isDragOver ? "#f0f4ff" : "#fff",
+                  borderLeft: isSelected ? "3px solid #3949ab" : "3px solid transparent",
+                  opacity: isDragged ? 0.5 : 1,
+                  borderTop: isDragOver ? "2px dashed #3949ab" : undefined,
+                }}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
                   <div className="flex gap-1.5 flex-shrink-0">
