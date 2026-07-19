@@ -26,12 +26,12 @@ export default function VehicleCard({ vehicle, selected, onClick }: Props) {
   return (
     <button
       onClick={onClick}
-      className="w-full text-left px-4 py-3 transition-colors border-b"
+      className="w-full text-left px-4 py-3 transition-colors border-b group"
       style={selected
-        ? { borderBottomColor: 'rgba(26,122,117,0.3)', borderLeft: '4px solid #F97316', background: '#0A3835' }
+        ? { borderBottomColor: 'rgba(26,122,117,0.3)', borderLeft: '4px solid #00bcd4', background: '#0A3835' }
         : { borderBottomColor: 'rgba(26,122,117,0.2)' }
       }
-      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = '#0A3835'; }}
+      onMouseEnter={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = 'rgba(0,188,212,0.08)'; }}
       onMouseLeave={e => { if (!selected) (e.currentTarget as HTMLElement).style.background = ''; }}
     >
       <div className="flex items-start gap-3">
@@ -43,7 +43,7 @@ export default function VehicleCard({ vehicle, selected, onClick }: Props) {
         {/* Info */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-white font-bold text-sm truncate">{vehicle.plate}</span>
+            <span className="text-white font-bold text-sm truncate group-hover:text-[#00bcd4] transition-colors">{vehicle.plate}</span>
             <span className={`text-xs font-semibold flex-shrink-0 ${
               vehicle.status === "moving" ? "text-green-400" :
               vehicle.status === "idle" ? "text-yellow-400" :
@@ -52,7 +52,7 @@ export default function VehicleCard({ vehicle, selected, onClick }: Props) {
               {speedLabel(vehicle)}
             </span>
           </div>
-          <div className="text-gray-400 text-xs mt-0.5 truncate">{vehicle.driver}</div>
+          <div className="text-[#B2D4D2] text-xs mt-0.5 truncate">{vehicle.driver}</div>
           <div className="text-gray-500 text-xs mt-1">{vehicle.lastUpdate}</div>
         </div>
       </div>

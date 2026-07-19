@@ -15,6 +15,7 @@ export interface Vehicle {
   lng: number;
   lastUpdate: string;
   address: string;
+  alert?: boolean;
 }
 
 export const MOCK_VEHICLES: Vehicle[] = [
@@ -65,6 +66,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     lng: 3.4219,
     lastUpdate: "Just now",
     address: "Surulere, Lagos",
+    alert: true,
   },
   {
     id: "v4",
@@ -113,6 +115,7 @@ export const MOCK_VEHICLES: Vehicle[] = [
     lng: 3.3456,
     lastUpdate: "8 min ago",
     address: "Oshodi Interchange, Lagos",
+    alert: true,
   },
   {
     id: "v7",

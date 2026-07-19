@@ -8,7 +8,7 @@ import VehicleCard from "./VehicleCard";
 interface Props {
   vehicles: Vehicle[];
   selectedId: string | null;
-  onSelect: (id: string) => void;
+  onSelect: (id: string | null) => void;
 }
 
 type Tab = "all" | VehicleStatus;
@@ -48,14 +48,14 @@ export default function VehicleSidebar({ vehicles, selectedId, onSelect }: Props
       {/* Search */}
       <div className="p-3 border-b" style={{ borderColor: "rgba(26,122,117,0.3)" }}>
         <div className="relative">
-          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={14} />
+          <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#B2D4D2]" size={14} />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search vehicles or drivers..."
-            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg text-white outline-none focus:ring-1"
-            style={{ background: "#0A3835", border: "1px solid rgba(26,122,117,0.3)", caretColor: '#1A7A75' }}
+            className="w-full pl-9 pr-3 py-2 text-sm rounded-lg text-white outline-none focus:ring-1 focus:ring-[#00bcd4]"
+            style={{ background: "#072E2C", border: "1px solid rgba(26,122,117,0.3)", caretColor: '#00bcd4' }}
           />
         </div>
       </div>
@@ -71,15 +71,15 @@ export default function VehicleSidebar({ vehicles, selectedId, onSelect }: Props
             onClick={() => setTab(t.key)}
             className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-colors ${
               tab === t.key
-                ? "text-white"
+                ? "text-[#0A3835]"
                 : "hover:text-white hover:bg-white/10"
             }`}
-            style={tab === t.key ? { background: '#F97316' } : { color: '#B2D4D2' }}
+            style={tab === t.key ? { background: '#00bcd4' } : { color: '#B2D4D2' }}
           >
             {t.label}
             <span
               className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                tab === t.key ? "bg-white/20" : "bg-white/10"
+                tab === t.key ? "bg-black/10" : "bg-white/10"
               }`}
             >
               {countOf(t.key)}

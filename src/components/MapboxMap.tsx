@@ -16,6 +16,7 @@ export type MarkerData = {
 interface Props {
   markers: MarkerData[];
   flyToId?: string | null;
+  followId?: string | null;
   center?: [number, number];
   zoom?: number;
   style?: string;
@@ -30,6 +31,7 @@ const DEFAULT_STYLE = "mapbox://styles/mapbox/dark-v11";
 export default function MapboxMap({
   markers,
   flyToId,
+  followId,
   center = DEFAULT_CENTER,
   zoom = DEFAULT_ZOOM,
   style = DEFAULT_STYLE,
@@ -245,6 +247,14 @@ export default function MapboxMap({
     mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15, duration: 1200, essential: true });
     marker.getPopup()?.addTo(mapRef.current);
   }, [flyToId]);
+
+  useEffect(() => {
+    if (!followId || !mapRef.current) return;
+    const marker = markersRef.current.get(followId);
+    if (!marker) return;
+    const lngLat = marker.getLngLat();
+    mapRef.current.easeTo({ center: [lngLat.lng, lngLat.lat], duration: 1000, essential: true });
+  }, [followId, markers]);
 
   return (
     <>

@@ -1,6 +1,5 @@
 "use client";
 
-import { useCallback } from "react";
 import { FiRefreshCw, FiSettings } from "react-icons/fi";
 import { Vehicle, VehicleStatus } from "../data/mockVehicles";
 
@@ -53,16 +52,16 @@ export default function TrackingTopBar({ vehicles, lastRefresh, onRefresh }: Pro
       </div>
 
       {/* Right: refresh + settings */}
-      <div className="flex items-center gap-3 text-gray-400 text-sm">
+      <div className="flex items-center gap-3 text-sm" style={{ color: '#B2D4D2' }}>
         <span className="hidden sm:block text-xs">Updated: {lastRefresh}</span>
         <button
           onClick={onRefresh}
-          className="p-1.5 rounded-lg hover:bg-white/10 transition-colors"
+          className="p-1.5 rounded-lg transition-colors hover:bg-[#e8eaf6] hover:text-[#3949ab]"
           title="Refresh"
         >
           <FiRefreshCw size={16} />
         </button>
-        <button className="p-1.5 rounded-lg hover:bg-white/10 transition-colors" title="Settings">
+        <button className="p-1.5 rounded-lg transition-colors hover:bg-[#e8eaf6] hover:text-[#3949ab]" title="Settings">
           <FiSettings size={16} />
         </button>
       </div>
