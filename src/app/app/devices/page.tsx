@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX } from "react-icons/fi";
+import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
@@ -209,15 +209,12 @@ export default function AllVehiclesPage() {
             const sk = statKey(d, t);
             const sl = statusLabel(d, t);
             return (
-              <button key={d.id} type="button" onClick={() => setSelected(d.id)}
-                draggable
-                onDragStart={(e) => handleDragStart(e, d.id)}
+              <div key={d.id}
                 onDragOver={(e) => handleDragOver(e, d.id)}
-                onDragEnd={handleDragEnd}
                 onDrop={(e) => handleDrop(e, d.id)}
                 onMouseEnter={() => setHoveredId(d.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                className="w-full text-left px-4 py-4 border-b transition-all cursor-grab active:cursor-grabbing"
+                className="w-full border-b transition-all"
                 style={{
                   borderColor: "#e5e7eb",
                   background: isSelected ? "#eef0fb" : isDragOver ? "#f0f4ff" : "#fff",
@@ -225,17 +222,27 @@ export default function AllVehiclesPage() {
                   opacity: isDragged ? 0.5 : 1,
                   borderTop: isDragOver ? "2px dashed #3949ab" : undefined,
                 }}>
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
-                  <div className="flex gap-1.5 flex-shrink-0">
-                    <button onClick={(e) => handleShare(e, d)} title="Share" className="p-0.5 rounded hover:bg-gray-100">
-                      <FiShare2 size={13} style={{ color: "#9ca3af" }} />
-                    </button>
-                    <button onClick={(e) => handleRefresh(e, d.id, d.name ?? d.imei)} title="Refresh" className="p-0.5 rounded hover:bg-gray-100">
-                      <FiRefreshCw size={13} className={isRef ? "animate-spin" : ""} style={{ color: isRef ? "#3949ab" : "#9ca3af" }} />
-                    </button>
+                <button type="button" onClick={() => setSelected(d.id)}
+                  className="w-full text-left px-4 py-4 cursor-pointer">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
+                    <div className="flex gap-1.5 flex-shrink-0 items-center">
+                      <div
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, d.id)}
+                        onDragEnd={handleDragEnd}
+                        className="p-0.5 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded"
+                        title="Drag to reorder">
+                        <FiMenu size={13} style={{ color: "#9ca3af" }} />
+                      </div>
+                      <button onClick={(e) => handleShare(e, d)} title="Share" className="p-0.5 rounded hover:bg-gray-100">
+                        <FiShare2 size={13} style={{ color: "#9ca3af" }} />
+                      </button>
+                      <button onClick={(e) => handleRefresh(e, d.id, d.name ?? d.imei)} title="Refresh" className="p-0.5 rounded hover:bg-gray-100">
+                        <FiRefreshCw size={13} className={isRef ? "animate-spin" : ""} style={{ color: isRef ? "#3949ab" : "#9ca3af" }} />
+                      </button>
+                    </div>
                   </div>
-                </div>
                 <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[sk] ?? "#9CA3AF" }}>{sl}</p>
                 {d.vehiclePlate && (
                   <div className="mt-1 flex items-center gap-1">
@@ -260,7 +267,8 @@ export default function AllVehiclesPage() {
                     </div>
                   </div>
                 )}
-              </button>
+                </button>
+              </div>
             );
           })}
         </div>
