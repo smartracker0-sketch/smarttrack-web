@@ -61,7 +61,7 @@ export default function MapboxMap({
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
-      <div style="transform:rotate(${heading}deg); filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));">
+      <div style="width:56px;height:56px;transform:rotate(${heading}deg);transform-origin:28px 53.5px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));">
         <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <radialGradient id="body${color.replace('#','')}" cx="50%" cy="35%" r="60%">
@@ -200,7 +200,7 @@ export default function MapboxMap({
       .setHTML(m.popupHtml);
     popupsRef.current.set(m.id, popup);
 
-    const marker = new mgl.Marker({ element: el, anchor: "bottom", offset: [0, -10] })
+    const marker = new mgl.Marker({ element: el, anchor: "bottom", offset: [0, 6.5] })
       .setLngLat([m.lng, m.lat])
       .setPopup(popup)
       .addTo(map);
