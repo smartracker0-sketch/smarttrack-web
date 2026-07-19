@@ -198,7 +198,7 @@ export default function MapboxMap({
       .setHTML(m.popupHtml);
     popupsRef.current.set(m.id, popup);
 
-    const marker = new mgl.Marker({ element: el, anchor: "center" })
+    const marker = new mgl.Marker({ element: el, anchor: "bottom", offset: [0, -10] })
       .setLngLat([m.lng, m.lat])
       .setPopup(popup)
       .addTo(map);

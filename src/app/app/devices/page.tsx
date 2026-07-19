@@ -22,7 +22,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 function statusLabel(d: DeviceRow, telem: DeviceRow | null): string {
   if (!telem) return d.status ?? "Unknown";
-  const spd = telem.speed ?? 0;
+  const spd = telem.speedKph ?? 0;
   if (spd > 5) return `Moving · ${spd} km/h`;
   if (telem.ignition) return "Idle";
   return "Stopped";
@@ -30,7 +30,7 @@ function statusLabel(d: DeviceRow, telem: DeviceRow | null): string {
 
 function statKey(d: DeviceRow, telem: DeviceRow | null): string {
   if (!telem) return "offline";
-  const spd = telem.speed ?? 0;
+  const spd = telem.speedKph ?? 0;
   if (spd > 5) return "moving";
   if (telem.ignition) return "idle";
   return "stopped";
@@ -77,7 +77,7 @@ export default function AllVehiclesPage() {
         if (list.length > 0 && !selected) setSelected(list[0].id);
         // Fetch latest telemetry for each device in parallel
         const telemResults = await Promise.allSettled(
-          list.map(d => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(r => r.ok ? r.json() : null))
+          list.map(d => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(r => (r.ok && r.status !== 204) ? r.json() : null))
         );
         const telemMap: Record<string, DeviceRow> = {};
         telemResults.forEach((r, i) => {
@@ -97,7 +97,7 @@ export default function AllVehiclesPage() {
     setRefreshing(deviceId);
     try {
       const res = await fetch(`/api/telemetry?type=latest&deviceId=${deviceId}`);
-      if (res.ok) {
+      if (res.ok && res.status !== 204) {
         const t = await res.json();
         setTelemetry(prev => ({ ...prev, [deviceId]: t }));
         notify(`Location refreshed for ${name}`);
@@ -110,7 +110,7 @@ export default function AllVehiclesPage() {
   const handleShare = (e: React.MouseEvent, d: DeviceRow) => {
     e.stopPropagation();
     const t = telemetry[d.id];
-    const text = `${d.name ?? d.imei}\nPlate: ${d.vehiclePlate ?? "—"} | Speed: ${t?.speed ?? 0} km/h`;
+    const text = `${d.name ?? d.imei}\nPlate: ${d.vehiclePlate ?? "—"} | Speed: ${t?.speedKph ?? 0} km/h`;
     if (navigator.share) navigator.share({ title: d.name ?? d.imei, text }).catch(() => {});
     else navigator.clipboard.writeText(text).then(() => notify(`Info copied for ${d.name ?? d.imei}`));
   };
@@ -136,7 +136,7 @@ export default function AllVehiclesPage() {
             <div style="font-family:Inter,sans-serif">
               <strong style="color:#f3f4f6">${d.name ?? d.imei}</strong>
               <div style="margin-top:6px;font-size:12px;color:#d1d5db;line-height:1.7">
-                <div>Speed: ${t.speed ?? 0} km/h</div>
+                <div>Speed: ${t.speedKph ?? 0} km/h</div>
                 <div>Plate: ${d.vehiclePlate ?? "—"}</div>
               </div>
             </div>
@@ -194,11 +194,11 @@ export default function AllVehiclesPage() {
                 {d.organisationName && (
                   <p className="mt-0.5 text-[11px]" style={{ color: "#6b7280" }}>Org: {d.organisationName}</p>
                 )}
-                {t?.updatedAt && <p className="mt-0.5 text-[11px]" style={{ color: "#9ca3af" }}>Updated {new Date(t.updatedAt).toLocaleTimeString()}</p>}
+                {t?.receivedAt && <p className="mt-0.5 text-[11px]" style={{ color: "#9ca3af" }}>Updated {new Date(t.receivedAt ?? t.eventTime).toLocaleTimeString()}</p>}
                 {isSelected && t && (
                   <div className="mt-3 flex items-center rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <StatCell label="Speed" value={`${t.speed ?? 0} km/h`} divider />
-                    <StatCell label="Battery" value={t.batteryVoltage != null ? `${(t.batteryVoltage / 1000).toFixed(2)} V` : "—"} divider />
+                    <StatCell label="Speed" value={`${t.speedKph ?? 0} km/h`} divider />
+                    <StatCell label="Battery" value={t.voltageMv != null ? `${(t.voltageMv / 1000).toFixed(2)} V` : "—"} divider />
                     <div className="flex-1 flex items-center justify-between px-3 py-2">
                       <div>
                         <p className="text-xs font-bold" style={{ color: "#111827" }}>{t.ignition ? "ON" : "OFF"}</p>
