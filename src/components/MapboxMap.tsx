@@ -256,6 +256,11 @@ export default function MapboxMap({
     mapRef.current.easeTo({ center: [lngLat.lng, lngLat.lat], duration: 1000, essential: true });
   }, [followId, markers]);
 
+  useEffect(() => {
+    if (!mapRef.current || !style) return;
+    mapRef.current.setStyle(style);
+  }, [style]);
+
   return (
     <>
       <style>{`
