@@ -95,6 +95,22 @@ export default function AllVehiclesPage() {
 
   useEffect(() => { load(); }, []);
 
+  // Poll for latest telemetry every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (devices.length === 0) return;
+      const telemResults = await Promise.allSettled(
+        devices.map(d => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(r => (r.ok && r.status !== 204) ? r.json() : null))
+      );
+      const telemMap: Record<string, DeviceRow> = {};
+      telemResults.forEach((r, i) => {
+        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = r.value;
+      });
+      setTelemetry(telemMap);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [devices]);
+
   const handleRefresh = async (e: React.MouseEvent, deviceId: string, name: string) => {
     e.stopPropagation();
     setRefreshing(deviceId);
