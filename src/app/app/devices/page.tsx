@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu, FiTruck } from "react-icons/fi";
+import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu, FiTruck, FiLayers } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
@@ -19,6 +19,14 @@ const STATUS_COLOR: Record<string, string> = {
   Assigned: "#22C55E",
   Unassigned: "#9CA3AF",
 };
+
+const MAP_STYLES = [
+  { id: "streets", label: "Streets", style: "mapbox://styles/mapbox/streets-v12" },
+  { id: "satellite", label: "Satellite", style: "mapbox://styles/mapbox/satellite-v9" },
+  { id: "dark", label: "Dark", style: "mapbox://styles/mapbox/dark-v11" },
+  { id: "light", label: "Light", style: "mapbox://styles/mapbox/light-v11" },
+  { id: "outdoors", label: "Outdoors", style: "mapbox://styles/mapbox/outdoors-v12" },
+];
 
 function statusLabel(d: DeviceRow, telem: DeviceRow | null): string {
   if (!telem) return d.status ?? "Unknown";
@@ -66,6 +74,8 @@ export default function AllVehiclesPage() {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [mapStyle, setMapStyle] = useState("streets");
+  const [showStyleMenu, setShowStyleMenu] = useState(false);
 
   const notify = (msg: string) => setToast(msg);
 
@@ -315,10 +325,39 @@ export default function AllVehiclesPage() {
           flyToId={selected ?? ""}
           center={[9.082, 8.675]}
           zoom={markers.length > 0 ? 10 : 5}
-          style="mapbox://styles/mapbox/streets-v12"
+          style={MAP_STYLES.find(s => s.id === mapStyle)?.style || "mapbox://styles/mapbox/streets-v12"}
           className="w-full h-full"
           onMarkerClick={setSelected}
         />
+        
+        {/* Map style selector */}
+        <div className="absolute top-4 right-4 z-10">
+          <div className="relative">
+            <button
+              onClick={() => setShowStyleMenu(!showStyleMenu)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg shadow text-sm font-semibold text-white transition-all hover:brightness-110"
+              style={{ background: "#3949ab" }}
+            >
+              <FiLayers size={16} />
+              <span>{MAP_STYLES.find(s => s.id === mapStyle)?.label || "Streets"}</span>
+            </button>
+            {showStyleMenu && (
+              <div className="absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden" style={{ background: "#fff", border: "1px solid #e5e7eb" }}>
+                {MAP_STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => { setMapStyle(style.id); setShowStyleMenu(false); }}
+                    className="w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-100"
+                    style={{ color: mapStyle === style.id ? "#3949ab" : "#374151", fontWeight: mapStyle === style.id ? 600 : 400 }}
+                  >
+                    {style.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
         <Link href="/app/map"
           className="absolute bottom-4 right-4 z-10 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
           style={{ background: "#3949ab" }}>
