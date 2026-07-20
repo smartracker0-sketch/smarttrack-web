@@ -244,9 +244,9 @@ export default function MapboxMap({
     const marker = markersRef.current.get(flyToId);
     if (!marker) return;
     const lngLat = marker.getLngLat();
-    mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 15, duration: 1200, essential: true });
+    mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 16, duration: 1200, essential: true });
     marker.getPopup()?.addTo(mapRef.current);
-  }, [flyToId]);
+  }, [flyToId, markers]);
 
   useEffect(() => {
     if (!followId || !mapRef.current) return;
