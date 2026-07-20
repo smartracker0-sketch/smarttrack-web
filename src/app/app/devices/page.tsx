@@ -203,18 +203,27 @@ export default function AllVehiclesPage() {
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
       {/* ── Device list panel ── */}
-      <div className="flex flex-col w-full max-w-xs flex-shrink-0 border-r overflow-hidden" style={{ background: "#fff", borderColor: "#e5e7eb" }}>
+      <div
+        className="flex flex-col flex-shrink-0 border-r overflow-hidden transition-all duration-200 group"
+        style={{
+          background: "#fff",
+          borderColor: "#e5e7eb",
+          width: 56,
+        }}
+        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.width = '320px'; }}
+        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.width = '56px'; }}
+      >
         <div className="px-4 py-3 border-b" style={{ borderColor: "#e5e7eb" }}>
-          <p className="text-xs" style={{ color: "#9ca3af" }}>
+          <p className="text-xs whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>
             {loading ? "Loading…" : `All Devices · ${devices.length} Device${devices.length !== 1 ? "s" : ""}`}
           </p>
         </div>
 
         <div className="flex-1 overflow-y-auto">
           {loading ? (
-            <div className="py-10 text-center text-xs" style={{ color: "#9ca3af" }}>Loading devices…</div>
+            <div className="py-10 text-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>Loading devices…</div>
           ) : devices.length === 0 ? (
-            <div className="py-10 text-center text-xs" style={{ color: "#9ca3af" }}>No devices registered yet.</div>
+            <div className="py-10 text-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>No devices registered yet.</div>
           ) : displayed.map((d) => {
             const t = telemetry[d.id] ?? null;
             const isSelected = d.id === selected;
@@ -230,7 +239,7 @@ export default function AllVehiclesPage() {
                 onDrop={(e) => handleDrop(e, d.id)}
                 onMouseEnter={() => setHoveredId(d.id)}
                 onMouseLeave={() => setHoveredId(null)}
-                className="w-full border-b transition-all"
+                className="w-full border-b transition-all opacity-0 group-hover:opacity-100"
                 style={{
                   borderColor: "#e5e7eb",
                   background: isSelected ? "#eef0fb" : isDragOver ? "#f0f4ff" : "#fff",
@@ -241,7 +250,7 @@ export default function AllVehiclesPage() {
                 <button type="button" onClick={() => setSelected(d.id)}
                   className="w-full text-left px-4 py-4 cursor-pointer">
                   <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold leading-tight" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
+                    <span className="text-sm font-bold leading-tight whitespace-nowrap overflow-hidden" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
                     <div className="flex gap-1.5 flex-shrink-0 items-center">
                       <div
                         draggable
@@ -289,7 +298,7 @@ export default function AllVehiclesPage() {
           })}
         </div>
 
-        <div className="px-4 py-3 border-t" style={{ borderColor: "#e5e7eb" }}>
+        <div className="px-4 py-3 border-t opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ borderColor: "#e5e7eb" }}>
           <button onClick={() => setShowAll(s => !s)}
             className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
             style={{ borderColor: "#3949ab", color: "#3949ab" }}>
