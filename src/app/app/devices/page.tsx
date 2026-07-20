@@ -3,7 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu } from "react-icons/fi";
+import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu, FiTruck } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
@@ -213,8 +213,9 @@ export default function AllVehiclesPage() {
         onMouseEnter={e => { (e.currentTarget as HTMLElement).style.width = '320px'; }}
         onMouseLeave={e => { (e.currentTarget as HTMLElement).style.width = '56px'; }}
       >
-        <div className="px-4 py-3 border-b" style={{ borderColor: "#e5e7eb" }}>
-          <p className="text-xs whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>
+        <div className="px-4 py-3 border-b flex items-center justify-center" style={{ borderColor: "#e5e7eb" }}>
+          <FiTruck size={20} className="opacity-100 group-hover:opacity-0 transition-opacity duration-150" style={{ color: "#3949ab" }} />
+          <p className="text-xs whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute" style={{ color: "#9ca3af" }}>
             {loading ? "Loading…" : `All Devices · ${devices.length} Device${devices.length !== 1 ? "s" : ""}`}
           </p>
         </div>
