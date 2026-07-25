@@ -289,79 +289,88 @@ export default function AllVehiclesPage() {
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      <aside className="flex w-full max-w-[390px] flex-shrink-0 flex-col border-r border-[#cfdae5] bg-[#f2f7fa]">
-        <div className="px-4 py-4 sm:px-7">
-          <div className="text-sm font-medium text-[#536987]">
-            All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
+      <aside className="group flex w-full max-w-[390px] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 lg:w-14 lg:max-w-none lg:hover:w-[390px]">
+        <div className="hidden w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4 lg:flex">
+          <FiTruck size={21} className="text-[#536987]" />
+          <div className="mt-3 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1.5 text-[11px] font-bold text-[#061337] shadow-sm">
+            {loading ? "..." : devices.length}
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5 sm:px-4">
-          {loading ? (
-            <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
-          ) : devices.length === 0 ? (
-            <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
-          ) : (
-            devices.map((d) => {
-              const t = telemetry[d.id] ?? null;
-              const key = statKey(t);
-              const isSelected = d.id === selected;
-              const isRef = refreshing === d.id;
-              return (
-                <article
-                  key={d.id}
-                  onClick={() => setSelected(d.id)}
-                  className={`mb-3 rounded-xl bg-white p-3.5 shadow-[0_14px_32px_rgba(15,23,42,0.07)] transition ${
-                    isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-2.5">
-                    <h2 className="min-w-0 truncate text-xl font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
-                    <div className="flex flex-shrink-0 items-center gap-1.5">
-                      <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
-                        <FiShare2 size={16} />
-                      </ActionIcon>
-                      <ActionIcon label="Driver">
-                        <FiUser size={16} />
-                      </ActionIcon>
-                      <ActionIcon label="Route">
-                        <FiNavigation size={16} />
-                      </ActionIcon>
-                      <ActionIcon label="Vehicle">
-                        <FiTruck size={17} />
-                      </ActionIcon>
+        <div className="flex min-w-0 flex-1 flex-col opacity-100 transition-opacity duration-150 lg:w-[334px] lg:min-w-[334px] lg:flex-none lg:opacity-0 lg:group-hover:opacity-100">
+          <div className="px-4 py-4 sm:px-7 lg:px-4">
+            <div className="text-sm font-medium text-[#536987]">
+              All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5 sm:px-4">
+            {loading ? (
+              <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
+            ) : devices.length === 0 ? (
+              <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
+            ) : (
+              devices.map((d) => {
+                const t = telemetry[d.id] ?? null;
+                const key = statKey(t);
+                const isSelected = d.id === selected;
+                const isRef = refreshing === d.id;
+                return (
+                  <article
+                    key={d.id}
+                    onClick={() => setSelected(d.id)}
+                    className={`mb-3 rounded-xl bg-white p-3.5 shadow-[0_14px_32px_rgba(15,23,42,0.07)] transition ${
+                      isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2.5">
+                      <h2 className="min-w-0 truncate text-xl font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
+                      <div className="flex flex-shrink-0 items-center gap-1.5">
+                        <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
+                          <FiShare2 size={16} />
+                        </ActionIcon>
+                        <ActionIcon label="Driver">
+                          <FiUser size={16} />
+                        </ActionIcon>
+                        <ActionIcon label="Route">
+                          <FiNavigation size={16} />
+                        </ActionIcon>
+                        <ActionIcon label="Vehicle">
+                          <FiTruck size={17} />
+                        </ActionIcon>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
-                    <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
-                    <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
-                  </div>
+                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+                      <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
+                      <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
+                    </div>
 
-                  <div className="mt-2 text-sm font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
+                    <div className="mt-2 text-sm font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
 
-                  <div className="mt-4 flex items-start gap-2.5">
-                    <FiMapPin size={23} className="mt-0.5 flex-shrink-0 text-[#061337]" />
-                    <div className="min-w-0 truncate text-base font-medium text-[#061337]">{locationLine(d, t)}</div>
-                  </div>
+                    <div className="mt-4 flex items-start gap-2.5">
+                      <FiMapPin size={23} className="mt-0.5 flex-shrink-0 text-[#061337]" />
+                      <div className="min-w-0 truncate text-base font-medium text-[#061337]">{locationLine(d, t)}</div>
+                    </div>
 
-                  <div className="mt-4 flex flex-wrap items-stretch gap-2.5">
-                    <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
-                    <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
-                    <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
-                    <button
-                      type="button"
-                      onClick={(e) => handleRefresh(e, d.id, shortName(d))}
-                      className="grid min-h-[52px] w-8 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
-                      aria-label="Refresh vehicle"
-                    >
-                      <FiChevronRight size={25} className={isRef ? "animate-spin" : ""} />
-                    </button>
-                  </div>
-                </article>
-              );
-            })
-          )}
+                    <div className="mt-4 flex flex-wrap items-stretch gap-2.5">
+                      <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
+                      <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
+                      <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
+                      <button
+                        type="button"
+                        onClick={(e) => handleRefresh(e, d.id, shortName(d))}
+                        className="grid min-h-[52px] w-8 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
+                        aria-label="Refresh vehicle"
+                      >
+                        <FiChevronRight size={25} className={isRef ? "animate-spin" : ""} />
+                      </button>
+                    </div>
+                  </article>
+                );
+              })
+            )}
+          </div>
         </div>
       </aside>
 
