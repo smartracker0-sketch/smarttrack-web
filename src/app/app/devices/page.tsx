@@ -2,8 +2,21 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { FiShare2, FiRefreshCw, FiMapPin, FiChevronRight, FiX, FiMenu, FiTruck, FiLayers } from "react-icons/fi";
+import {
+  FiChevronRight,
+  FiClipboard,
+  FiCopy,
+  FiDatabase,
+  FiLayers,
+  FiMapPin,
+  FiMessageCircle,
+  FiNavigation,
+  FiPackage,
+  FiShare2,
+  FiTruck,
+  FiUser,
+  FiX,
+} from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
@@ -12,12 +25,10 @@ const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false }
 type DeviceRow = Record<string, any>;
 
 const STATUS_COLOR: Record<string, string> = {
-  moving:  "#22C55E",
-  stopped: "#EF4444",
-  idle:    "#F59E0B",
-  offline: "#9CA3AF",
-  Assigned: "#22C55E",
-  Unassigned: "#9CA3AF",
+  moving: "#22C55E",
+  stopped: "#EF334A",
+  idle: "#F59E0B",
+  offline: "#94A3B8",
 };
 
 const MAP_STYLES = [
@@ -28,69 +39,140 @@ const MAP_STYLES = [
   { id: "outdoors", label: "Outdoors", style: "mapbox://styles/mapbox/outdoors-v12" },
 ];
 
-function statusLabel(d: DeviceRow, telem: DeviceRow | null): string {
-  if (!telem) return d.status ?? "Unknown";
-  const spd = telem.speedKph ?? 0;
-  if (spd > 5) return `Moving · ${spd} km/h`;
-  if (telem.ignition) return "Idle";
-  return "Stopped";
-}
-
-function statKey(d: DeviceRow, telem: DeviceRow | null): string {
+function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offline" {
   if (!telem) return "offline";
-  const spd = telem.speedKph ?? 0;
+  const spd = Number(telem.speedKph ?? 0);
   if (spd > 5) return "moving";
   if (telem.ignition) return "idle";
   return "stopped";
 }
 
-function StatCell({ label, value, divider }: { label: string; value: string; divider?: boolean }) {
+function shortName(d: DeviceRow) {
+  return String(d.name ?? d.vehiclePlate ?? d.imei ?? "Vehicle");
+}
+
+function markerLabel(d: DeviceRow) {
+  return shortName(d).replace(/\s+/g, "_");
+}
+
+function timeAgo(value?: string | null) {
+  if (!value) return "No data yet";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "No data yet";
+  const seconds = Math.max(0, Math.floor((Date.now() - then) / 1000));
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  const mins = minutes % 60;
+  if (hours < 24) return mins ? `${hours} hours and ${mins} minutes` : `${hours} hours`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function statusText(telem: DeviceRow | null) {
+  const key = statKey(telem);
+  if (key === "moving") return `Moving: ${Math.round(Number(telem?.speedKph ?? 0))} km/h`;
+  if (key === "idle") return `Idle: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
+  if (key === "stopped") return `Stopped: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
+  return "Offline";
+}
+
+function todayDistance(telem: DeviceRow | null) {
+  const odometerM = Number(telem?.odometerM);
+  if (!Number.isFinite(odometerM) || odometerM <= 0) return "-- km";
+  return `${(odometerM / 1000).toFixed(1)} km`;
+}
+
+function batteryVoltage(telem: DeviceRow | null) {
+  const voltage = Number(telem?.voltageMv);
+  if (!Number.isFinite(voltage) || voltage <= 0) return "--";
+  return `${(voltage / 1000).toFixed(2)} V`;
+}
+
+function coords(telem: DeviceRow | null) {
+  if (telem?.latitude == null || telem?.longitude == null) return "Coordinates unavailable";
+  return `(${Number(telem.latitude).toFixed(6)}, ${Number(telem.longitude).toFixed(6)})`;
+}
+
+function locationLine(d: DeviceRow, telem: DeviceRow | null) {
+  return d.address ?? d.lastAddress ?? d.vehiclePlate ?? coords(telem);
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
+  useEffect(() => {
+    const t = setTimeout(onDone, 2800);
+    return () => clearTimeout(t);
+  }, [onDone]);
   return (
-    <div className="flex flex-col items-center px-3 py-2" style={{ borderRight: divider ? "1px solid #e5e7eb" : undefined }}>
-      <p className="text-xs font-bold" style={{ color: "#111827" }}>{value}</p>
-      <p className="text-[10px]" style={{ color: "#9ca3af" }}>{label}</p>
+    <div className="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-3 rounded-lg px-5 py-3 text-sm font-medium text-white shadow-xl" style={{ background: "#061337" }}>
+      {msg}
+      <button onClick={onDone} aria-label="Close notification">
+        <FiX size={14} />
+      </button>
     </div>
   );
 }
 
-function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
-  useEffect(() => { const t = setTimeout(onDone, 2800); return () => clearTimeout(t); }, [onDone]);
+function ActionIcon({ children, label, onClick }: { children: React.ReactNode; label: string; onClick?: (e: React.MouseEvent) => void }) {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-sm text-white font-medium" style={{ background: "#3949ab" }}>
-      {msg}
-      <button onClick={onDone}><FiX size={14} /></button>
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="grid h-9 w-9 place-items-center rounded-md text-[#536987] transition hover:bg-[#eef4f8]"
+    >
+      {children}
+    </button>
+  );
+}
+
+function MetricBox({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex min-h-[82px] min-w-[84px] flex-col items-center justify-center rounded-xl border border-[#d5e2ec] bg-white px-3 text-center text-[#061337]">
+      <div className="text-base font-extrabold">{value}</div>
+      <div className="mt-2 text-sm font-medium leading-tight">{label}</div>
     </div>
   );
 }
 
 export default function AllVehiclesPage() {
-  const [devices, setDevices]   = useState<DeviceRow[]>([]);
+  const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [telemetry, setTelemetry] = useState<Record<string, DeviceRow>>({});
-  const [loading, setLoading]   = useState(true);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
-  const [showAll, setShowAll]   = useState(true);
-  const [toast, setToast]       = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<string | null>(null);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState("streets");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
 
   const notify = (msg: string) => setToast(msg);
 
-  const load = useCallback(async () => {
-    setLoading(true);
+  const load = useCallback(async (showSpinner = false) => {
+    if (showSpinner) setLoading(true);
     try {
       const res = await fetch("/api/devices");
       if (res.ok) {
         const data = await res.json();
         const list: DeviceRow[] = Array.isArray(data) ? data : data?.content ?? [];
         setDevices(list);
-        if (list.length > 0 && !selected) setSelected(list[0].id);
-        // Fetch latest telemetry for each device in parallel
+        setSelected((prev) => {
+          if (prev && list.some((d) => d.id === prev)) return prev;
+          return list[0]?.id ?? null;
+        });
+
         const telemResults = await Promise.allSettled(
-          list.map(d => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(r => (r.ok && r.status !== 204) ? r.json() : null))
+          list.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then((r) => (r.ok && r.status !== 204 ? r.json() : null)))
         );
         const telemMap: Record<string, DeviceRow> = {};
         telemResults.forEach((r, i) => {
@@ -99,18 +181,26 @@ export default function AllVehiclesPage() {
         setTelemetry(telemMap);
       }
     } finally {
-      setLoading(false);
+      if (showSpinner) setLoading(false);
     }
-  }, [selected]);
+  }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load(true);
+  }, [load]);
 
-  // Poll for latest telemetry every 5 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      load(false);
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [load]);
+
   useEffect(() => {
     const interval = setInterval(async () => {
       if (devices.length === 0) return;
       const telemResults = await Promise.allSettled(
-        devices.map(d => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(r => (r.ok && r.status !== 204) ? r.json() : null))
+        devices.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then((r) => (r.ok && r.status !== 204 ? r.json() : null)))
       );
       const telemMap: Record<string, DeviceRow> = {};
       telemResults.forEach((r, i) => {
@@ -128,7 +218,7 @@ export default function AllVehiclesPage() {
       const res = await fetch(`/api/telemetry?type=latest&deviceId=${deviceId}`);
       if (res.ok && res.status !== 204) {
         const t = await res.json();
-        setTelemetry(prev => ({ ...prev, [deviceId]: t }));
+        setTelemetry((prev) => ({ ...prev, [deviceId]: t }));
         notify(`Location refreshed for ${name}`);
       }
     } finally {
@@ -139,216 +229,184 @@ export default function AllVehiclesPage() {
   const handleShare = (e: React.MouseEvent, d: DeviceRow) => {
     e.stopPropagation();
     const t = telemetry[d.id];
-    const text = `${d.name ?? d.imei}\nPlate: ${d.vehiclePlate ?? "—"} | Speed: ${t?.speedKph ?? 0} km/h`;
-    if (navigator.share) navigator.share({ title: d.name ?? d.imei, text }).catch(() => {});
-    else navigator.clipboard.writeText(text).then(() => notify(`Info copied for ${d.name ?? d.imei}`));
+    const text = `${shortName(d)}\n${coords(t ?? null)}\nSpeed: ${Math.round(Number(t?.speedKph ?? 0))} km/h`;
+    if (navigator.share) navigator.share({ title: shortName(d), text }).catch(() => {});
+    else navigator.clipboard.writeText(text).then(() => notify(`Info copied for ${shortName(d)}`));
   };
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
-    setDraggedId(id);
-    e.dataTransfer.effectAllowed = "move";
+  const copyCoordinates = (e: React.MouseEvent, telem: DeviceRow | null) => {
+    e.stopPropagation();
+    navigator.clipboard.writeText(coords(telem)).then(() => notify("Coordinates copied"));
   };
 
-  const handleDragOver = (e: React.DragEvent, id: string) => {
-    e.preventDefault();
-    if (draggedId && draggedId !== id) {
-      setDragOverId(id);
-    }
-  };
+  const selectedDevice = devices.find((d) => d.id === selected) ?? devices[0] ?? null;
 
-  const handleDragEnd = () => {
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
-    e.preventDefault();
-    if (!draggedId || draggedId === targetId) return;
-
-    const fromIndex = devices.findIndex(d => d.id === draggedId);
-    const toIndex = devices.findIndex(d => d.id === targetId);
-    if (fromIndex === -1 || toIndex === -1) return;
-
-    const newDevices = [...devices];
-    const [moved] = newDevices.splice(fromIndex, 1);
-    newDevices.splice(toIndex, 0, moved);
-    setDevices(newDevices);
-    setDraggedId(null);
-    setDragOverId(null);
-  };
-
-  const displayed = showAll ? devices : devices.filter(d => d.id === selected);
-
-  const markers: MarkerData[] = useMemo(() =>
-    devices
-      .filter(d => {
-        const t = telemetry[d.id];
-        return t?.latitude != null && t?.longitude != null;
-      })
-      .map(d => {
-        const t = telemetry[d.id];
-        const sk = statKey(d, t ?? null);
-        return {
-          id: d.id,
-          lat: t.latitude,
-          lng: t.longitude,
-          color: STATUS_COLOR[sk],
-          pulsing: sk === "moving",
-          popupHtml: `
-            <div style="font-family:Inter,sans-serif">
-              <strong style="color:#f3f4f6">${d.name ?? d.imei}</strong>
-              <div style="margin-top:6px;font-size:12px;color:#d1d5db;line-height:1.7">
-                <div>Speed: ${t.speedKph ?? 0} km/h</div>
-                <div>Plate: ${d.vehiclePlate ?? "—"}</div>
+  const markers: MarkerData[] = useMemo(
+    () =>
+      devices
+        .filter((d) => {
+          const t = telemetry[d.id];
+          return t?.latitude != null && t?.longitude != null;
+        })
+        .map((d) => {
+          const t = telemetry[d.id];
+          const key = statKey(t ?? null);
+          const title = shortName(d);
+          const location = locationLine(d, t ?? null);
+          const coordinateText = coords(t ?? null);
+          return {
+            id: d.id,
+            lat: t.latitude,
+            lng: t.longitude,
+            color: STATUS_COLOR[key],
+            pulsing: key === "moving",
+            heading: Number(t.headingDeg ?? 35),
+            label: markerLabel(d),
+            popupHtml: `
+              <div class="tp-popup-inner">
+                <div class="tp-popup-title">${escapeHtml(title)} <span>-></span></div>
+                <div class="tp-popup-status">
+                  <strong>${escapeHtml(statusText(t ?? null))}</strong>
+                  <span>| Today: ${escapeHtml(todayDistance(t ?? null))}</span>
+                </div>
+                <div class="tp-popup-muted">Last data received ${escapeHtml(timeAgo(t.receivedAt ?? t.eventTime))}</div>
+                <div class="tp-popup-location">${escapeHtml(location)}</div>
+                <div class="tp-popup-coords">${escapeHtml(coordinateText)} <span>□</span></div>
+                <div class="tp-popup-row">Trip: <strong>${escapeHtml(d.tripName ?? "Not Assigned")}</strong></div>
+                <div class="tp-popup-row">Consigner: <strong>${escapeHtml(d.consignerName ?? "Not Assigned")}</strong></div>
+                <div class="tp-popup-row">Driver: <strong>${escapeHtml(d.driverName ?? d.ownerName ?? "Not Assigned")}</strong></div>
+                <div class="tp-popup-actions">
+                  <span>⌯</span><span>♙</span><span>⇄</span><span>▱</span><span>▣</span><span>▤</span><span>◯</span><span>☷</span>
+                </div>
               </div>
-            </div>
-          `,
-        };
-      }),
+            `,
+          };
+        }),
     [devices, telemetry]
   );
 
   return (
-    <div className="flex h-full" style={{ background: "#f3f4f6" }}>
+    <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      {/* ── Device list panel ── */}
-      <div
-        className="flex flex-col flex-shrink-0 border-r overflow-hidden transition-all duration-200 group"
-        style={{
-          background: "#fff",
-          borderColor: "#e5e7eb",
-          width: 56,
-        }}
-        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.width = '320px'; }}
-        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.width = '56px'; }}
-      >
-        <div className="px-4 py-3 border-b flex items-center justify-center" style={{ borderColor: "#e5e7eb" }}>
-          <FiTruck size={20} className="opacity-100 group-hover:opacity-0 transition-opacity duration-150" style={{ color: "#3949ab" }} />
-          <p className="text-xs whitespace-nowrap overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-150 absolute" style={{ color: "#9ca3af" }}>
-            {loading ? "Loading…" : `All Devices · ${devices.length} Device${devices.length !== 1 ? "s" : ""}`}
-          </p>
+      <aside className="flex w-full max-w-[458px] flex-shrink-0 flex-col border-r border-[#cfdae5] bg-[#f2f7fa]">
+        <div className="border-b border-[#cfdae5] px-6 py-8 sm:px-10">
+          <div className="text-2xl font-medium text-[#536987]">Live Track</div>
+          <h1 className="mt-2 text-4xl font-extrabold leading-tight tracking-tight text-[#061337]">All Vehicles</h1>
         </div>
 
-        <div className="flex-1 overflow-y-auto">
+        <div className="px-6 py-7 sm:px-10">
+          <div className="text-xl font-medium text-[#536987]">
+            All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
+          </div>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 sm:px-6">
           {loading ? (
-            <div className="py-10 text-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>Loading devices…</div>
+            <div className="rounded-[20px] bg-white p-8 text-[#536987] shadow-[0_20px_55px_rgba(15,23,42,0.08)]">Loading vehicles...</div>
           ) : devices.length === 0 ? (
-            <div className="py-10 text-center text-xs opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ color: "#9ca3af" }}>No devices registered yet.</div>
-          ) : displayed.map((d) => {
-            const t = telemetry[d.id] ?? null;
-            const isSelected = d.id === selected;
-            const isRef = refreshing === d.id;
-            const isDragged = draggedId === d.id;
-            const isDragOver = dragOverId === d.id;
-            const isHovered = hoveredId === d.id;
-            const sk = statKey(d, t);
-            const sl = statusLabel(d, t);
-            return (
-              <div key={d.id}
-                onDragOver={(e) => handleDragOver(e, d.id)}
-                onDrop={(e) => handleDrop(e, d.id)}
-                onMouseEnter={() => setHoveredId(d.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                className="w-full border-b transition-all opacity-0 group-hover:opacity-100"
-                style={{
-                  borderColor: "#e5e7eb",
-                  background: isSelected ? "#eef0fb" : isDragOver ? "#f0f4ff" : "#fff",
-                  borderLeft: isSelected ? "3px solid #3949ab" : "3px solid transparent",
-                  opacity: isDragged ? 0.5 : 1,
-                  borderTop: isDragOver ? "2px dashed #3949ab" : undefined,
-                }}>
-                <button type="button" onClick={() => setSelected(d.id)}
-                  className="w-full text-left px-4 py-4 cursor-pointer">
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-sm font-bold leading-tight whitespace-nowrap overflow-hidden" style={{ color: "#111827" }}>{d.name ?? d.imei}</span>
-                    <div className="flex gap-1.5 flex-shrink-0 items-center">
-                      <div
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, d.id)}
-                        onDragEnd={handleDragEnd}
-                        className="p-0.5 cursor-grab active:cursor-grabbing hover:bg-gray-100 rounded"
-                        title="Drag to reorder">
-                        <FiMenu size={13} style={{ color: "#9ca3af" }} />
-                      </div>
-                      <button onClick={(e) => handleShare(e, d)} title="Share" className="p-0.5 rounded hover:bg-gray-100">
-                        <FiShare2 size={13} style={{ color: "#9ca3af" }} />
-                      </button>
-                      <button onClick={(e) => handleRefresh(e, d.id, d.name ?? d.imei)} title="Refresh" className="p-0.5 rounded hover:bg-gray-100">
-                        <FiRefreshCw size={13} className={isRef ? "animate-spin" : ""} style={{ color: isRef ? "#3949ab" : "#9ca3af" }} />
-                      </button>
+            <div className="rounded-[20px] bg-white p-8 text-[#536987] shadow-[0_20px_55px_rgba(15,23,42,0.08)]">No vehicles registered yet.</div>
+          ) : (
+            devices.map((d) => {
+              const t = telemetry[d.id] ?? null;
+              const key = statKey(t);
+              const isSelected = d.id === selected;
+              const isRef = refreshing === d.id;
+              return (
+                <article
+                  key={d.id}
+                  onClick={() => setSelected(d.id)}
+                  className={`mb-5 rounded-[20px] bg-white p-6 shadow-[0_20px_55px_rgba(15,23,42,0.08)] transition ${
+                    isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_22px_60px_rgba(15,23,42,0.12)]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <h2 className="min-w-0 truncate text-3xl font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
+                    <div className="flex flex-shrink-0 items-center gap-2">
+                      <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
+                        <FiShare2 size={24} />
+                      </ActionIcon>
+                      <ActionIcon label="Driver">
+                        <FiUser size={24} />
+                      </ActionIcon>
+                      <ActionIcon label="Route">
+                        <FiNavigation size={24} />
+                      </ActionIcon>
+                      <ActionIcon label="Vehicle">
+                        <FiTruck size={25} />
+                      </ActionIcon>
                     </div>
                   </div>
-                <p className="mt-1 text-xs font-semibold" style={{ color: STATUS_COLOR[sk] ?? "#9CA3AF" }}>{sl}</p>
-                {d.vehiclePlate && (
-                  <div className="mt-1 flex items-center gap-1">
-                    <FiMapPin size={11} className="flex-shrink-0" style={{ color: "#6b7280" }} />
-                    <p className="text-xs" style={{ color: "#4b5563" }}>{d.vehiclePlate}</p>
-                  </div>
-                )}
-                {d.organisationName && (
-                  <p className="mt-0.5 text-[11px]" style={{ color: "#6b7280" }}>Org: {d.organisationName}</p>
-                )}
-                {t?.receivedAt && <p className="mt-0.5 text-[11px]" style={{ color: "#9ca3af" }}>Updated {new Date(t.receivedAt ?? t.eventTime).toLocaleTimeString()}</p>}
-                {(isHovered || isSelected) && t && (
-                  <div className="mt-3 flex items-center rounded-xl border overflow-hidden" style={{ borderColor: "#e5e7eb" }}>
-                    <StatCell label="Speed" value={`${t.speedKph ?? 0} km/h`} divider />
-                    <StatCell label="Battery" value={t.voltageMv != null ? `${(t.voltageMv / 1000).toFixed(2)} V` : "—"} divider />
-                    <div className="flex-1 flex items-center justify-between px-3 py-2">
-                      <div>
-                        <p className="text-xs font-bold" style={{ color: "#111827" }}>{t.ignition ? "ON" : "OFF"}</p>
-                        <p className="text-[10px]" style={{ color: "#9ca3af" }}>Ignition</p>
-                      </div>
-                      <FiChevronRight size={14} style={{ color: "#9ca3af" }} />
-                    </div>
-                  </div>
-                )}
-                </button>
-              </div>
-            );
-          })}
-        </div>
 
-        <div className="px-4 py-3 border-t opacity-0 group-hover:opacity-100 transition-opacity duration-150" style={{ borderColor: "#e5e7eb" }}>
-          <button onClick={() => setShowAll(s => !s)}
-            className="w-full h-9 rounded-lg border text-sm font-semibold transition-colors hover:bg-gray-50"
-            style={{ borderColor: "#3949ab", color: "#3949ab" }}>
-            {showAll ? "Show Selected Only" : "Show All"}
-          </button>
-        </div>
-      </div>
+                  <div className="mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-xl font-semibold">
+                    <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
+                    <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
+                  </div>
 
-      {/* ── Map area ── */}
-      <div className="flex-1 relative overflow-hidden">
+                  <div className="mt-4 text-xl font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
+
+                  <div className="mt-7 flex items-start gap-4">
+                    <FiMapPin size={36} className="mt-0.5 flex-shrink-0 text-[#061337]" />
+                    <div className="min-w-0 truncate text-2xl font-medium text-[#061337]">{locationLine(d, t)}</div>
+                  </div>
+
+                  <div className="mt-8 flex flex-wrap items-stretch gap-4">
+                    <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
+                    <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
+                    <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
+                    <button
+                      type="button"
+                      onClick={(e) => handleRefresh(e, d.id, shortName(d))}
+                      className="grid min-h-[82px] w-12 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
+                      aria-label="Refresh vehicle"
+                    >
+                      <FiChevronRight size={40} className={isRef ? "animate-spin" : ""} />
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+      </aside>
+
+      <main className="relative hidden min-w-0 flex-1 overflow-hidden lg:block">
         <MapboxMap
           markers={markers}
           flyToId={selected ?? ""}
           center={[9.082, 8.675]}
           zoom={markers.length > 0 ? 10 : 5}
-          style={MAP_STYLES.find(s => s.id === mapStyle)?.style || "mapbox://styles/mapbox/streets-v12"}
-          className="w-full h-full"
+          style={MAP_STYLES.find((s) => s.id === mapStyle)?.style || "mapbox://styles/mapbox/streets-v12"}
+          className="h-full w-full"
           onMarkerClick={setSelected}
         />
-        
-        {/* Map style selector */}
-        <div className="absolute top-4 right-4 z-10">
+
+        {selectedDevice && (
+          <div className="pointer-events-none absolute left-6 top-6 z-10 rounded-lg bg-white/95 px-4 py-3 text-sm font-bold text-[#061337] shadow-lg">
+            {shortName(selectedDevice)}
+          </div>
+        )}
+
+        <div className="absolute right-4 top-4 z-10">
           <div className="relative">
             <button
               onClick={() => setShowStyleMenu(!showStyleMenu)}
-              className="flex items-center gap-2 px-3 py-2 rounded-lg shadow text-sm font-semibold text-white transition-all hover:brightness-110"
-              style={{ background: "#3949ab" }}
+              className="flex items-center gap-2 rounded-lg bg-[#061337] px-3 py-2 text-sm font-semibold text-white shadow transition-all hover:brightness-110"
             >
               <FiLayers size={16} />
-              <span>{MAP_STYLES.find(s => s.id === mapStyle)?.label || "Streets"}</span>
+              <span>{MAP_STYLES.find((s) => s.id === mapStyle)?.label || "Streets"}</span>
             </button>
             {showStyleMenu && (
-              <div className="absolute top-full right-0 mt-2 w-40 rounded-lg shadow-xl overflow-hidden" style={{ background: "#fff", border: "1px solid #e5e7eb" }}>
+              <div className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">
                 {MAP_STYLES.map((style) => (
                   <button
                     key={style.id}
-                    onClick={() => { setMapStyle(style.id); setShowStyleMenu(false); }}
-                    className="w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-100"
-                    style={{ color: mapStyle === style.id ? "#3949ab" : "#374151", fontWeight: mapStyle === style.id ? 600 : 400 }}
+                    onClick={() => {
+                      setMapStyle(style.id);
+                      setShowStyleMenu(false);
+                    }}
+                    className="w-full px-4 py-2 text-left text-sm transition-colors hover:bg-[#eef4f8]"
+                    style={{ color: mapStyle === style.id ? "#061337" : "#536987", fontWeight: mapStyle === style.id ? 700 : 500 }}
                   >
                     {style.label}
                   </button>
@@ -358,12 +416,26 @@ export default function AllVehiclesPage() {
           </div>
         </div>
 
-        <Link href="/app/map"
-          className="absolute bottom-4 right-4 z-10 px-4 py-2 rounded-xl shadow text-sm font-semibold text-white transition-all hover:brightness-110"
-          style={{ background: "#3949ab" }}>
-          Open Live Tracking →
-        </Link>
-      </div>
+        <div className="absolute bottom-5 left-1/2 z-10 flex -translate-x-1/2 items-center gap-6 rounded-lg bg-white px-6 py-3 text-[#536987] shadow-xl">
+          <FiShare2 size={24} />
+          <FiUser size={24} />
+          <FiNavigation size={24} />
+          <FiTruck size={24} />
+          <FiPackage size={24} />
+          <FiDatabase size={24} />
+          <FiMessageCircle size={24} />
+          <FiClipboard size={24} />
+        </div>
+
+        <button
+          type="button"
+          onClick={(e) => copyCoordinates(e, selectedDevice ? telemetry[selectedDevice.id] ?? null : null)}
+          className="absolute bottom-5 right-5 z-10 grid h-11 w-11 place-items-center rounded-lg bg-white text-[#536987] shadow-xl"
+          aria-label="Copy coordinates"
+        >
+          <FiCopy size={22} />
+        </button>
+      </main>
     </div>
   );
 }

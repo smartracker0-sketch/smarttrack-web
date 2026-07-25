@@ -11,6 +11,7 @@ export type MarkerData = {
   pulsing: boolean;
   popupHtml: string;
   heading?: number;
+  label?: string;
 };
 
 interface Props {
@@ -46,103 +47,51 @@ export default function MapboxMap({
   const onMarkerClickRef = useRef(onMarkerClick);
   onMarkerClickRef.current = onMarkerClick;
 
-  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0) => {
+  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "") => {
     const el = document.createElement("div");
     el.style.cssText = `
-      width: 64px; height: 64px; cursor: pointer; position: relative;
-      display: flex; align-items: center; justify-content: center;
+      width: 138px; height: 112px; cursor: pointer; position: relative;
+      display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+      pointer-events: auto;
     `;
 
     el.innerHTML = `
       ${pulsing ? `
         <span style="
-          position:absolute; inset:4px; border-radius:50%;
+          position:absolute; top:14px; left:39px; width:60px; height:60px; border-radius:50%;
           background:${color}; opacity:0.2;
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
-      <div style="width:56px;height:56px;transform:rotate(${heading}deg);transform-origin:28px 53.5px;filter:drop-shadow(0 4px 8px rgba(0,0,0,0.45));">
-        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <div style="width:74px;height:74px;transform:rotate(${heading}deg);transform-origin:37px 59px;filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));">
+        <svg width="74" height="74" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <radialGradient id="body${color.replace('#','')}" cx="50%" cy="35%" r="60%">
-              <stop offset="0%" stop-color="rgba(255,255,255,0.55)" stop-opacity="0.7"/>
-              <stop offset="100%" stop-color="rgba(0,0,0,0.35)" stop-opacity="0.5"/>
-            </radialGradient>
-            <linearGradient id="roof${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="white" stop-opacity="0.45"/>
-              <stop offset="100%" stop-color="black" stop-opacity="0.2"/>
+            <linearGradient id="assetBody${color.replace('#','')}" x1="16" y1="11" x2="58" y2="63" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#ff7f7a"/>
+              <stop offset="1" stop-color="${color}"/>
             </linearGradient>
-            <linearGradient id="glass${color.replace('#','')}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="white" stop-opacity="0.85"/>
-              <stop offset="100%" stop-color="#a0d8ef" stop-opacity="0.55"/>
-            </linearGradient>
-            <filter id="shadow${color.replace('#','')}">
-              <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="rgba(0,0,0,0.4)"/>
-            </filter>
           </defs>
-
-          <!-- Ground shadow ellipse -->
-          <ellipse cx="28" cy="50" rx="14" ry="3.5" fill="rgba(0,0,0,0.25)"/>
-
-          <!-- Car body base -->
-          <rect x="12" y="22" width="32" height="20" rx="4" fill="${color}"/>
-          <!-- Body shading overlay -->
-          <rect x="12" y="22" width="32" height="20" rx="4" fill="url(#body${color.replace('#','')})"/>
-
-          <!-- Left side panel (3D depth) -->
-          <path d="M12 24 Q10 28 10 32 Q10 38 12 42 L12 22 Z" fill="${color}" opacity="0.7"/>
-          <path d="M12 24 Q10 28 10 32 Q10 38 12 42 L12 22 Z" fill="rgba(0,0,0,0.25)"/>
-
-          <!-- Right side panel (3D depth highlight) -->
-          <path d="M44 24 Q46 28 46 32 Q46 38 44 42 L44 22 Z" fill="${color}" opacity="0.8"/>
-          <path d="M44 24 Q46 28 46 32 Q46 38 44 42 L44 22 Z" fill="rgba(255,255,255,0.12)"/>
-
-          <!-- Car roof/cabin -->
-          <path d="M18 22 Q20 12 28 11 Q36 12 38 22 Z" fill="${color}"/>
-          <path d="M18 22 Q20 12 28 11 Q36 12 38 22 Z" fill="url(#roof${color.replace('#','')})"/>
-
-          <!-- Windscreen (front glass) -->
-          <path d="M20 22 Q21.5 14.5 28 13.5 Q34.5 14.5 36 22 Z" fill="url(#glass${color.replace('#','')})"/>
-          <!-- Glass glare -->
-          <path d="M22 21 Q23 16 27 15" stroke="white" stroke-width="1.2" stroke-linecap="round" opacity="0.7"/>
-
-          <!-- Rear window -->
-          <rect x="20" y="31" width="16" height="6" rx="1.5" fill="url(#glass${color.replace('#','')})"/>
-          <line x1="22" y1="32" x2="22" y2="36" stroke="white" stroke-width="0.8" opacity="0.5"/>
-          <line x1="26" y1="32" x2="26" y2="36" stroke="white" stroke-width="0.8" opacity="0.5"/>
-          <line x1="30" y1="32" x2="30" y2="36" stroke="white" stroke-width="0.8" opacity="0.5"/>
-          <line x1="34" y1="32" x2="34" y2="36" stroke="white" stroke-width="0.8" opacity="0.5"/>
-
-          <!-- Front headlights -->
-          <rect x="14" y="23" width="5" height="3" rx="1" fill="#fffde7" opacity="0.95"/>
-          <rect x="37" y="23" width="5" height="3" rx="1" fill="#fffde7" opacity="0.95"/>
-          <!-- Headlight glow -->
-          <rect x="14" y="23" width="5" height="3" rx="1" fill="white" opacity="0.5"/>
-
-          <!-- Rear tail lights -->
-          <rect x="14" y="38" width="5" height="3" rx="1" fill="#ef4444" opacity="0.95"/>
-          <rect x="37" y="38" width="5" height="3" rx="1" fill="#ef4444" opacity="0.95"/>
-
-          <!-- Wheels -->
-          <circle cx="18" cy="43" r="4.5" fill="#1e293b"/>
-          <circle cx="18" cy="43" r="2.5" fill="#475569"/>
-          <circle cx="18" cy="43" r="1" fill="#94a3b8"/>
-
-          <circle cx="38" cy="43" r="4.5" fill="#1e293b"/>
-          <circle cx="38" cy="43" r="2.5" fill="#475569"/>
-          <circle cx="38" cy="43" r="1" fill="#94a3b8"/>
-
-          <!-- Door line -->
-          <line x1="28" y1="22" x2="28" y2="42" stroke="rgba(0,0,0,0.2)" stroke-width="0.8"/>
-          <!-- Door handle left -->
-          <rect x="20" y="30" width="4" height="1.5" rx="0.75" fill="rgba(255,255,255,0.5)"/>
-          <!-- Door handle right -->
-          <rect x="32" y="30" width="4" height="1.5" rx="0.75" fill="rgba(255,255,255,0.5)"/>
-
-          <!-- Top highlight shine -->
-          <ellipse cx="28" cy="16" rx="5" ry="2" fill="white" opacity="0.25"/>
+          <ellipse cx="37" cy="63" rx="18" ry="5" fill="#0f172a" opacity=".22"/>
+          <path d="M22 17C27 10 47 10 52 17C56 22 57 43 52 52C48 59 26 59 22 52C17 43 18 22 22 17Z" fill="url(#assetBody${color.replace('#','')})"/>
+          <path d="M25 20C30 15 44 15 49 20L47 31H27L25 20Z" fill="#ef6b66"/>
+          <path d="M27 31H47L45 44H29L27 31Z" fill="#f47671"/>
+          <path d="M30 19C34 17 40 17 44 19L43 29H31L30 19Z" fill="#1f2937" opacity=".9"/>
+          <path d="M29 45H45L43 53C40 55 34 55 31 53L29 45Z" fill="#1f2937" opacity=".86"/>
+          <path d="M20 26L14 30L15 40L20 43" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>
+          <path d="M54 26L60 30L59 40L54 43" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>
+          <path d="M24 18C22 26 22 43 24 51" stroke="#b94a49" stroke-width="2" opacity=".45"/>
+          <path d="M50 18C52 26 52 43 50 51" stroke="#b94a49" stroke-width="2" opacity=".45"/>
+          <path d="M29 22L34 19" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".45"/>
         </svg>
       </div>
+      ${label ? `
+        <div style="
+          max-width:122px; margin-top:-1px; padding:8px 10px; border-radius:10px;
+          background:#fff; color:#061337; font:700 13px/1.15 Inter, system-ui, sans-serif;
+          text-align:center; box-shadow:0 4px 12px rgba(15,23,42,.18);
+          white-space:normal; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+        ">${label}</div>
+      ` : ""}
     `;
     return el;
   }, []);
@@ -150,6 +99,8 @@ export default function MapboxMap({
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const markerStore = markersRef.current;
+    const popupStore = popupsRef.current;
     if (!token) {
       console.error("[MapboxMap] NEXT_PUBLIC_MAPBOX_TOKEN is not set");
       return;
@@ -185,8 +136,8 @@ export default function MapboxMap({
     return () => {
       mapRef.current?.remove();
       mapRef.current = null;
-      markersRef.current.clear();
-      popupsRef.current.clear();
+      markerStore.clear();
+      popupStore.clear();
       initializedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -194,13 +145,13 @@ export default function MapboxMap({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
-    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0);
+    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label);
 
-    const popup = new mgl.Popup({ offset: 20, maxWidth: "300px", closeButton: true })
+    const popup = new mgl.Popup({ offset: 28, maxWidth: "420px", closeButton: true, className: "tp-vehicle-popup" })
       .setHTML(m.popupHtml);
     popupsRef.current.set(m.id, popup);
 
-    const marker = new mgl.Marker({ element: el, anchor: "bottom", offset: [0, 6.5] })
+    const marker = new mgl.Marker({ element: el, anchor: "bottom", offset: [0, 8] })
       .setLngLat([m.lng, m.lat])
       .setPopup(popup)
       .addTo(map);
@@ -221,7 +172,7 @@ export default function MapboxMap({
         if (marker) {
           marker.setLngLat([m.lng, m.lat]);
           const el = marker.getElement();
-          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0).innerHTML;
+          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label).innerHTML;
           const popup = popupsRef.current.get(m.id);
           popup?.setHTML(m.popupHtml);
           existing.delete(m.id);
@@ -269,16 +220,92 @@ export default function MapboxMap({
           70%  { transform: scale(1.8); opacity: 0;   }
           100% { transform: scale(0.8); opacity: 0;   }
         }
-        .mapboxgl-popup-content {
-          background: #0f1923;
-          color: #e5e7eb;
-          border-radius: 12px;
-          padding: 14px 16px;
-          border: 1px solid rgba(255,255,255,0.1);
-          box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+        .tp-vehicle-popup .mapboxgl-popup-content {
+          background: #ffffff;
+          color: #061337;
+          border-radius: 10px;
+          padding: 0;
+          border: 0;
+          box-shadow: 0 14px 35px rgba(15,23,42,0.18);
         }
-        .mapboxgl-popup-tip { border-top-color: #0f1923; }
-        .mapboxgl-popup-close-button { color: #9ca3af; font-size: 18px; top: 6px; right: 8px; }
+        .tp-vehicle-popup .mapboxgl-popup-tip { border-top-color: #ffffff; }
+        .tp-vehicle-popup .mapboxgl-popup-close-button {
+          width: 40px; height: 40px; border-radius: 999px;
+          background: #58708f; color: #fff; font-size: 30px;
+          line-height: 34px; top: 22px; right: 22px;
+        }
+        .tp-popup-inner {
+          min-width: 390px;
+          max-width: 420px;
+          padding: 36px 40px 26px;
+          font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        }
+        .tp-popup-title {
+          padding-right: 52px;
+          color: #061337;
+          font-size: 28px;
+          line-height: 1.1;
+          font-weight: 800;
+          letter-spacing: 0;
+        }
+        .tp-popup-title span {
+          margin-left: 12px;
+          font-size: 34px;
+          font-weight: 900;
+        }
+        .tp-popup-status {
+          margin-top: 26px;
+          color: #536987;
+          font-size: 22px;
+          line-height: 1.3;
+          font-weight: 700;
+        }
+        .tp-popup-status strong {
+          color: #ef334a;
+        }
+        .tp-popup-muted,
+        .tp-popup-row {
+          margin-top: 18px;
+          color: #536987;
+          font-size: 21px;
+          line-height: 1.25;
+          font-weight: 500;
+        }
+        .tp-popup-row strong {
+          color: #536987;
+          font-weight: 800;
+        }
+        .tp-popup-location {
+          margin-top: 34px;
+          color: #061337;
+          font-size: 21px;
+          line-height: 1.35;
+          font-weight: 800;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .tp-popup-coords {
+          margin-top: 22px;
+          color: #061337;
+          font-size: 21px;
+          line-height: 1.25;
+          font-weight: 600;
+        }
+        .tp-popup-coords span {
+          margin-left: 14px;
+          color: #061337;
+        }
+        .tp-popup-actions {
+          margin-top: 28px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 28px;
+          color: #536987;
+          font-size: 28px;
+          line-height: 1;
+        }
       `}</style>
       <div ref={containerRef} className={className} />
     </>
