@@ -230,33 +230,33 @@ export default function MapboxMap({
         }
         .tp-vehicle-popup .mapboxgl-popup-tip { border-top-color: #ffffff; }
         .tp-vehicle-popup .mapboxgl-popup-close-button {
-          width: 40px; height: 40px; border-radius: 999px;
-          background: #58708f; color: #fff; font-size: 30px;
-          line-height: 34px; top: 22px; right: 22px;
+          width: 30px; height: 30px; border-radius: 999px;
+          background: #58708f; color: #fff; font-size: 22px;
+          line-height: 26px; top: 16px; right: 16px;
         }
         .tp-popup-inner {
-          min-width: 390px;
-          max-width: 420px;
-          padding: 36px 40px 26px;
+          min-width: 300px;
+          max-width: 330px;
+          padding: 26px 28px 20px;
           font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
         .tp-popup-title {
-          padding-right: 52px;
+          padding-right: 38px;
           color: #061337;
-          font-size: 28px;
+          font-size: 20px;
           line-height: 1.1;
           font-weight: 800;
           letter-spacing: 0;
         }
         .tp-popup-title span {
-          margin-left: 12px;
-          font-size: 34px;
+          margin-left: 8px;
+          font-size: 24px;
           font-weight: 900;
         }
         .tp-popup-status {
-          margin-top: 26px;
+          margin-top: 18px;
           color: #536987;
-          font-size: 22px;
+          font-size: 16px;
           line-height: 1.3;
           font-weight: 700;
         }
@@ -265,9 +265,9 @@ export default function MapboxMap({
         }
         .tp-popup-muted,
         .tp-popup-row {
-          margin-top: 18px;
+          margin-top: 12px;
           color: #536987;
-          font-size: 21px;
+          font-size: 15px;
           line-height: 1.25;
           font-weight: 500;
         }
@@ -276,9 +276,9 @@ export default function MapboxMap({
           font-weight: 800;
         }
         .tp-popup-location {
-          margin-top: 34px;
+          margin-top: 24px;
           color: #061337;
-          font-size: 21px;
+          font-size: 15px;
           line-height: 1.35;
           font-weight: 800;
           white-space: nowrap;
@@ -286,24 +286,24 @@ export default function MapboxMap({
           text-overflow: ellipsis;
         }
         .tp-popup-coords {
-          margin-top: 22px;
+          margin-top: 15px;
           color: #061337;
-          font-size: 21px;
+          font-size: 15px;
           line-height: 1.25;
           font-weight: 600;
         }
         .tp-popup-coords span {
-          margin-left: 14px;
+          margin-left: 10px;
           color: #061337;
         }
         .tp-popup-actions {
-          margin-top: 28px;
+          margin-top: 20px;
           display: flex;
           align-items: center;
           justify-content: center;
-          gap: 28px;
+          gap: 20px;
           color: #536987;
-          font-size: 28px;
+          font-size: 20px;
           line-height: 1;
         }
       `}</style>
