@@ -130,7 +130,7 @@ function ActionIcon({ children, label, onClick }: { children: React.ReactNode; l
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="grid h-6 w-6 place-items-center rounded-md text-[#536987] transition hover:bg-[#eef4f8]"
+      className="grid h-5 w-5 place-items-center rounded-md text-[#536987] transition hover:bg-[#eef4f8]"
     >
       {children}
     </button>
@@ -139,9 +139,9 @@ function ActionIcon({ children, label, onClick }: { children: React.ReactNode; l
 
 function MetricBox({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-h-[48px] min-w-[58px] flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-2 text-center text-[#061337]">
-      <div className="text-[12px] font-extrabold">{value}</div>
-      <div className="mt-0.5 text-[10px] font-medium leading-tight">{label}</div>
+    <div className="flex min-h-[43px] min-w-[53px] flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-1.5 text-center text-[#061337]">
+      <div className="text-[11px] font-extrabold">{value}</div>
+      <div className="mt-0.5 text-[9px] font-medium leading-tight">{label}</div>
     </div>
   );
 }
@@ -294,28 +294,28 @@ export default function AllVehiclesPage() {
         <button
           type="button"
           onClick={() => setVehiclePanelOpen((open) => !open)}
-          className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4"
+          className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-3.5"
           aria-expanded={vehiclePanelOpen}
           aria-label={vehiclePanelOpen ? "Close all vehicles" : "Open all vehicles"}
         >
-          <FiTruck size={21} className="text-[#536987]" />
-          <div className="mt-3 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1.5 text-[11px] font-bold text-[#061337] shadow-sm">
+          <FiTruck size={20} className="text-[#536987]" />
+          <div className="mt-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1.5 text-[10px] font-bold text-[#061337] shadow-sm">
             {loading ? "..." : devices.length}
           </div>
         </button>
 
         <div className={`flex w-[calc(min(390px,100vw)-56px)] min-w-[calc(min(390px,100vw)-56px)] flex-none flex-col transition-opacity duration-150 md:w-[334px] md:min-w-[334px] md:group-hover:opacity-100 ${vehiclePanelOpen ? "opacity-100" : "opacity-0"}`}>
-          <div className="px-4 py-3.5">
-            <div className="text-sm font-medium text-[#536987]">
+          <div className="px-3.5 py-3">
+            <div className="text-[13px] font-medium text-[#536987]">
               All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4 sm:px-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 sm:px-3.5">
             {loading ? (
-              <div className="rounded-xl bg-white p-4 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
+              <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
-              <div className="rounded-xl bg-white p-4 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
+              <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
             ) : (
               devices.map((d) => {
                 const t = telemetry[d.id] ?? null;
@@ -331,51 +331,51 @@ export default function AllVehiclesPage() {
                         setVehiclePanelOpen(false);
                       }
                     }}
-                    className={`mb-2.5 rounded-xl bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.07)] transition ${
+                    className={`mb-2 rounded-xl bg-white p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.07)] transition ${
                       isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2.5">
-                      <h2 className="min-w-0 truncate text-lg font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
-                      <div className="flex flex-shrink-0 items-center gap-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <h2 className="min-w-0 truncate text-base font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
+                      <div className="flex flex-shrink-0 items-center gap-1">
                         <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
-                          <FiShare2 size={16} />
+                          <FiShare2 size={14} />
                         </ActionIcon>
                         <ActionIcon label="Driver">
-                          <FiUser size={16} />
+                          <FiUser size={14} />
                         </ActionIcon>
                         <ActionIcon label="Route">
-                          <FiNavigation size={16} />
+                          <FiNavigation size={14} />
                         </ActionIcon>
                         <ActionIcon label="Vehicle">
-                          <FiTruck size={17} />
+                          <FiTruck size={15} />
                         </ActionIcon>
                       </div>
                     </div>
 
-                    <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold">
+                    <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold">
                       <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
                       <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
                     </div>
 
-                    <div className="mt-1.5 text-[13px] font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
+                    <div className="mt-1 text-xs font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
 
-                    <div className="mt-3 flex items-start gap-2">
-                      <FiMapPin size={20} className="mt-0.5 flex-shrink-0 text-[#061337]" />
-                      <div className="min-w-0 truncate text-sm font-medium text-[#061337]">{locationLine(d, t)}</div>
+                    <div className="mt-2.5 flex items-start gap-1.5">
+                      <FiMapPin size={18} className="mt-0.5 flex-shrink-0 text-[#061337]" />
+                      <div className="min-w-0 truncate text-[13px] font-medium text-[#061337]">{locationLine(d, t)}</div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-stretch gap-2">
+                    <div className="mt-2.5 flex flex-wrap items-stretch gap-1.5">
                       <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
                       <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
                       <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(e, d.id, shortName(d))}
-                        className="grid min-h-[48px] w-7 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
+                        className="grid min-h-[43px] w-6 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
                         aria-label="Refresh vehicle"
                       >
-                        <FiChevronRight size={22} className={isRef ? "animate-spin" : ""} />
+                        <FiChevronRight size={20} className={isRef ? "animate-spin" : ""} />
                       </button>
                     </div>
                   </article>

@@ -136,7 +136,24 @@ export default function Navbar() {
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="lg:hidden border-t shadow-xl" style={{ background: "#0D4A47", borderColor: "#1A7A75" }}>
-          <div className="px-4 py-4 space-y-1">
+          <div className="max-h-[calc(100vh-4rem)] overflow-y-auto px-4 py-4 space-y-1">
+            <div className="grid grid-cols-2 gap-2 pb-4 mb-2 border-b" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
+              <Link
+                href="/login"
+                className="text-center px-4 py-2.5 rounded-full text-sm font-semibold border border-white/40 text-white"
+                onClick={() => setMobileOpen(false)}
+              >
+                Login
+              </Link>
+              <a
+                href="#demo"
+                className="text-center px-4 py-2.5 rounded-full text-sm font-bold text-white"
+                style={{ background: "#F97316" }}
+                onClick={() => setMobileOpen(false)}
+              >
+                Request a Demo
+              </a>
+            </div>
             {navSections.map((group) => (
               <div key={group.label}>
                 <Link
@@ -159,21 +176,6 @@ export default function Navbar() {
                 ))}
               </div>
             ))}
-            <div className="pt-4 flex flex-col gap-2 mt-2 border-t" style={{ borderColor: "rgba(255,255,255,0.15)" }}>
-              <Link
-                href="/login"
-                className="text-center px-4 py-2.5 rounded-full text-sm font-semibold border border-white/40 text-white"
-              >
-                Login
-              </Link>
-              <a
-                href="#demo"
-                className="text-center px-4 py-2.5 rounded-full text-sm font-bold text-white"
-                style={{ background: "#F97316" }}
-              >
-                Request a Demo
-              </a>
-            </div>
           </div>
         </div>
       )}
