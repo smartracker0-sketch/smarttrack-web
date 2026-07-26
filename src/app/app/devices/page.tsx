@@ -139,9 +139,9 @@ function ActionIcon({ children, label, onClick }: { children: React.ReactNode; l
 
 function MetricBox({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-h-[52px] min-w-[62px] flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-2 text-center text-[#061337]">
-      <div className="text-[13px] font-extrabold">{value}</div>
-      <div className="mt-1 text-[11px] font-medium leading-tight">{label}</div>
+    <div className="flex min-h-[48px] min-w-[58px] flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-2 text-center text-[#061337]">
+      <div className="text-[12px] font-extrabold">{value}</div>
+      <div className="mt-0.5 text-[10px] font-medium leading-tight">{label}</div>
     </div>
   );
 }
@@ -155,6 +155,7 @@ export default function AllVehiclesPage() {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState("streets");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
+  const [vehiclePanelOpen, setVehiclePanelOpen] = useState(false);
 
   const notify = (msg: string) => setToast(msg);
 
@@ -289,26 +290,32 @@ export default function AllVehiclesPage() {
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      <aside className="group flex w-14 max-w-[390px] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 hover:w-[390px]">
-        <div className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4">
+      <aside className={`group flex max-w-[100vw] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 md:max-w-[390px] md:hover:w-[390px] ${vehiclePanelOpen ? "w-[min(390px,100vw)]" : "w-14"}`}>
+        <button
+          type="button"
+          onClick={() => setVehiclePanelOpen((open) => !open)}
+          className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4"
+          aria-expanded={vehiclePanelOpen}
+          aria-label={vehiclePanelOpen ? "Close all vehicles" : "Open all vehicles"}
+        >
           <FiTruck size={21} className="text-[#536987]" />
           <div className="mt-3 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1.5 text-[11px] font-bold text-[#061337] shadow-sm">
             {loading ? "..." : devices.length}
           </div>
-        </div>
+        </button>
 
-        <div className="flex w-[334px] min-w-[334px] flex-none flex-col opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-          <div className="px-4 py-4">
+        <div className={`flex w-[calc(min(390px,100vw)-56px)] min-w-[calc(min(390px,100vw)-56px)] flex-none flex-col transition-opacity duration-150 md:w-[334px] md:min-w-[334px] md:group-hover:opacity-100 ${vehiclePanelOpen ? "opacity-100" : "opacity-0"}`}>
+          <div className="px-4 py-3.5">
             <div className="text-sm font-medium text-[#536987]">
               All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-5 sm:px-4">
+          <div className="min-h-0 flex-1 overflow-y-auto px-3.5 pb-4 sm:px-4">
             {loading ? (
-              <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
+              <div className="rounded-xl bg-white p-4 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
-              <div className="rounded-xl bg-white p-5 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
+              <div className="rounded-xl bg-white p-4 text-xs text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
             ) : (
               devices.map((d) => {
                 const t = telemetry[d.id] ?? null;
@@ -318,13 +325,18 @@ export default function AllVehiclesPage() {
                 return (
                   <article
                     key={d.id}
-                    onClick={() => setSelected(d.id)}
-                    className={`mb-3 rounded-xl bg-white p-3.5 shadow-[0_14px_32px_rgba(15,23,42,0.07)] transition ${
+                    onClick={() => {
+                      setSelected(d.id);
+                      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
+                        setVehiclePanelOpen(false);
+                      }
+                    }}
+                    className={`mb-2.5 rounded-xl bg-white p-3 shadow-[0_14px_32px_rgba(15,23,42,0.07)] transition ${
                       isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2.5">
-                      <h2 className="min-w-0 truncate text-xl font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
+                      <h2 className="min-w-0 truncate text-lg font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
                       <div className="flex flex-shrink-0 items-center gap-1.5">
                         <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
                           <FiShare2 size={16} />
@@ -341,29 +353,29 @@ export default function AllVehiclesPage() {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold">
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] font-semibold">
                       <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
                       <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
                     </div>
 
-                    <div className="mt-2 text-sm font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
+                    <div className="mt-1.5 text-[13px] font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
 
-                    <div className="mt-4 flex items-start gap-2.5">
-                      <FiMapPin size={23} className="mt-0.5 flex-shrink-0 text-[#061337]" />
-                      <div className="min-w-0 truncate text-base font-medium text-[#061337]">{locationLine(d, t)}</div>
+                    <div className="mt-3 flex items-start gap-2">
+                      <FiMapPin size={20} className="mt-0.5 flex-shrink-0 text-[#061337]" />
+                      <div className="min-w-0 truncate text-sm font-medium text-[#061337]">{locationLine(d, t)}</div>
                     </div>
 
-                    <div className="mt-4 flex flex-wrap items-stretch gap-2.5">
+                    <div className="mt-3 flex flex-wrap items-stretch gap-2">
                       <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
                       <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
                       <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(e, d.id, shortName(d))}
-                        className="grid min-h-[52px] w-8 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
+                        className="grid min-h-[48px] w-7 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
                         aria-label="Refresh vehicle"
                       >
-                        <FiChevronRight size={25} className={isRef ? "animate-spin" : ""} />
+                        <FiChevronRight size={22} className={isRef ? "animate-spin" : ""} />
                       </button>
                     </div>
                   </article>
