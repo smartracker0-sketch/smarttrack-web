@@ -99,8 +99,11 @@ export default function MapboxMap({
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    const container = containerRef.current;
     const markerStore = markersRef.current;
     const popupStore = popupsRef.current;
+    let resizeObserver: ResizeObserver | null = null;
+    let disposed = false;
     if (!token) {
       console.error("[MapboxMap] NEXT_PUBLIC_MAPBOX_TOKEN is not set");
       return;
@@ -111,9 +114,11 @@ export default function MapboxMap({
       const mapboxgl = (mbgl.default ?? mbgl) as any;
       mapboxgl.accessToken = token;
 
-      containerRef.current!.innerHTML = "";
+      if (disposed) return;
+
+      container.innerHTML = "";
       const map = new mapboxgl.Map({
-        container: containerRef.current!,
+        container,
         style,
         center,
         zoom,
@@ -127,6 +132,8 @@ export default function MapboxMap({
 
       mapRef.current = map;
       initializedRef.current = true;
+      resizeObserver = new ResizeObserver(() => map.resize());
+      resizeObserver.observe(container);
 
       map.on("load", () => {
         markers.forEach((m) => addMarker(m, mapboxgl, map as mapboxgl.Map));
@@ -134,6 +141,8 @@ export default function MapboxMap({
     });
 
     return () => {
+      disposed = true;
+      resizeObserver?.disconnect();
       mapRef.current?.remove();
       mapRef.current = null;
       markerStore.clear();

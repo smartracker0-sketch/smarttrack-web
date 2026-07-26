@@ -289,16 +289,16 @@ export default function AllVehiclesPage() {
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      <aside className="group flex w-full max-w-[390px] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 lg:w-14 lg:max-w-none lg:hover:w-[390px]">
-        <div className="hidden w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4 lg:flex">
+      <aside className="group flex w-14 max-w-[390px] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 hover:w-[390px]">
+        <div className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-4">
           <FiTruck size={21} className="text-[#536987]" />
           <div className="mt-3 grid h-6 min-w-6 place-items-center rounded-full bg-white px-1.5 text-[11px] font-bold text-[#061337] shadow-sm">
             {loading ? "..." : devices.length}
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-1 flex-col opacity-100 transition-opacity duration-150 lg:w-[334px] lg:min-w-[334px] lg:flex-none lg:opacity-0 lg:group-hover:opacity-100">
-          <div className="px-4 py-4 sm:px-7 lg:px-4">
+        <div className="flex w-[334px] min-w-[334px] flex-none flex-col opacity-0 transition-opacity duration-150 group-hover:opacity-100">
+          <div className="px-4 py-4">
             <div className="text-sm font-medium text-[#536987]">
               All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
             </div>
@@ -374,7 +374,7 @@ export default function AllVehiclesPage() {
         </div>
       </aside>
 
-      <main className="relative hidden min-w-0 flex-1 overflow-hidden lg:block">
+      <main className="relative min-w-0 flex-1 overflow-hidden">
         <MapboxMap
           markers={markers}
           flyToId={selected ?? ""}
