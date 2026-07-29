@@ -43,8 +43,17 @@ function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offl
   if (!telem) return "offline";
   const spd = Number(telem.speedKph ?? 0);
   if (spd > 5) return "moving";
-  if (telem.ignition) return "idle";
+  if (isIgnitionOn(telem)) return "idle";
   return "stopped";
+}
+
+function isMoving(telem: DeviceRow | null) {
+  return Number(telem?.speedKph ?? 0) > 5;
+}
+
+function isIgnitionOn(telem: DeviceRow | null) {
+  if (!telem) return false;
+  return Boolean(telem.ignition) || isMoving(telem);
 }
 
 function shortName(d: DeviceRow) {
@@ -88,6 +97,24 @@ function batteryVoltage(telem: DeviceRow | null) {
   const voltage = Number(telem?.voltageMv);
   if (!Number.isFinite(voltage) || voltage <= 0) return "--";
   return `${(voltage / 1000).toFixed(2)} V`;
+}
+
+function ignitionText(telem: DeviceRow | null) {
+  return isIgnitionOn(telem) ? "ON" : "OFF";
+}
+
+function motionText(telem: DeviceRow | null) {
+  return isMoving(telem) ? "MOVING" : "STOPPED";
+}
+
+function IndicatorPill({ active, label, value }: { active: boolean; label: string; value: string }) {
+  return (
+    <div className="flex min-h-[28px] items-center gap-1.5 rounded-full border border-[#d5e2ec] bg-white px-2.5 text-[#061337]">
+      <span className="h-2 w-2 rounded-full" style={{ background: active ? "#22C55E" : "#94A3B8" }} />
+      <span className="text-[9px] font-semibold text-[#536987]">{label}</span>
+      <strong className="text-[10px]">{value}</strong>
+    </div>
+  );
 }
 
 function coords(telem: DeviceRow | null) {
@@ -252,6 +279,8 @@ export default function AllVehiclesPage() {
         .map((d) => {
           const t = telemetry[d.id];
           const key = statKey(t ?? null);
+          const moving = isMoving(t ?? null);
+          const ignitionOn = isIgnitionOn(t ?? null);
           const title = shortName(d);
           const location = locationLine(d, t ?? null);
           const coordinateText = coords(t ?? null);
@@ -260,8 +289,10 @@ export default function AllVehiclesPage() {
             lat: t.latitude,
             lng: t.longitude,
             color: STATUS_COLOR[key],
-            pulsing: key === "moving",
+            pulsing: moving,
             heading: Number(t.headingDeg ?? 35),
+            ignition: ignitionOn,
+            moving,
             label: markerLabel(d),
             popupHtml: `
               <div class="tp-popup-inner">
@@ -269,6 +300,10 @@ export default function AllVehiclesPage() {
                 <div class="tp-popup-status">
                   <strong>${escapeHtml(statusText(t ?? null))}</strong>
                   <span>| Today: ${escapeHtml(todayDistance(t ?? null))}</span>
+                </div>
+                <div class="tp-popup-indicators">
+                  <span class="${ignitionOn ? "is-on" : ""}">Ignition: ${escapeHtml(ignitionText(t ?? null))}</span>
+                  <span class="${moving ? "is-on" : ""}">Motion: ${escapeHtml(motionText(t ?? null))}</span>
                 </div>
                 <div class="tp-popup-muted">Last data received ${escapeHtml(timeAgo(t.receivedAt ?? t.eventTime))}</div>
                 <div class="tp-popup-location">${escapeHtml(location)}</div>
@@ -320,6 +355,8 @@ export default function AllVehiclesPage() {
               devices.map((d) => {
                 const t = telemetry[d.id] ?? null;
                 const key = statKey(t);
+                const moving = isMoving(t);
+                const ignitionOn = isIgnitionOn(t);
                 const isSelected = d.id === selected;
                 const isRef = refreshing === d.id;
                 return (
@@ -358,6 +395,11 @@ export default function AllVehiclesPage() {
                       <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
                     </div>
 
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      <IndicatorPill active={ignitionOn} label="Ignition" value={ignitionText(t)} />
+                      <IndicatorPill active={moving} label="Motion" value={motionText(t)} />
+                    </div>
+
                     <div className="mt-1 text-xs font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
 
                     <div className="mt-2.5 flex items-start gap-1.5">
@@ -366,7 +408,6 @@ export default function AllVehiclesPage() {
                     </div>
 
                     <div className="mt-2.5 flex flex-wrap items-stretch gap-1.5">
-                      <MetricBox value={t?.ignition ? "ON" : "OFF"} label="Ignition" />
                       <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
                       <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
                       <button

@@ -11,6 +11,8 @@ export type MarkerData = {
   pulsing: boolean;
   popupHtml: string;
   heading?: number;
+  ignition?: boolean;
+  moving?: boolean;
   label?: string;
 };
 
@@ -43,11 +45,12 @@ export default function MapboxMap({
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const popupsRef = useRef<Map<string, mapboxgl.Popup>>(new Map());
+  const animationRef = useRef<Map<string, number>>(new Map());
   const initializedRef = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
   onMarkerClickRef.current = onMarkerClick;
 
-  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "") => {
+  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false) => {
     const el = document.createElement("div");
     el.style.cssText = `
       width: 138px; height: 112px; cursor: pointer; position: relative;
@@ -63,6 +66,15 @@ export default function MapboxMap({
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
+      <div style="
+        position:absolute; top:0; right:18px; z-index:2; display:flex; gap:4px;
+        align-items:center; padding:3px 6px; border-radius:999px; background:#fff;
+        box-shadow:0 4px 12px rgba(15,23,42,.18); color:#061337;
+        font:800 9px/1 Inter, system-ui, sans-serif;
+      ">
+        <span style="width:7px;height:7px;border-radius:50%;background:${ignition ? "#22C55E" : "#94A3B8"};"></span>
+        <span>${moving ? "MOVING" : ignition ? "ON" : "OFF"}</span>
+      </div>
       <div style="width:74px;height:74px;transform:rotate(${heading}deg);transform-origin:37px 59px;filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));">
         <svg width="74" height="74" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -96,12 +108,42 @@ export default function MapboxMap({
     return el;
   }, []);
 
+  const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number, moving: boolean) => {
+    const current = marker.getLngLat();
+    const startLng = current.lng;
+    const startLat = current.lat;
+    const deltaLng = lng - startLng;
+    const deltaLat = lat - startLat;
+
+    window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
+
+    if (!moving || (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001)) {
+      marker.setLngLat([lng, lat]);
+      return;
+    }
+
+    const startedAt = performance.now();
+    const duration = 4200;
+    const step = (now: number) => {
+      const progress = Math.min((now - startedAt) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      marker.setLngLat([startLng + deltaLng * eased, startLat + deltaLat * eased]);
+      if (progress < 1) {
+        animationRef.current.set(id, window.requestAnimationFrame(step));
+      } else {
+        animationRef.current.delete(id);
+      }
+    };
+    animationRef.current.set(id, window.requestAnimationFrame(step));
+  }, []);
+
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     const container = containerRef.current;
     const markerStore = markersRef.current;
     const popupStore = popupsRef.current;
+    const animationStore = animationRef.current;
     let resizeObserver: ResizeObserver | null = null;
     let disposed = false;
     if (!token) {
@@ -148,13 +190,15 @@ export default function MapboxMap({
       markerStore.clear();
       popupStore.clear();
       initializedRef.current = false;
+      animationStore.forEach((id) => window.cancelAnimationFrame(id));
+      animationStore.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
-    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label);
+    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving);
 
     const popup = new mgl.Popup({ offset: 28, maxWidth: "420px", closeButton: true, className: "tp-vehicle-popup" })
       .setHTML(m.popupHtml);
@@ -179,9 +223,9 @@ export default function MapboxMap({
       markers.forEach((m) => {
         const marker = markersRef.current.get(m.id);
         if (marker) {
-          marker.setLngLat([m.lng, m.lat]);
+          animateMarkerTo(m.id, marker, m.lng, m.lat, Boolean(m.moving));
           const el = marker.getElement();
-          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label).innerHTML;
+          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving).innerHTML;
           const popup = popupsRef.current.get(m.id);
           popup?.setHTML(m.popupHtml);
           existing.delete(m.id);
@@ -271,6 +315,39 @@ export default function MapboxMap({
         }
         .tp-popup-status strong {
           color: #ef334a;
+        }
+        .tp-popup-indicators {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          margin-top: 12px;
+        }
+        .tp-popup-indicators span {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          border: 1px solid #d5e2ec;
+          padding: 5px 8px;
+          color: #536987;
+          font-size: 11px;
+          font-weight: 800;
+          line-height: 1;
+        }
+        .tp-popup-indicators span::before {
+          content: "";
+          width: 7px;
+          height: 7px;
+          border-radius: 999px;
+          background: #94a3b8;
+          margin-right: 6px;
+        }
+        .tp-popup-indicators span.is-on {
+          color: #061337;
+          border-color: #b8e7c8;
+          background: #f0fdf4;
+        }
+        .tp-popup-indicators span.is-on::before {
+          background: #22c55e;
         }
         .tp-popup-muted,
         .tp-popup-row {
