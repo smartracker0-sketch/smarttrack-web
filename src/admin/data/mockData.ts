@@ -46,6 +46,7 @@ export interface Device {
   orgName: string;
   status: "Online" | "Offline" | "Unassigned";
   lastPing: string;
+  objectIcon?: string;
 }
 
 export interface Alert {

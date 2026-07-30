@@ -379,6 +379,7 @@ export default function AllVehiclesPage() {
             ignition: ignitionOn,
             moving: motionActive,
             motionLabel: motionText(t ?? null),
+            objectIcon: d.objectIcon ?? d.icon ?? d.assetIcon ?? d.vehicleType,
             label: markerLabel(d),
             popupHtml: `
               <div class="tp-popup-inner">

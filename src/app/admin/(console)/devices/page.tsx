@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap, FiEdit2 } from "react-icons/fi";
 import { Device } from "@/admin/data/mockData";
+import { OBJECT_ICON_OPTIONS, objectIconLabel, objectIconSvg, normaliseObjectIcon } from "@/lib/objectIcons";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   Online:     { bg: "#22C55E1a", color: "#22C55E" },
@@ -61,6 +62,42 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
   );
 }
 
+function ObjectIconPreview({ icon, color = "#F97316" }: { icon?: string | null; color?: string }) {
+  return (
+    <span
+      className="block h-[42px] w-[42px]"
+      dangerouslySetInnerHTML={{ __html: objectIconSvg(icon, color) }}
+    />
+  );
+}
+
+function ObjectIconPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+      {OBJECT_ICON_OPTIONS.map((option) => {
+        const active = normaliseObjectIcon(value) === option.key;
+        return (
+          <button
+            key={option.key}
+            type="button"
+            onClick={() => onChange(option.key)}
+            className="flex min-h-[74px] flex-col items-center justify-center gap-1 rounded-xl border text-[10px] font-bold transition"
+            style={{
+              borderColor: active ? "#F97316" : "rgba(255,255,255,0.1)",
+              background: active ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.05)",
+              color: active ? "#fff" : "#7BBBB8",
+            }}
+            aria-pressed={active}
+          >
+            <ObjectIconPreview icon={option.key} />
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps) {
   const [mode, setMode] = useState<FormMode>("single");
   const [loading, setLoading] = useState(false);
@@ -78,6 +115,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
   const [model, setModel]             = useState("");
   const [simIccid, setSimIccid]       = useState("");
   const [mobileCarrier, setMobileCarrier] = useState("");
+  const [objectIcon, setObjectIcon]       = useState("car");
   const [smsCommandPassword, setSmsCommandPassword] = useState("");
   const [serialNo, setSerialNo]       = useState("");
   const [assignMode, setAssignMode]   = useState<"org" | "user">("org");
@@ -95,6 +133,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
   const [bulkUser, setBulkUser]       = useState("");
   const [bulkSimNumber, setBulkSimNumber] = useState("");
   const [bulkManufacturer, setBulkManufacturer] = useState("");
+  const [bulkObjectIcon, setBulkObjectIcon] = useState("car");
 
   function validateImei(v: string) {
     return /^\d{15}$/.test(v.trim());
@@ -109,7 +148,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
     try {
       const payload: Record<string, unknown> = {
         imeis: [imei.trim()], name, type, firmware, serialNo,
-        vehicle: assignVehicle, notes,
+        vehicle: assignVehicle, notes, objectIcon,
         simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, smsCommandPassword,
       };
       if (assignMode === "org" && assignOrg) payload.orgId = assignOrg;
@@ -137,6 +176,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
         orgName: org?.name ?? "Unassigned",
         status: "Unassigned",
         lastPing: "Never",
+        objectIcon,
       };
       void user;
       setSuccess(true);
@@ -158,7 +198,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
     try {
       const bulkPayload: Record<string, unknown> = {
         imeis: lines, type: bulkType, firmware: bulkFirmware,
-        simNumber: bulkSimNumber, manufacturer: bulkManufacturer,
+        simNumber: bulkSimNumber, manufacturer: bulkManufacturer, objectIcon: bulkObjectIcon,
       };
       if (bulkAssignMode === "org" && bulkOrg) bulkPayload.orgId = bulkOrg;
       if (bulkAssignMode === "user" && bulkUser) bulkPayload.userId = bulkUser;
@@ -184,6 +224,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
         orgName: org?.name ?? "Unassigned",
         status: "Unassigned" as const,
         lastPing: "Never",
+        objectIcon: bulkObjectIcon,
       }));
       setSuccess(true);
       onSuccess(newDevices);
@@ -257,6 +298,11 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       {FIRMWARE_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
                     </Select>
                   </Field>
+                  <div className="col-span-2">
+                    <Field label={`Object Icon: ${objectIconLabel(objectIcon)}`}>
+                      <ObjectIconPicker value={objectIcon} onChange={setObjectIcon} />
+                    </Field>
+                  </div>
                   <Field label="SIM ICCID">
                     <Input placeholder="e.g. 8901…" value={simIccid} onChange={e => setSimIccid(e.target.value)} />
                   </Field>
@@ -393,6 +439,11 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       <option value="MEITRACK">Meitrack</option>
                     </Select>
                   </Field>
+                  <div className="col-span-2">
+                    <Field label={`Object Icon: ${objectIconLabel(bulkObjectIcon)}`}>
+                      <ObjectIconPicker value={bulkObjectIcon} onChange={setBulkObjectIcon} />
+                    </Field>
+                  </div>
                 </div>
 
                 <div>
@@ -463,6 +514,7 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
   const [model, setModel] = useState(device.model ?? "");
   const [simIccid, setSimIccid] = useState(device.simIccid ?? "");
   const [mobileCarrier, setMobileCarrier] = useState(device.mobileCarrier ?? "");
+  const [objectIcon, setObjectIcon] = useState(normaliseObjectIcon(device.objectIcon));
   const [smsCommandPassword, setSmsCommandPassword] = useState("");
   const [notes, setNotes] = useState(device.notes ?? "");
   const [loading, setLoading] = useState(false);
@@ -480,7 +532,7 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
       const response = await fetch(`/api/admin/devices/${device.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes }),
+        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, objectIcon, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null) as { message?: string } | null;
@@ -509,6 +561,7 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
             <div className="col-span-2"><Field label="Device Name *"><Input required value={name} onChange={e => setName(e.target.value)} /></Field></div>
             <Field label="Device Type"><Select value={deviceType} onChange={e => setDeviceType(e.target.value)}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
             <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
+            <div className="col-span-2"><Field label={`Object Icon: ${objectIconLabel(objectIcon)}`}><ObjectIconPicker value={objectIcon} onChange={setObjectIcon} /></Field></div>
             <Field label="SIM ICCID"><Input value={simIccid} onChange={e => setSimIccid(e.target.value)} /></Field>
             <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
@@ -543,6 +596,7 @@ type DeviceEx = Device & {
   model?: string | null;
   simIccid?: string | null;
   mobileCarrier?: string | null;
+  objectIcon?: string | null;
   hasSmsCommandPassword?: boolean;
   activationStatus: string;
   activationAttempts: number;
@@ -571,6 +625,7 @@ function fromApiDto(d: any): DeviceEx {
     model: d.model ?? "",
     simIccid: d.simIccid ?? "",
     mobileCarrier: d.mobileCarrier ?? "",
+    objectIcon: d.objectIcon ?? "car",
     hasSmsCommandPassword: d.hasSmsCommandPassword ?? false,
     vehicle: d.vehiclePlate ?? "", 
     orgId: d.organisationId ?? null,

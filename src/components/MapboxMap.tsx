@@ -2,6 +2,7 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useCallback } from "react";
+import { objectIconSvg } from "@/lib/objectIcons";
 
 export type MarkerData = {
   id: string;
@@ -14,6 +15,7 @@ export type MarkerData = {
   ignition?: boolean;
   moving?: boolean;
   motionLabel?: string;
+  objectIcon?: string;
   label?: string;
 };
 
@@ -51,8 +53,9 @@ export default function MapboxMap({
   const onMarkerClickRef = useRef(onMarkerClick);
   onMarkerClickRef.current = onMarkerClick;
 
-  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false, motionLabel?: string) => {
+  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false, motionLabel?: string, objectIcon?: string) => {
     const badgeLabel = motionLabel ?? (moving ? "MOVING" : ignition ? "ON" : "OFF");
+    const assetSvg = objectIconSvg(objectIcon, color);
     const el = document.createElement("div");
     el.style.cssText = `
       width: 138px; height: 112px; cursor: pointer; position: relative;
@@ -77,27 +80,7 @@ export default function MapboxMap({
         <span style="width:7px;height:7px;border-radius:50%;background:${ignition ? "#22C55E" : "#94A3B8"};"></span>
         <span>${badgeLabel}</span>
       </div>
-      <div style="width:74px;height:74px;transform:rotate(${heading}deg);transform-origin:37px 59px;filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));">
-        <svg width="74" height="74" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <defs>
-            <linearGradient id="assetBody${color.replace('#','')}" x1="16" y1="11" x2="58" y2="63" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="#ff7f7a"/>
-              <stop offset="1" stop-color="${color}"/>
-            </linearGradient>
-          </defs>
-          <ellipse cx="37" cy="63" rx="18" ry="5" fill="#0f172a" opacity=".22"/>
-          <path d="M22 17C27 10 47 10 52 17C56 22 57 43 52 52C48 59 26 59 22 52C17 43 18 22 22 17Z" fill="url(#assetBody${color.replace('#','')})"/>
-          <path d="M25 20C30 15 44 15 49 20L47 31H27L25 20Z" fill="#ef6b66"/>
-          <path d="M27 31H47L45 44H29L27 31Z" fill="#f47671"/>
-          <path d="M30 19C34 17 40 17 44 19L43 29H31L30 19Z" fill="#1f2937" opacity=".9"/>
-          <path d="M29 45H45L43 53C40 55 34 55 31 53L29 45Z" fill="#1f2937" opacity=".86"/>
-          <path d="M20 26L14 30L15 40L20 43" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>
-          <path d="M54 26L60 30L59 40L54 43" stroke="#1f2937" stroke-width="5" stroke-linecap="round"/>
-          <path d="M24 18C22 26 22 43 24 51" stroke="#b94a49" stroke-width="2" opacity=".45"/>
-          <path d="M50 18C52 26 52 43 50 51" stroke="#b94a49" stroke-width="2" opacity=".45"/>
-          <path d="M29 22L34 19" stroke="#ffffff" stroke-width="2" stroke-linecap="round" opacity=".45"/>
-        </svg>
-      </div>
+      <div style="width:74px;height:74px;transform:rotate(${heading}deg);transform-origin:37px 59px;filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));">${assetSvg}</div>
       ${label ? `
         <div style="
           max-width:122px; margin-top:-1px; padding:8px 10px; border-radius:10px;
@@ -200,7 +183,7 @@ export default function MapboxMap({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
-    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel);
+    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel, m.objectIcon);
 
     const popup = new mgl.Popup({ offset: 28, maxWidth: "420px", closeButton: true, className: "tp-vehicle-popup" })
       .setHTML(m.popupHtml);
@@ -227,7 +210,7 @@ export default function MapboxMap({
         if (marker) {
           animateMarkerTo(m.id, marker, m.lng, m.lat);
           const el = marker.getElement();
-          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel).innerHTML;
+          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel, m.objectIcon).innerHTML;
           const popup = popupsRef.current.get(m.id);
           popup?.setHTML(m.popupHtml);
           existing.delete(m.id);

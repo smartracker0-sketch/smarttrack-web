@@ -36,6 +36,7 @@ export async function POST(req: Request) {
   if (body.model)        payload.model          = body.model;
   if (body.simIccid)     payload.simIccid       = body.simIccid;
   if (body.mobileCarrier) payload.mobileCarrier = body.mobileCarrier;
+  if (body.objectIcon)   payload.objectIcon     = body.objectIcon;
   if (body.smsCommandPassword) payload.smsCommandPassword = body.smsCommandPassword;
 
   return proxyAdmin(req, "/api/v1/admin/devices/bulk", {
