@@ -343,7 +343,7 @@ function AssetDetailDrawer({
         <section className="rounded-lg bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
           <div className="px-3 pt-2.5 text-base font-bold text-[#2b2f36]">{fieldText(device.vehiclePlate, device.name, device.imei)}</div>
           <div className="mx-auto grid h-[118px] place-items-center" dangerouslySetInnerHTML={{ __html: objectIconSvg(iconKey, STATUS_COLOR[key]) }} />
-          <div className="mx-3 flex items-center justify-between bg-[#f8fafc]">
+          <div className="mx-3 mt-3 flex items-center justify-between bg-[#f8fafc]">
             <StatusBadge telem={telem} />
             <span className="px-2.5 text-xs font-bold text-[#2b2f36]">{timeAgo(telem?.receivedAt ?? telem?.eventTime)}</span>
           </div>
