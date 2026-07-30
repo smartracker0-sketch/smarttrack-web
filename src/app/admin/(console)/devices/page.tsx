@@ -65,7 +65,7 @@ function Select({ children, ...props }: React.SelectHTMLAttributes<HTMLSelectEle
 function ObjectIconPreview({ icon, color = "#F97316" }: { icon?: string | null; color?: string }) {
   return (
     <span
-      className="block h-[42px] w-[42px]"
+      className="block h-[48px] w-[72px]"
       dangerouslySetInnerHTML={{ __html: objectIconSvg(icon, color) }}
     />
   );
@@ -81,7 +81,7 @@ function ObjectIconPicker({ value, onChange }: { value: string; onChange: (value
             key={option.key}
             type="button"
             onClick={() => onChange(option.key)}
-            className="flex min-h-[74px] flex-col items-center justify-center gap-1 rounded-xl border text-[10px] font-bold transition"
+            className="flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-xl border text-[10px] font-bold transition"
             style={{
               borderColor: active ? "#F97316" : "rgba(255,255,255,0.1)",
               background: active ? "rgba(249,115,22,0.14)" : "rgba(255,255,255,0.05)",
