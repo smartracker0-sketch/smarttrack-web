@@ -9,6 +9,7 @@ import {
   FiFilter,
   FiList,
   FiMap,
+  FiMapPin,
   FiMoreHorizontal,
   FiPlus,
   FiSearch,
@@ -30,6 +31,9 @@ type Geofence = {
   centerLng?: number | null;
   radiusM?: number | null;
   address?: string | null;
+  location?: string | null;
+  category?: string | null;
+  tagsJson?: string | null;
   createdAt?: string | null;
   updatedAt?: string | null;
   vehicleCount?: number | null;
@@ -53,6 +57,7 @@ function formatRadius(radius?: number | null) {
 
 function geofenceAddress(zone: Geofence) {
   if (zone.address) return zone.address;
+  if (zone.location) return zone.location;
   if (zone.centerLat && zone.centerLng) return `${zone.centerLat.toFixed(4)}, ${zone.centerLng.toFixed(4)}`;
   return zone.geofenceType === "POLYGON" ? "Custom polygon boundary" : "Circle boundary";
 }
@@ -69,6 +74,9 @@ export default function GeofencesPage() {
     centerLng: "",
     radiusM: "",
     geometryJson: "",
+    locationQuery: "",
+    category: "",
+    tags: "",
   });
   const [saving, setSaving] = useState(false);
   const [query, setQuery] = useState("");
@@ -135,13 +143,19 @@ export default function GeofencesPage() {
       severity: form.severity,
       centerLat: form.centerLat ? parseFloat(form.centerLat) : null,
       centerLng: form.centerLng ? parseFloat(form.centerLng) : null,
-      radiusM: form.radiusM ? parseFloat(form.radiusM) : null,
+      radiusM: form.radiusM ? parseFloat(form.radiusM) : 500,
+      location: form.locationQuery || null,
+      category: form.category || null,
+      tagsJson: form.tags ? JSON.stringify([form.tags]) : null,
       geometryJson:
         form.geometryJson ||
         JSON.stringify({
-          type: "Circle",
+          type: form.geofenceType === "POLYGON" ? "Polygon" : "Circle",
           coordinates: [parseFloat(form.centerLng || "0"), parseFloat(form.centerLat || "0")],
           radius: parseFloat(form.radiusM || "500"),
+          location: form.locationQuery || undefined,
+          category: form.category || undefined,
+          tags: form.tags ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
         }),
     };
     await fetch("/api/geofences", {
@@ -151,7 +165,7 @@ export default function GeofencesPage() {
     });
     setSaving(false);
     setShowForm(false);
-    setForm({ name: "", geofenceType: "CIRCLE", severity: "LOW", centerLat: "", centerLng: "", radiusM: "", geometryJson: "" });
+    setForm({ name: "", geofenceType: "CIRCLE", severity: "LOW", centerLat: "", centerLng: "", radiusM: "", geometryJson: "", locationQuery: "", category: "", tags: "" });
     load();
   }
 
@@ -359,66 +373,166 @@ export default function GeofencesPage() {
           />
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="absolute right-5 top-20 z-30 w-[min(420px,calc(100%-2.5rem))] rounded-lg border border-[#e5e7eb] bg-white p-4 shadow-2xl">
-              <div className="mb-4 flex items-center justify-between">
+            <form onSubmit={handleSubmit} className="absolute right-5 top-5 z-30 max-h-[calc(100%-2.5rem)] w-[min(520px,calc(100%-2.5rem))] overflow-y-auto rounded-lg border border-[#e5e7eb] bg-white shadow-2xl">
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e5e7eb] bg-white px-5 py-4">
                 <div>
-                  <div className="text-sm font-bold text-[#111827]">Add Geofence</div>
-                  <div className="mt-1 text-xs text-[#6b7280]">Create a circle or polygon boundary.</div>
+                  <div className="text-lg font-extrabold text-[#111827]">Add Geofence</div>
                 </div>
                 <button type="button" onClick={() => setShowForm(false)} className="grid h-8 w-8 place-items-center rounded-md text-[#6b7280] hover:bg-[#f3f4f6]">
                   <FiX className="h-4 w-4" />
                 </button>
               </div>
-              <div className="grid gap-3">
-                <input
-                  required
-                  placeholder="Zone name"
-                  value={form.name}
-                  onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                  className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none focus:border-[#166534]"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <select
-                    value={form.geofenceType}
-                    onChange={(e) => setForm((f) => ({ ...f, geofenceType: e.target.value }))}
-                    className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none"
+
+              <div className="space-y-5 px-5 py-5">
+                <section>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Basic Information</h2>
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Name*</span>
+                    <input
+                      required
+                      placeholder="Enter Geofence Name"
+                      value={form.name}
+                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
+                    />
+                  </label>
+                </section>
+
+                <section>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Geofence Details</h2>
+
+                  <label className="block">
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Find Location</span>
+                    <div className="flex h-11 items-center gap-2 rounded-lg border border-[#d1d5db] px-3">
+                      <FiSearch className="h-4 w-4 text-[#9ca3af]" />
+                      <input
+                        placeholder="Search By Location"
+                        value={form.locationQuery}
+                        onChange={(e) => setForm((f) => ({ ...f, locationQuery: e.target.value }))}
+                        className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9ca3af]"
+                      />
+                    </div>
+                  </label>
+
+                  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Latitude</span>
+                      <input
+                        inputMode="decimal"
+                        placeholder="Enter Latitude"
+                        value={form.centerLat}
+                        onChange={(e) => setForm((f) => ({ ...f, centerLat: e.target.value }))}
+                        className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Longitude</span>
+                      <input
+                        inputMode="decimal"
+                        placeholder="Enter Longitude"
+                        value={form.centerLng}
+                        onChange={(e) => setForm((f) => ({ ...f, centerLng: e.target.value }))}
+                        className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-3 flex items-center gap-2 rounded-lg bg-[#f9fafb] px-3 py-2 text-sm text-[#4b5563]">
+                    <FiMapPin className="h-4 w-4 text-[#166534]" />
+                    <span className="font-bold text-[#111827]">Location :</span>
+                    <span className="min-w-0 truncate">
+                      {form.locationQuery || (form.centerLat && form.centerLng ? `${form.centerLat}, ${form.centerLng}` : "-")}
+                    </span>
+                  </div>
+                </section>
+
+                <section>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Shape</h2>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, geofenceType: "CIRCLE" }))}
+                      className={`flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-bold transition ${
+                        form.geofenceType === "CIRCLE"
+                          ? "border-[#166534] bg-[#dcfce7] text-[#166534]"
+                          : "border-[#d1d5db] bg-white text-[#374151] hover:border-[#166534]"
+                      }`}
+                    >
+                      <FiSquare className="h-4 w-4" />
+                      Square
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, geofenceType: "POLYGON" }))}
+                      className={`flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-bold transition ${
+                        form.geofenceType === "POLYGON"
+                          ? "border-[#166534] bg-[#dcfce7] text-[#166534]"
+                          : "border-[#d1d5db] bg-white text-[#374151] hover:border-[#166534]"
+                      }`}
+                    >
+                      <FiMap className="h-4 w-4" />
+                      Draw / Custom
+                    </button>
+                  </div>
+
+                  <label className="mt-3 block">
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Radius (In Meters)</span>
+                    <input
+                      inputMode="numeric"
+                      placeholder="Enter Radius"
+                      value={form.radiusM}
+                      onChange={(e) => setForm((f) => ({ ...f, radiusM: e.target.value }))}
+                      className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
+                    />
+                    <span className="mt-1.5 block text-xs font-medium text-[#6b7280]">Default Radius : 500 meters</span>
+                  </label>
+                </section>
+
+                <section>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Geofence Category</span>
+                      <select
+                        value={form.category}
+                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                        className="h-11 w-full rounded-lg border border-[#d1d5db] bg-white px-3 text-sm text-[#374151] outline-none focus:border-[#166534]"
+                      >
+                        <option value="">Geofence Category</option>
+                        <option value="Depot">Depot</option>
+                        <option value="Customer Site">Customer Site</option>
+                        <option value="Restricted Zone">Restricted Zone</option>
+                        <option value="Service Area">Service Area</option>
+                      </select>
+                    </label>
+                    <label className="block">
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Tags</span>
+                      <select
+                        value={form.tags}
+                        onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+                        className="h-11 w-full rounded-lg border border-[#d1d5db] bg-white px-3 text-sm text-[#374151] outline-none focus:border-[#166534]"
+                      >
+                        <option value="">Select Tags</option>
+                        <option value="High Priority">High Priority</option>
+                        <option value="Fuel Monitoring">Fuel Monitoring</option>
+                        <option value="Security">Security</option>
+                        <option value="Operations">Operations</option>
+                      </select>
+                    </label>
+                  </div>
+                </section>
+
+                <div className="flex items-center justify-end gap-2 border-t border-[#e5e7eb] pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowForm(false)}
+                    className="h-10 rounded-lg border border-[#d1d5db] bg-white px-4 text-sm font-bold text-[#374151] hover:bg-[#f9fafb]"
                   >
-                    <option>CIRCLE</option>
-                    <option>POLYGON</option>
-                  </select>
-                  <select
-                    value={form.severity}
-                    onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}
-                    className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none"
-                  >
-                    <option>LOW</option>
-                    <option>MEDIUM</option>
-                    <option>HIGH</option>
-                  </select>
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={saving} className="h-10 rounded-lg px-5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60" style={{ background: "#166534" }}>
+                    {saving ? "Saving..." : "Save Geofence"}
+                  </button>
                 </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    placeholder="Center lat"
-                    value={form.centerLat}
-                    onChange={(e) => setForm((f) => ({ ...f, centerLat: e.target.value }))}
-                    className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none focus:border-[#166534]"
-                  />
-                  <input
-                    placeholder="Center lng"
-                    value={form.centerLng}
-                    onChange={(e) => setForm((f) => ({ ...f, centerLng: e.target.value }))}
-                    className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none focus:border-[#166534]"
-                  />
-                </div>
-                <input
-                  placeholder="Radius (metres)"
-                  value={form.radiusM}
-                  onChange={(e) => setForm((f) => ({ ...f, radiusM: e.target.value }))}
-                  className="h-10 rounded-lg border border-[#e5e7eb] px-3 text-sm outline-none focus:border-[#166534]"
-                />
-                <button type="submit" disabled={saving} className="h-10 rounded-lg text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60" style={{ background: "#166534" }}>
-                  {saving ? "Saving..." : "Save Geofence"}
-                </button>
               </div>
             </form>
           )}
