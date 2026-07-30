@@ -44,6 +44,7 @@ function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offl
   const spd = Number(telem.speedKph ?? 0);
   if (spd > 5) return "moving";
   if (isIgnitionOn(telem)) return "idle";
+  if (isRecentlyReporting(telem)) return "idle";
   return "stopped";
 }
 
@@ -53,7 +54,20 @@ function isMoving(telem: DeviceRow | null) {
 
 function isIgnitionOn(telem: DeviceRow | null) {
   if (!telem) return false;
-  return Boolean(telem.ignition) || isMoving(telem);
+  return Boolean(telem.ignition) || isMoving(telem) || isRecentlyReporting(telem);
+}
+
+function latestTime(telem: DeviceRow | null) {
+  const value = telem?.receivedAt ?? telem?.eventTime ?? telem?.timestamp ?? telem?.updatedAt ?? telem?.lastSeenAt;
+  if (!value) return null;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? null : time;
+}
+
+function isRecentlyReporting(telem: DeviceRow | null) {
+  const time = latestTime(telem);
+  if (!time) return false;
+  return Date.now() - time < 15 * 60 * 1000;
 }
 
 function shortName(d: DeviceRow) {
@@ -82,21 +96,44 @@ function timeAgo(value?: string | null) {
 function statusText(telem: DeviceRow | null) {
   const key = statKey(telem);
   if (key === "moving") return `Moving: ${Math.round(Number(telem?.speedKph ?? 0))} km/h`;
-  if (key === "idle") return `Idle: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
+  if (key === "idle") return isRecentlyReporting(telem) ? `Online: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}` : `Idle: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
   if (key === "stopped") return `Stopped: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
   return "Offline";
 }
 
-function todayDistance(telem: DeviceRow | null) {
-  const odometerM = Number(telem?.odometerM);
-  if (!Number.isFinite(odometerM) || odometerM <= 0) return "-- km";
-  return `${(odometerM / 1000).toFixed(1)} km`;
+function numberFrom(...values: unknown[]) {
+  for (const value of values) {
+    if (value == null || value === "") continue;
+    const number = Number(String(value).replace(/[^0-9.-]/g, ""));
+    if (Number.isFinite(number) && number >= 0) return number;
+  }
+  return null;
 }
 
-function batteryVoltage(telem: DeviceRow | null) {
-  const voltage = Number(telem?.voltageMv);
-  if (!Number.isFinite(voltage) || voltage <= 0) return "--";
-  return `${(voltage / 1000).toFixed(2)} V`;
+function todayDistance(telem: DeviceRow | null, device?: DeviceRow | null) {
+  const odometerM = numberFrom(telem?.odometerM, telem?.odometerMeters, telem?.odometer_m);
+  if (odometerM && odometerM > 0) return `${(odometerM / 1000).toFixed(1)} km`;
+
+  const km = numberFrom(telem?.distanceKm, telem?.todayKm, telem?.tripKm, telem?.mileageKm, device?.odometerKm, device?.mileageKm, device?.odometer, device?.mileage);
+  if (km && km > 0) return `${km.toFixed(1)} km`;
+
+  const meters = numberFrom(telem?.distanceM, telem?.todayDistanceM, telem?.tripDistanceM);
+  if (meters && meters > 0) return `${(meters / 1000).toFixed(1)} km`;
+
+  return "0.0 km";
+}
+
+function batteryVoltage(telem: DeviceRow | null, device?: DeviceRow | null) {
+  const voltageMv = numberFrom(telem?.voltageMv, telem?.batteryVoltageMv, telem?.vehicleVoltageMv, telem?.externalVoltageMv, device?.voltageMv, device?.batteryVoltageMv);
+  if (voltageMv && voltageMv > 0) return `${(voltageMv / 1000).toFixed(2)} V`;
+
+  const voltage = numberFrom(telem?.voltage, telem?.batteryVoltage, telem?.vehicleVoltage, telem?.externalVoltage, device?.voltage, device?.batteryVoltage);
+  if (voltage && voltage > 0) return `${voltage > 100 ? (voltage / 1000).toFixed(2) : voltage.toFixed(2)} V`;
+
+  const batteryPercent = numberFrom(telem?.batteryPercent, telem?.batteryPct, telem?.battery, device?.batteryPercent, device?.batteryPct);
+  if (batteryPercent != null) return `${Math.round(batteryPercent)}%`;
+
+  return "Not reported";
 }
 
 function ignitionText(telem: DeviceRow | null) {
@@ -299,7 +336,7 @@ export default function AllVehiclesPage() {
                 <div class="tp-popup-title">${escapeHtml(title)} <span>-></span></div>
                 <div class="tp-popup-status">
                   <strong>${escapeHtml(statusText(t ?? null))}</strong>
-                  <span>| Today: ${escapeHtml(todayDistance(t ?? null))}</span>
+                  <span>| Today: ${escapeHtml(todayDistance(t ?? null, d))}</span>
                 </div>
                 <div class="tp-popup-indicators">
                   <span class="${ignitionOn ? "is-on" : ""}">Ignition: ${escapeHtml(ignitionText(t ?? null))}</span>
@@ -392,7 +429,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold">
                       <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
-                      <span className="text-[#536987]">| Today: <strong>{todayDistance(t)}</strong></span>
+                      <span className="text-[#536987]">| Today: <strong>{todayDistance(t, d)}</strong></span>
                     </div>
 
                     <div className="mt-2 flex flex-wrap gap-1.5">
@@ -409,7 +446,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-2.5 flex flex-wrap items-stretch gap-1.5">
                       <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
-                      <MetricBox value={batteryVoltage(t)} label="Vehicle Battery Voltage" />
+                      <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery" />
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(e, d.id, shortName(d))}
