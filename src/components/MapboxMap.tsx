@@ -108,7 +108,7 @@ export default function MapboxMap({
     return el;
   }, []);
 
-  const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number, moving: boolean) => {
+  const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number) => {
     const current = marker.getLngLat();
     const startLng = current.lng;
     const startLat = current.lat;
@@ -117,7 +117,7 @@ export default function MapboxMap({
 
     window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
 
-    if (!moving || (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001)) {
+    if (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001) {
       marker.setLngLat([lng, lat]);
       return;
     }
@@ -223,7 +223,7 @@ export default function MapboxMap({
       markers.forEach((m) => {
         const marker = markersRef.current.get(m.id);
         if (marker) {
-          animateMarkerTo(m.id, marker, m.lng, m.lat, Boolean(m.moving));
+          animateMarkerTo(m.id, marker, m.lng, m.lat);
           const el = marker.getElement();
           el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving).innerHTML;
           const popup = popupsRef.current.get(m.id);

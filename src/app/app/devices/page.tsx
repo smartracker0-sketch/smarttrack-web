@@ -159,8 +159,13 @@ function coords(telem: DeviceRow | null) {
   return `(${Number(telem.latitude).toFixed(6)}, ${Number(telem.longitude).toFixed(6)})`;
 }
 
-function locationLine(d: DeviceRow, telem: DeviceRow | null) {
-  return d.address ?? d.lastAddress ?? d.vehiclePlate ?? coords(telem);
+function addressKey(telem: DeviceRow | null) {
+  if (telem?.latitude == null || telem?.longitude == null) return null;
+  return `${Number(telem.latitude).toFixed(5)},${Number(telem.longitude).toFixed(5)}`;
+}
+
+function locationLine(d: DeviceRow, telem: DeviceRow | null, resolvedAddress?: string) {
+  return resolvedAddress ?? telem?.address ?? telem?.lastAddress ?? d.currentAddress ?? d.lastAddress ?? coords(telem);
 }
 
 function escapeHtml(value: unknown) {
@@ -213,6 +218,7 @@ function MetricBox({ value, label }: { value: string; label: string }) {
 export default function AllVehiclesPage() {
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [telemetry, setTelemetry] = useState<Record<string, DeviceRow>>({});
+  const [addresses, setAddresses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -276,6 +282,42 @@ export default function AllVehiclesPage() {
     return () => clearInterval(interval);
   }, [devices]);
 
+  useEffect(() => {
+    const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
+    if (!token) return;
+
+    const pending = devices
+      .map((d) => {
+        const t = telemetry[d.id] ?? null;
+        const key = addressKey(t);
+        return key && !addresses[key] ? { key, lat: Number(t?.latitude), lng: Number(t?.longitude) } : null;
+      })
+      .filter((item): item is { key: string; lat: number; lng: number } => Boolean(item));
+
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    pending.slice(0, 6).forEach(async ({ key, lat, lng }) => {
+      try {
+        const res = await fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&types=address,poi,place,locality,neighborhood&limit=1`,
+          { cache: "force-cache" }
+        );
+        const data = await res.json();
+        const place = data?.features?.[0]?.place_name;
+        if (!cancelled && place) {
+          setAddresses((prev) => (prev[key] ? prev : { ...prev, [key]: place }));
+        }
+      } catch {
+        // Keep coordinate fallback when reverse geocoding is unavailable.
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [addresses, devices, telemetry]);
+
   const handleRefresh = async (e: React.MouseEvent, deviceId: string, name: string) => {
     e.stopPropagation();
     setRefreshing(deviceId);
@@ -319,7 +361,7 @@ export default function AllVehiclesPage() {
           const moving = isMoving(t ?? null);
           const ignitionOn = isIgnitionOn(t ?? null);
           const title = shortName(d);
-          const location = locationLine(d, t ?? null);
+          const location = locationLine(d, t ?? null, addresses[addressKey(t ?? null) ?? ""]);
           const coordinateText = coords(t ?? null);
           return {
             id: d.id,
@@ -355,7 +397,7 @@ export default function AllVehiclesPage() {
             `,
           };
         }),
-    [devices, telemetry]
+    [addresses, devices, telemetry]
   );
 
   return (
@@ -394,6 +436,7 @@ export default function AllVehiclesPage() {
                 const key = statKey(t);
                 const moving = isMoving(t);
                 const ignitionOn = isIgnitionOn(t);
+                const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
                 const isRef = refreshing === d.id;
                 return (
@@ -441,7 +484,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-2.5 flex items-start gap-1.5">
                       <FiMapPin size={18} className="mt-0.5 flex-shrink-0 text-[#061337]" />
-                      <div className="min-w-0 truncate text-[13px] font-medium text-[#061337]">{locationLine(d, t)}</div>
+                      <div className="min-w-0 text-[13px] font-medium leading-snug text-[#061337]" title={location}>{location}</div>
                     </div>
 
                     <div className="mt-2.5 flex flex-wrap items-stretch gap-1.5">
