@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap, FiEdit2 } from "react-icons/fi";
 import { Device } from "@/admin/data/mockData";
-import { OBJECT_ICON_OPTIONS, objectIconLabel, objectIconSvg, normaliseObjectIcon } from "@/lib/objectIcons";
+import { OBJECT_ICON_OPTIONS, objectIconLabel, objectIconSvg, normaliseObjectIcon, type ObjectIconKey } from "@/lib/objectIcons";
 
 const STATUS_COLORS: Record<string, { bg: string; color: string }> = {
   Online:     { bg: "#22C55E1a", color: "#22C55E" },
@@ -71,7 +71,7 @@ function ObjectIconPreview({ icon, color = "#F97316" }: { icon?: string | null; 
   );
 }
 
-function ObjectIconPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+function ObjectIconPicker({ value, onChange }: { value: string; onChange: (value: ObjectIconKey) => void }) {
   return (
     <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {OBJECT_ICON_OPTIONS.map((option) => {
