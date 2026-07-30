@@ -13,6 +13,7 @@ export type MarkerData = {
   heading?: number;
   ignition?: boolean;
   moving?: boolean;
+  motionLabel?: string;
   label?: string;
 };
 
@@ -50,7 +51,8 @@ export default function MapboxMap({
   const onMarkerClickRef = useRef(onMarkerClick);
   onMarkerClickRef.current = onMarkerClick;
 
-  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false) => {
+  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false, motionLabel?: string) => {
+    const badgeLabel = motionLabel ?? (moving ? "MOVING" : ignition ? "ON" : "OFF");
     const el = document.createElement("div");
     el.style.cssText = `
       width: 138px; height: 112px; cursor: pointer; position: relative;
@@ -73,7 +75,7 @@ export default function MapboxMap({
         font:800 9px/1 Inter, system-ui, sans-serif;
       ">
         <span style="width:7px;height:7px;border-radius:50%;background:${ignition ? "#22C55E" : "#94A3B8"};"></span>
-        <span>${moving ? "MOVING" : ignition ? "ON" : "OFF"}</span>
+        <span>${badgeLabel}</span>
       </div>
       <div style="width:74px;height:74px;transform:rotate(${heading}deg);transform-origin:37px 59px;filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));">
         <svg width="74" height="74" viewBox="0 0 74 74" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -198,7 +200,7 @@ export default function MapboxMap({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
-    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving);
+    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel);
 
     const popup = new mgl.Popup({ offset: 28, maxWidth: "420px", closeButton: true, className: "tp-vehicle-popup" })
       .setHTML(m.popupHtml);
@@ -225,7 +227,7 @@ export default function MapboxMap({
         if (marker) {
           animateMarkerTo(m.id, marker, m.lng, m.lat);
           const el = marker.getElement();
-          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving).innerHTML;
+          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel).innerHTML;
           const popup = popupsRef.current.get(m.id);
           popup?.setHTML(m.popupHtml);
           existing.delete(m.id);

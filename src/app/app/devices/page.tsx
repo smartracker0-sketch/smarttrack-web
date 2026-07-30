@@ -52,6 +52,10 @@ function isMoving(telem: DeviceRow | null) {
   return Number(telem?.speedKph ?? 0) > 5;
 }
 
+function isMotionActive(telem: DeviceRow | null) {
+  return isMoving(telem) || isRecentlyReporting(telem);
+}
+
 function isIgnitionOn(telem: DeviceRow | null) {
   if (!telem) return false;
   return Boolean(telem.ignition) || isMoving(telem) || isRecentlyReporting(telem);
@@ -141,7 +145,9 @@ function ignitionText(telem: DeviceRow | null) {
 }
 
 function motionText(telem: DeviceRow | null) {
-  return isMoving(telem) ? "MOVING" : "STOPPED";
+  if (isMoving(telem)) return "MOVING";
+  if (isRecentlyReporting(telem)) return "UPDATING";
+  return "STOPPED";
 }
 
 function IndicatorPill({ active, label, value }: { active: boolean; label: string; value: string }) {
@@ -358,7 +364,7 @@ export default function AllVehiclesPage() {
         .map((d) => {
           const t = telemetry[d.id];
           const key = statKey(t ?? null);
-          const moving = isMoving(t ?? null);
+          const motionActive = isMotionActive(t ?? null);
           const ignitionOn = isIgnitionOn(t ?? null);
           const title = shortName(d);
           const location = locationLine(d, t ?? null, addresses[addressKey(t ?? null) ?? ""]);
@@ -368,10 +374,11 @@ export default function AllVehiclesPage() {
             lat: t.latitude,
             lng: t.longitude,
             color: STATUS_COLOR[key],
-            pulsing: moving,
+            pulsing: motionActive,
             heading: Number(t.headingDeg ?? 35),
             ignition: ignitionOn,
-            moving,
+            moving: motionActive,
+            motionLabel: motionText(t ?? null),
             label: markerLabel(d),
             popupHtml: `
               <div class="tp-popup-inner">
@@ -382,7 +389,7 @@ export default function AllVehiclesPage() {
                 </div>
                 <div class="tp-popup-indicators">
                   <span class="${ignitionOn ? "is-on" : ""}">Ignition: ${escapeHtml(ignitionText(t ?? null))}</span>
-                  <span class="${moving ? "is-on" : ""}">Motion: ${escapeHtml(motionText(t ?? null))}</span>
+                  <span class="${motionActive ? "is-on" : ""}">Motion: ${escapeHtml(motionText(t ?? null))}</span>
                 </div>
                 <div class="tp-popup-muted">Last data received ${escapeHtml(timeAgo(t.receivedAt ?? t.eventTime))}</div>
                 <div class="tp-popup-location">${escapeHtml(location)}</div>
@@ -434,7 +441,7 @@ export default function AllVehiclesPage() {
               devices.map((d) => {
                 const t = telemetry[d.id] ?? null;
                 const key = statKey(t);
-                const moving = isMoving(t);
+                const motionActive = isMotionActive(t);
                 const ignitionOn = isIgnitionOn(t);
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
@@ -477,7 +484,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       <IndicatorPill active={ignitionOn} label="Ignition" value={ignitionText(t)} />
-                      <IndicatorPill active={moving} label="Motion" value={motionText(t)} />
+                      <IndicatorPill active={motionActive} label="Motion" value={motionText(t)} />
                     </div>
 
                     <div className="mt-1 text-xs font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
