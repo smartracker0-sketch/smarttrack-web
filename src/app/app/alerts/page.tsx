@@ -171,22 +171,6 @@ function deviceOptionLabel(device: DeviceRow) {
   return String(device.vehiclePlate ?? device.name ?? device.imei ?? device.id ?? "Vehicle");
 }
 
-function settingVehicleRows(setting: SavedSettingRow | undefined, devices: DeviceRow[]) {
-  if (!setting) return [];
-  const vehicleIds = Array.isArray(setting.vehicleIds) ? setting.vehicleIds.map(String) : [];
-  if (vehicleIds.length === 0) {
-    return [{ id: "all", label: "All Vehicles", driver: "All Drivers" }];
-  }
-  return vehicleIds.map((id) => {
-    const device = devices.find((item) => String(item.id ?? item.imei ?? "") === id);
-    return {
-      id,
-      label: device ? deviceOptionLabel(device) : id,
-      driver: String(device?.driverName ?? device?.ownerName ?? "Admin"),
-    };
-  });
-}
-
 function Toggle({
   checked,
   onChange,
@@ -297,12 +281,6 @@ export default function AlertsPage() {
     });
     return next;
   }, [savedSettings]);
-  const selectedSetting = savedSettingsByKey.get(selectedCategory.key);
-  const selectedSettingRows = useMemo(
-    () => settingVehicleRows(selectedSetting, devices),
-    [selectedSetting, devices]
-  );
-  const detailRowCount = selectedAlerts.length + selectedSettingRows.length;
   const uniqueDevices = useMemo(() => {
     const seen = new Set<string>();
     return devices.filter((device) => {
@@ -562,53 +540,35 @@ export default function AlertsPage() {
           <div className="h-[calc(100%-48px)] overflow-auto">
             {loading ? (
               <div className="py-16 text-center text-sm font-semibold text-[#7890aa]">Loading alerts...</div>
-            ) : detailRowCount === 0 ? (
-              <div className="py-16 text-center text-sm font-semibold text-[#7890aa]">No records or configured alert settings for this alert type.</div>
+            ) : selectedAlerts.length === 0 ? (
+              <div className="py-16 text-center text-sm font-semibold text-[#7890aa]">No records for this alert type in the selected period.</div>
             ) : (
-              <>
-                {selectedSettingRows.map((row) => (
-                  <div key={`setting-${selectedCategory.key}-${row.id}`} className="grid min-h-[78px] grid-cols-[1.1fr_1fr_1fr_1fr] items-center border-b border-[#eef2f6] px-5 text-sm font-semibold text-[#536987]">
-                    <div className="truncate">{row.label}</div>
-                    <div className="truncate">{row.driver}</div>
-                    <div className="text-[#087a8c]">Alert Set</div>
+              selectedAlerts.map((alert) => {
+                const severity = norm(alert.severity || "INFO");
+                return (
+                  <div key={alert.id ?? `${alert.alertType}-${alertTime(alert)}`} className="grid min-h-[78px] grid-cols-[1.1fr_1fr_1fr_1fr] items-center border-b border-[#eef2f6] px-5 text-sm font-semibold text-[#536987]">
+                    <div className="truncate">{vehicleName(alert, deviceMaps)}</div>
+                    <div className="truncate">{driverName(alert, deviceMaps)}</div>
+                    <div>{dateText(alertTime(alert))}</div>
                     <div className="min-w-0">
-                      <button
-                        type="button"
-                        onClick={() => void openSettings(selectedCategory)}
-                        className="rounded-full bg-[#eefcff] px-3 py-1 text-xs font-extrabold text-[#087a8c]"
-                      >
-                        Set alert
-                      </button>
+                      {selectedCategory.key === "ignition" ? (
+                        alert.ackAt ? dateText(alert.ackAt) : "-"
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="h-2 w-2 rounded-full" style={{ background: SEVERITY_STYLE[severity] ?? "#1A7A75" }} />
+                          <span className="truncate">{alert.message ?? alert.relatedGeofenceName ?? alert.alertType ?? "-"}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                ))}
-                {selectedAlerts.map((alert) => {
-                  const severity = norm(alert.severity || "INFO");
-                  return (
-                    <div key={alert.id ?? `${alert.alertType}-${alertTime(alert)}`} className="grid min-h-[78px] grid-cols-[1.1fr_1fr_1fr_1fr] items-center border-b border-[#eef2f6] px-5 text-sm font-semibold text-[#536987]">
-                      <div className="truncate">{vehicleName(alert, deviceMaps)}</div>
-                      <div className="truncate">{driverName(alert, deviceMaps)}</div>
-                      <div>{dateText(alertTime(alert))}</div>
-                      <div className="min-w-0">
-                        {selectedCategory.key === "ignition" ? (
-                          alert.ackAt ? dateText(alert.ackAt) : "-"
-                        ) : (
-                          <div className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full" style={{ background: SEVERITY_STYLE[severity] ?? "#1A7A75" }} />
-                            <span className="truncate">{alert.message ?? alert.relatedGeofenceName ?? alert.alertType ?? "-"}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </>
+                );
+              })
             )}
           </div>
         </div>
 
         <div className="mt-4 flex items-center justify-end gap-4 text-sm font-semibold text-[#536987]">
-          <span>Showing {detailRowCount === 0 ? 0 : 1} - {detailRowCount} of {detailRowCount}</span>
+          <span>Showing {selectedAlerts.length === 0 ? 0 : 1} - {selectedAlerts.length} of {selectedAlerts.length}</span>
           <button type="button" className="grid h-8 w-8 place-items-center text-[#b5c7d6]" aria-label="Previous page">
             <FiChevronLeft />
           </button>
