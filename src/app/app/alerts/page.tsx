@@ -249,7 +249,8 @@ export default function AlertsPage() {
   const periodAlerts = useMemo(() => alerts.filter((alert) => inPeriod(alert, period)), [alerts, period]);
   const knownAlerts = useMemo(() => periodAlerts.filter((alert) => categoryForAlert(alert)), [periodAlerts]);
   const criticalCount = useMemo(() => knownAlerts.filter((alert) => norm(alert.severity) === "CRITICAL").length, [knownAlerts]);
-  const nonCriticalCount = Math.max(knownAlerts.length - criticalCount, 0);
+  const configuredAlertCount = savedSettings.length;
+  const nonCriticalCount = Math.max(knownAlerts.length - criticalCount, 0) + configuredAlertCount;
 
   const alertsByCategory = useMemo(() => {
     const grouped = new Map<string, AlertRow[]>();
@@ -373,6 +374,10 @@ export default function AlertsPage() {
           ...prev.filter((setting) => String(setting.alertKey) !== String(saved.alertKey)),
           saved,
         ]);
+        setSelectedKey(String(saved.alertKey));
+        setSeverityFilter("All");
+        setSearch("");
+        void load();
       }
       setSettingCategory(null);
     } catch (error) {
@@ -400,7 +405,7 @@ export default function AlertsPage() {
         <div className="border-b border-[#edf2f6] px-4 py-3">
           <div className="flex flex-wrap gap-2">
             {[
-              { key: "All", label: "All", count: knownAlerts.length },
+              { key: "All", label: "All", count: knownAlerts.length + configuredAlertCount },
               { key: "Critical", label: "Critical", count: criticalCount },
               { key: "Non Critical", label: "Non Critical", count: nonCriticalCount },
             ].map((item) => (

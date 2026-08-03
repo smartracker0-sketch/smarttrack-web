@@ -158,15 +158,23 @@ export default function GeofencesPage() {
           tags: form.tags ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
         }),
     };
-    await fetch("/api/geofences", {
+    const res = await fetch("/api/geofences", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(payload),
     });
+    const saved = res.ok ? await res.json().catch(() => null) : null;
+    if (saved?.id) {
+      setZones((prev) => [saved, ...prev.filter((zone) => zone.id !== saved.id)]);
+      setSelectedId(saved.id);
+      setQuery("");
+      setCategory("all");
+      setStatus(saved.active === false ? "inactive" : "active");
+    }
     setSaving(false);
     setShowForm(false);
     setForm({ name: "", geofenceType: "CIRCLE", severity: "LOW", centerLat: "", centerLng: "", radiusM: "", geometryJson: "", locationQuery: "", category: "", tags: "" });
-    load();
+    await load();
   }
 
   async function toggleActive(id: string, active: boolean) {
