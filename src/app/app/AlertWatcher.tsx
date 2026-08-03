@@ -92,9 +92,11 @@ function playAlertSound() {
 export default function AlertWatcher() {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [settings, setSettings] = useState<Map<string, SettingRow>>(new Map());
+  const [authenticated, setAuthenticated] = useState(true);
   const seenRef = useRef<Set<string>>(new Set());
   const readyRef = useRef(false);
   const audioUnlockedRef = useRef(false);
+  const authBlockedRef = useRef(false);
 
   useEffect(() => {
     function unlockAudio() {
@@ -114,7 +116,13 @@ export default function AlertWatcher() {
     let cancelled = false;
 
     async function loadSettings() {
+      if (authBlockedRef.current) return;
       const res = await fetch("/api/telemetry/alert-settings", { cache: "no-store" }).catch(() => null);
+      if (res?.status === 401) {
+        authBlockedRef.current = true;
+        setAuthenticated(false);
+        return;
+      }
       if (!res?.ok || cancelled) return;
       const data = await res.json().catch(() => []);
       const next = new Map<string, SettingRow>();
@@ -138,7 +146,13 @@ export default function AlertWatcher() {
     let cancelled = false;
 
     async function loadAlerts() {
+      if (authBlockedRef.current) return;
       const res = await fetch("/api/telemetry?type=alerts&unacknowledgedOnly=false", { cache: "no-store" }).catch(() => null);
+      if (res?.status === 401) {
+        authBlockedRef.current = true;
+        setAuthenticated(false);
+        return;
+      }
       if (!res?.ok || cancelled) return;
       const data = await res.json().catch(() => []);
       const list: AlertRow[] = Array.isArray(data) ? data : data?.content ?? [];
@@ -189,7 +203,7 @@ export default function AlertWatcher() {
       title="Alerts"
     >
       <FiAlertTriangle size={15} style={{ color: "#EF4444" }} />
-      {activeCount > 0 && (
+      {authenticated && activeCount > 0 && (
         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white" style={{ background: "#EF4444" }}>
           {activeCount > 99 ? "99+" : activeCount}
         </span>

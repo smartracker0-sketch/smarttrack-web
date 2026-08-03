@@ -215,6 +215,7 @@ export default function AlertsPage() {
   const [alertSettings, setAlertSettings] = useState<AlertSettings>(DEFAULT_ALERT_SETTINGS);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
+  const [mountedAt, setMountedAt] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -243,7 +244,10 @@ export default function AlertsPage() {
     }
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    setMountedAt(new Date().toISOString());
+    load();
+  }, []);
 
   const deviceMaps = useMemo(() => deviceLookup(devices), [devices]);
   const periodAlerts = useMemo(() => alerts.filter((alert) => inPeriod(alert, period)), [alerts, period]);
@@ -299,7 +303,8 @@ export default function AlertsPage() {
   });
 
   const showingFrom = (() => {
-    const now = new Date();
+    if (!mountedAt) return PERIODS[period].label;
+    const now = new Date(mountedAt);
     const ms = PERIODS[period].ms;
     if (!ms) return "All available alert history";
     return `${dateText(new Date(now.getTime() - ms).toISOString())} to ${dateText(now.toISOString())}`;
