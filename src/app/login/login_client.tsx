@@ -39,7 +39,7 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
         setError(data?.message ?? "Invalid email or password.");
         return;
       }
-      router.replace(nextPath || "/app");
+      router.replace(nextPath || "/app/devices");
       router.refresh();
     } catch {
       setError("Network error. Check your connection.");
@@ -266,4 +266,3 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
     </div>
   );
 }
-

@@ -6,6 +6,6 @@ export default async function LoginPage({
   searchParams?: Promise<{ next?: string | string[] }>;
 }) {
   const params = await searchParams;
-  const nextPath = typeof params?.next === "string" ? params.next : "/app";
+  const nextPath = typeof params?.next === "string" ? params.next : "/app/devices";
   return <LoginClient nextPath={nextPath} />;
 }

@@ -1,0 +1,199 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
+import { FiAlertTriangle } from "react-icons/fi";
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AlertRow = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SettingRow = Record<string, any>;
+
+const TYPE_TO_SETTING: Record<string, string> = {
+  IGNITION_ANOMALY: "ignition",
+  IGNITION_ON: "ignition",
+  IGNITION_OFF: "ignition",
+  CRASH: "crash",
+  COLLISION: "crash",
+  DEVICE_BATTERY_LIMIT: "deviceBatteryLimit",
+  POWER_CUT: "powerCut",
+  EXTERNAL_POWER_DISCONNECTED: "deviceRemoval",
+  DEVICE_REMOVAL: "deviceRemoval",
+  DEVICE_DISASSEMBLE: "deviceDisassemble",
+  TAMPER: "deviceDisassemble",
+  GEOFENCE_ENTER: "geofence",
+  GEOFENCE_EXIT: "geofence",
+  LOW_BATTERY: "deviceLowBattery",
+  DEVICE_LOW_BATTERY: "deviceLowBattery",
+  UNEXPECTED_MOVEMENT: "unexpectedMovement",
+  OVERSPEED: "overspeed",
+  FUEL_DRAINAGE: "fuelTheft",
+  FUEL_THEFT: "fuelTheft",
+  POWER_OFF: "powerOff",
+  POWER_ON: "powerOn",
+  REFUELLING: "refuelling",
+  RFID_TAP: "rfidTap",
+  ROUTE_DEVIATION: "routeDeviation",
+  SHARP_TURN: "sharpTurn",
+  SHUTDOWN: "shutdown",
+  SOS: "sos",
+  STOPPAGE: "stoppage",
+  STOPPAGE_IN_GEOFENCE: "stoppageGeofence",
+  HARSH_ACCEL: "acceleration",
+  SUDDEN_ACCELERATION: "acceleration",
+  HARSH_BRAKE: "braking",
+  SUDDEN_BRAKING: "braking",
+  TRIP: "trip",
+  TRIP_DELAY: "tripDelay",
+  TRIP_UPDATE: "tripUpdates",
+  VEHICLE_ARRIVAL: "arrival",
+  DTC_FAULT: "dtc",
+  VEHICLE_DTC_FAULT: "dtc",
+  IDLE_EXCEEDED: "idling",
+  VEHICLE_IDLING: "idling",
+  VEHICLE_BATTERY_LIMIT: "vehicleBatteryLimit",
+};
+
+function alertId(alert: AlertRow) {
+  return String(alert.id ?? `${alert.alertType ?? alert.type}-${alert.alertTime ?? alert.receivedAt ?? ""}`);
+}
+
+function alertSettingKey(alert: AlertRow) {
+  return TYPE_TO_SETTING[String(alert.alertType ?? alert.type ?? "").trim().toUpperCase()] ?? "";
+}
+
+function shouldNotify(alert: AlertRow, settings: Map<string, SettingRow>) {
+  const key = alertSettingKey(alert);
+  const setting = key ? settings.get(key) : null;
+  if (!setting) return true;
+  if (setting.webNotifications === false && setting.sound !== true) return false;
+  const vehicleIds = Array.isArray(setting.vehicleIds) ? setting.vehicleIds.map(String) : [];
+  return vehicleIds.length === 0 || vehicleIds.includes(String(alert.deviceId ?? ""));
+}
+
+function playAlertSound() {
+  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  if (!AudioContextClass) return;
+  const ctx = new AudioContextClass();
+  const oscillator = ctx.createOscillator();
+  const gain = ctx.createGain();
+  oscillator.type = "sine";
+  oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+  oscillator.frequency.setValueAtTime(660, ctx.currentTime + 0.12);
+  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.18, ctx.currentTime + 0.02);
+  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.32);
+  oscillator.connect(gain);
+  gain.connect(ctx.destination);
+  oscillator.start();
+  oscillator.stop(ctx.currentTime + 0.34);
+}
+
+export default function AlertWatcher() {
+  const [alerts, setAlerts] = useState<AlertRow[]>([]);
+  const [settings, setSettings] = useState<Map<string, SettingRow>>(new Map());
+  const seenRef = useRef<Set<string>>(new Set());
+  const readyRef = useRef(false);
+  const audioUnlockedRef = useRef(false);
+
+  useEffect(() => {
+    function unlockAudio() {
+      audioUnlockedRef.current = true;
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    }
+    window.addEventListener("click", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    return () => {
+      window.removeEventListener("click", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadSettings() {
+      const res = await fetch("/api/telemetry/alert-settings", { cache: "no-store" }).catch(() => null);
+      if (!res?.ok || cancelled) return;
+      const data = await res.json().catch(() => []);
+      const next = new Map<string, SettingRow>();
+      if (Array.isArray(data)) {
+        data.forEach((item) => {
+          if (item?.alertKey) next.set(String(item.alertKey), item);
+        });
+      }
+      setSettings(next);
+    }
+
+    void loadSettings();
+    const id = window.setInterval(loadSettings, 60000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAlerts() {
+      const res = await fetch("/api/telemetry?type=alerts&unacknowledgedOnly=false", { cache: "no-store" }).catch(() => null);
+      if (!res?.ok || cancelled) return;
+      const data = await res.json().catch(() => []);
+      const list: AlertRow[] = Array.isArray(data) ? data : data?.content ?? [];
+      setAlerts(list);
+
+      const currentIds = new Set(list.map(alertId));
+      if (!readyRef.current) {
+        seenRef.current = currentIds;
+        readyRef.current = true;
+        return;
+      }
+
+      const fresh = list.filter((alert) => !seenRef.current.has(alertId(alert)) && shouldNotify(alert, settings));
+      seenRef.current = currentIds;
+      fresh.slice(0, 3).forEach((alert) => {
+        const key = alertSettingKey(alert);
+        const setting = key ? settings.get(key) : null;
+        const webEnabled = setting?.webNotifications !== false;
+        const soundEnabled = setting?.sound === true;
+        if (webEnabled && "Notification" in window) {
+          if (Notification.permission === "granted") {
+            new Notification(String(alert.alertType ?? "Fleet alert"), {
+              body: String(alert.message ?? "A new fleet alert was triggered."),
+            });
+          } else if (Notification.permission === "default") {
+            void Notification.requestPermission();
+          }
+        }
+        if (soundEnabled && audioUnlockedRef.current) playAlertSound();
+      });
+    }
+
+    void loadAlerts();
+    const id = window.setInterval(loadAlerts, 15000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [settings]);
+
+  const activeCount = useMemo(() => alerts.filter((alert) => !alert.acknowledged).length, [alerts]);
+
+  return (
+    <Link
+      href="/app/alerts"
+      className="relative flex h-8 w-8 items-center justify-center rounded-lg border"
+      style={{ borderColor: "#e5e7eb" }}
+      title="Alerts"
+    >
+      <FiAlertTriangle size={15} style={{ color: "#EF4444" }} />
+      {activeCount > 0 && (
+        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white" style={{ background: "#EF4444" }}>
+          {activeCount > 99 ? "99+" : activeCount}
+        </span>
+      )}
+    </Link>
+  );
+}

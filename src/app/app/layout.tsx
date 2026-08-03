@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
+import AlertWatcher from "./AlertWatcher";
 import {
   FiMenu, FiX, FiLogOut, FiUser, FiChevronDown,
   FiPieChart, FiTruck, FiNavigation, FiAlertTriangle,
@@ -257,14 +258,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <button className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
               Geofences: All ▾
             </button>
-            <Link
-              href="/app/alerts"
-              className="relative flex items-center justify-center w-8 h-8 rounded-lg border"
-              style={{ borderColor: '#e5e7eb' }}
-            >
-              <FiAlertTriangle size={15} style={{ color: '#EF4444' }} />
-              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] flex items-center justify-center font-bold" style={{ background: '#EF4444' }}>3</span>
-            </Link>
+            <AlertWatcher />
             <Link href="/app/profile" className="flex items-center justify-center w-8 h-8 rounded-full" style={{ background: '#0D4A47', color: '#fff' }}>
               <FiUser size={14} />
             </Link>
