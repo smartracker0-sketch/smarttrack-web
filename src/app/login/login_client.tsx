@@ -8,11 +8,13 @@ import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
 
 type FormState = { email: string; password: string };
 
-const FEATURES = [
-  { icon: "🗺️", title: "Live Fleet Map", desc: "Real-time GPS tracking across all vehicles on a dark interactive map." },
-  { icon: "🔔", title: "Smart Alerts", desc: "Instant notifications for speeding, geofence breaches, and SOS events." },
-  { icon: "⛽", title: "Fuel Analytics", desc: "Monitor consumption, detect pilferage, and optimise fuel costs." },
-  { icon: "📊", title: "Reports & Exports", desc: "Trip summaries, driver scorecards, and scheduled PDF/CSV exports." },
+const FLEET_PHOTOS = [
+  { src: "/industries/logistics.png", label: "Delivery trucks" },
+  { src: "/industries/passenger-transit.png", label: "Transit buses" },
+  { src: "/industries/construction.png", label: "Heavy equipment" },
+  { src: "/industries/agriculture.png", label: "Field assets" },
+  { src: "/industries/ecommerce.png", label: "Last mile vans" },
+  { src: "/industries/emergency-services.png", label: "Emergency fleet" },
 ];
 
 export default function LoginClient({ nextPath }: { nextPath: string }) {
@@ -51,28 +53,25 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
   return (
     <div className="min-h-screen flex" style={{ fontFamily: "var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif" }}>
 
-      {/* ── LEFT PANEL — brand / features ── */}
+      {/* ── LEFT PANEL — brand / fleet photography ── */}
       <div
-        className="hidden lg:flex lg:w-[52%] flex-col justify-between p-12 relative overflow-hidden"
-        style={{ background: "radial-gradient(ellipse at 60% 40%, #1A7A75 0%, #0D4A47 50%, #072E2C 100%)" }}
+        className="hidden lg:flex lg:w-[52%] min-h-screen flex-col justify-between p-12 relative overflow-hidden bg-[#071A18]"
       >
-        {/* Grid background */}
-        <div className="absolute inset-0 pointer-events-none opacity-10">
-          <svg className="w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="lgrid" width="56" height="56" patternUnits="userSpaceOnUse">
-                <path d="M 56 0 L 0 0 0 56" fill="none" stroke="white" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#lgrid)" />
-          </svg>
+        <div className="absolute inset-0">
+          <Image
+            src={FLEET_PHOTOS[0].src}
+            alt=""
+            fill
+            priority
+            sizes="52vw"
+            className="object-cover"
+          />
+          <div className="absolute inset-0 bg-[#061816]/70" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,16,15,0.9)_0%,rgba(5,16,15,0.62)_46%,rgba(5,16,15,0.36)_100%)]" />
         </div>
-        {/* Glow orbs */}
-        <div className="absolute -bottom-32 -left-32 w-96 h-96 rounded-full blur-3xl opacity-20" style={{ background: "#1A7A75" }} />
-        <div className="absolute top-20 -right-20 w-72 h-72 rounded-full blur-3xl opacity-10" style={{ background: "#f97316" }} />
 
         {/* Logo */}
-        <div className="relative">
+        <div className="relative z-10">
           <Link href="/" className="inline-flex items-center gap-3">
             <Image
               src="/logo.png"
@@ -89,40 +88,40 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
         </div>
 
         {/* Headline */}
-        <div className="relative space-y-6">
-          <h2 className="text-4xl font-black text-white leading-tight">
-            Your fleet,<br />
-            <span style={{ color: "#f97316" }}>fully in control.</span>
+        <div className="relative z-10 max-w-xl space-y-7">
+          <div className="inline-flex rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white/85 backdrop-blur">
+            Fleet visibility for every asset type
+          </div>
+          <h2 className="text-5xl font-black text-white leading-[1.05]">
+            See every vehicle clearly before the day starts.
           </h2>
-          <p className="text-base leading-relaxed max-w-sm" style={{ color: '#B2D4D2' }}>
-            Monitor every vehicle, driver, and asset in real time — from a single powerful dashboard.
+          <p className="text-base leading-relaxed max-w-md text-white/78">
+            Trucks, vans, buses, field teams, construction equipment, and emergency fleets all come into one live tracking workspace.
           </p>
 
-          {/* Feature list */}
-          <div className="grid grid-cols-1 gap-4 pt-2">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="flex items-start gap-4">
-                <div
-                  className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center text-lg"
-                  style={{ background: "rgba(255,255,255,0.1)" }}
-                >
-                  {f.icon}
-                </div>
-                <div>
-                  <div className="text-white font-semibold text-sm">{f.title}</div>
-                  <div className="text-xs mt-0.5 leading-relaxed" style={{ color: '#B2D4D2' }}>{f.desc}</div>
-                </div>
+          <div className="grid max-w-lg grid-cols-3 overflow-hidden rounded-2xl border border-white/15 bg-white/10 backdrop-blur">
+            {[["10K+", "Vehicles"], ["25+", "Industries"], ["99.9%", "Uptime"]].map(([v, l]) => (
+              <div key={l} className="border-r border-white/10 px-5 py-4 last:border-r-0">
+                <div className="text-white font-black text-xl">{v}</div>
+                <div className="text-xs text-white/62">{l}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Bottom stat bar */}
-        <div className="relative flex items-center gap-8 pt-4 border-t border-white/10">
-          {[["10K+", "Vehicles"], ["50+", "Countries"], ["99.9%", "Uptime"]].map(([v, l]) => (
-            <div key={l}>
-              <div className="text-white font-black text-lg">{v}</div>
-              <div className="text-xs" style={{ color: '#B2D4D2' }}>{l}</div>
+        <div className="relative z-10 grid grid-cols-5 gap-3">
+          {FLEET_PHOTOS.slice(1).map((photo) => (
+            <div key={photo.label} className="group relative h-28 overflow-hidden rounded-2xl border border-white/15 bg-white/10 shadow-2xl">
+              <Image
+                src={photo.src}
+                alt={photo.label}
+                fill
+                sizes="10vw"
+                className="object-cover transition duration-500 group-hover:scale-105"
+              />
+              <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
+                <div className="text-[11px] font-bold text-white">{photo.label}</div>
+              </div>
             </div>
           ))}
         </div>
