@@ -17,6 +17,8 @@ import {
   FiNavigation,
   FiPackage,
   FiPower,
+  FiRefreshCw,
+  FiSearch,
   FiShare2,
   FiTruck,
   FiUser,
@@ -44,6 +46,16 @@ const MAP_STYLES = [
   { id: "light", label: "Light", style: "mapbox://styles/mapbox/light-v11" },
   { id: "outdoors", label: "Outdoors", style: "mapbox://styles/mapbox/outdoors-v12" },
 ];
+
+const VEHICLE_PANEL_TABS = ["Objects", "Notifications", "History", "Geofence", "Landmark"];
+
+const STATUS_FILTERS = [
+  { key: "all", label: "All", color: "#AA139E" },
+  { key: "moving", label: "Running", color: "#33A46F" },
+  { key: "idle", label: "Idling", color: "#EDB41D" },
+  { key: "stopped", label: "Stopped", color: "#F24464" },
+  { key: "offline", label: "Inactive", color: "#39AEC4" },
+] as const;
 
 function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offline" {
   if (!telem) return "offline";
@@ -307,6 +319,37 @@ function StatusBadge({ telem }: { telem: DeviceRow | null }) {
   );
 }
 
+function VehicleStatusSummary({
+  counts,
+  active,
+  onChange,
+}: {
+  counts: Record<(typeof STATUS_FILTERS)[number]["key"], number>;
+  active: (typeof STATUS_FILTERS)[number]["key"];
+  onChange: (key: (typeof STATUS_FILTERS)[number]["key"]) => void;
+}) {
+  return (
+    <div className="relative">
+      <div className="flex gap-2 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {STATUS_FILTERS.map((item) => (
+          <button
+            key={item.key}
+            type="button"
+            onClick={() => onChange(item.key)}
+            className={`min-w-[82px] rounded-lg px-3 py-2 text-center text-white shadow-sm transition ${
+              active === item.key ? "ring-2 ring-[#061337]/15" : "hover:brightness-105"
+            }`}
+            style={{ background: item.color }}
+          >
+            <div className="text-2xl font-extrabold leading-none">{counts[item.key]}</div>
+            <div className="mt-1 text-[11px] font-bold leading-none">{item.label}</div>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function AssetDetailDrawer({
   device,
   telem,
@@ -432,6 +475,9 @@ export default function AllVehiclesPage() {
   const [mapStyle, setMapStyle] = useState("streets");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
   const [vehiclePanelOpen, setVehiclePanelOpen] = useState(false);
+  const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]["key"]>("all");
+  const [activePanelTab, setActivePanelTab] = useState("Objects");
+  const [vehicleSearch, setVehicleSearch] = useState("");
 
   const notify = (msg: string) => setToast(msg);
 
@@ -554,6 +600,39 @@ export default function AllVehiclesPage() {
 
   const selectedDevice = selected ? devices.find((d) => d.id === selected) ?? null : null;
 
+  const statusCounts = useMemo(() => {
+    const counts = { all: devices.length, moving: 0, idle: 0, stopped: 0, offline: 0 };
+    devices.forEach((d) => {
+      counts[statKey(telemetry[d.id] ?? null)] += 1;
+    });
+    return counts;
+  }, [devices, telemetry]);
+
+  const visibleDevices = useMemo(() => {
+    const query = vehicleSearch.trim().toLowerCase();
+    return devices.filter((d) => {
+      const telem = telemetry[d.id] ?? null;
+      const statusMatches = activeStatus === "all" || statKey(telem) === activeStatus;
+      if (!statusMatches) return false;
+      if (!query) return true;
+      const haystack = [
+        d.name,
+        d.vehiclePlate,
+        d.plateNumber,
+        d.imei,
+        d.driverName,
+        d.ownerName,
+        d.simNumber,
+        telem?.address,
+        telem?.lastAddress,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(query);
+    });
+  }, [activeStatus, devices, telemetry, vehicleSearch]);
+
   const markers: MarkerData[] = useMemo(
     () =>
       devices
@@ -627,9 +706,72 @@ export default function AllVehiclesPage() {
         </button>
 
         <div className={`flex w-[calc(min(390px,100vw)-56px)] min-w-[calc(min(390px,100vw)-56px)] flex-none flex-col transition-opacity duration-150 md:w-[334px] md:min-w-[334px] md:group-hover:opacity-100 ${vehiclePanelOpen ? "opacity-100" : "opacity-0"}`}>
-          <div className="px-3.5 py-3">
-            <div className="text-[13px] font-medium text-[#536987]">
-              All Vehicles : {loading ? "..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
+          <div className="border-b border-[#dbe5ee] bg-[#f5f8fb] px-2.5 py-2.5">
+            <VehicleStatusSummary counts={statusCounts} active={activeStatus} onChange={setActiveStatus} />
+
+            <div className="mt-1.5 flex overflow-x-auto bg-[#f8fafc] text-[12px] font-semibold text-[#2b2f36] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {VEHICLE_PANEL_TABS.map((tab) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActivePanelTab(tab)}
+                  className={`min-w-max px-3 py-2 transition ${
+                    activePanelTab === tab ? "bg-white text-[#061337] shadow-sm" : "text-[#2b2f36] hover:bg-white/70"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-2 grid grid-cols-[88px_1fr] gap-2">
+              <select
+                value={activeStatus}
+                onChange={(e) => setActiveStatus(e.target.value as (typeof STATUS_FILTERS)[number]["key"])}
+                className="h-10 rounded-lg border border-[#d5e2ec] bg-white px-2 text-[13px] font-extrabold text-[#111827] outline-none focus:border-[#33a46f]"
+                aria-label="Vehicle status filter"
+              >
+                {STATUS_FILTERS.map((item) => (
+                  <option key={item.key} value={item.key}>
+                    {item.label === "All" ? "Device" : item.label}
+                  </option>
+                ))}
+              </select>
+
+              <div className="relative">
+                <FiSearch size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+                <input
+                  value={vehicleSearch}
+                  onChange={(e) => setVehicleSearch(e.target.value)}
+                  placeholder="Search Vehicle"
+                  className="h-10 w-full rounded-lg border border-[#d5e2ec] bg-white pl-9 pr-3 text-[13px] font-medium text-[#061337] outline-none focus:border-[#33a46f]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <div className="text-[12px] font-medium text-[#536987]">
+                {loading ? "Loading vehicles..." : `Showing ${visibleDevices.length} of ${devices.length} vehicles`}
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => load(true)}
+                  className="grid h-8 w-8 place-items-center rounded-lg bg-white text-[#f24464] shadow-sm transition hover:bg-[#fff1f3]"
+                  aria-label="Refresh vehicles"
+                  title="Refresh vehicles"
+                >
+                  <FiRefreshCw size={17} />
+                </button>
+                <button
+                  type="button"
+                  className="grid h-8 w-8 place-items-center rounded-lg bg-white text-[#f24464] shadow-sm transition hover:bg-[#fff1f3]"
+                  aria-label="Vehicle list"
+                  title="Vehicle list"
+                >
+                  <FiClipboard size={17} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -638,8 +780,10 @@ export default function AllVehiclesPage() {
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
+            ) : visibleDevices.length === 0 ? (
+              <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles match this filter.</div>
             ) : (
-              devices.map((d) => {
+              visibleDevices.map((d) => {
                 const t = telemetry[d.id] ?? null;
                 const key = statKey(t);
                 const motionActive = isMotionActive(t);
