@@ -20,7 +20,8 @@ const FLEET_PHOTOS = [
 export default function LoginClient({ nextPath }: { nextPath: string }) {
   const router = useRouter();
 
-  const [form, setForm] = useState<FormState>({ email: "admin@trackpro.local", password: "admin123!" });
+  const [form, setForm] = useState<FormState>({ email: "", password: "" });
+  const [step, setStep] = useState<"email" | "password">("email");
   const [showPassword, setShowPassword] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -29,6 +30,21 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
     e.preventDefault();
     if (isSubmitting) return;
     setError("");
+
+    if (step === "email") {
+      if (!form.email.trim()) {
+        setError("Enter your email address to continue.");
+        return;
+      }
+      setStep("password");
+      return;
+    }
+
+    if (!form.password) {
+      setError("Enter your password to sign in.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       const resp = await fetch("/api/auth/login", {
@@ -173,42 +189,65 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
                     autoComplete="email"
                     required
                     value={form.email}
-                    onChange={(e) => setForm((s) => ({ ...s, email: e.target.value }))}
+                    disabled={step === "password"}
+                    onChange={(e) => {
+                      setError("");
+                      setForm((s) => ({ ...s, email: e.target.value }));
+                    }}
                     placeholder="you@company.com"
-                    className="w-full h-12 pl-10 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 outline-none transition focus:border-[#1A7A75] focus:bg-white focus:ring-2 focus:ring-[#1A7A75]/20 placeholder:text-gray-400"
+                    className="w-full h-12 pl-10 pr-4 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 outline-none transition focus:border-[#1A7A75] focus:bg-white focus:ring-2 focus:ring-[#1A7A75]/20 placeholder:text-gray-400 disabled:bg-gray-100 disabled:text-gray-500"
                   />
                 </div>
+                {step === "password" && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError("");
+                      setForm((s) => ({ ...s, password: "" }));
+                      setStep("email");
+                    }}
+                    className="mt-2 text-xs font-semibold hover:underline"
+                    style={{ color: "#1A7A75" }}
+                  >
+                    Change email
+                  </button>
+                )}
               </div>
 
               {/* Password */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label className="text-sm font-semibold text-gray-700">Password</label>
-                  <a href="#" className="text-xs font-semibold hover:underline" style={{ color: "#1A7A75" }}>
-                    Forgot password?
-                  </a>
+              {step === "password" && (
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-sm font-semibold text-gray-700">Password</label>
+                    <a href="#" className="text-xs font-semibold hover:underline" style={{ color: "#1A7A75" }}>
+                      Forgot password?
+                    </a>
+                  </div>
+                  <div className="relative">
+                    <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      autoComplete="current-password"
+                      required
+                      value={form.password}
+                      onChange={(e) => {
+                        setError("");
+                        setForm((s) => ({ ...s, password: e.target.value }));
+                      }}
+                      placeholder="Enter your password"
+                      className="w-full h-12 pl-10 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 outline-none transition focus:border-[#1A7A75] focus:bg-white focus:ring-2 focus:ring-[#1A7A75]/20 placeholder:text-gray-400"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
+                    </button>
+                  </div>
                 </div>
-                <div className="relative">
-                  <FiLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    autoComplete="current-password"
-                    required
-                    value={form.password}
-                    onChange={(e) => setForm((s) => ({ ...s, password: e.target.value }))}
-                    placeholder="••••••••"
-                    className="w-full h-12 pl-10 pr-12 rounded-xl border border-gray-200 bg-gray-50 text-sm text-gray-900 outline-none transition focus:border-[#1A7A75] focus:bg-white focus:ring-2 focus:ring-[#1A7A75]/20 placeholder:text-gray-400"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword((v) => !v)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
-                    tabIndex={-1}
-                  >
-                    {showPassword ? <FiEyeOff size={16} /> : <FiEye size={16} />}
-                  </button>
-                </div>
-              </div>
+              )}
 
               {/* Submit */}
               <button
@@ -227,27 +266,11 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
                   </>
                 ) : (
                   <>
-                    Sign in <FiArrowRight size={16} />
+                    {step === "email" ? "Continue" : "Sign in"} <FiArrowRight size={16} />
                   </>
                 )}
               </button>
             </form>
-
-            {/* Divider */}
-            <div className="my-6 flex items-center gap-3">
-              <div className="flex-1 h-px bg-gray-200" />
-              <span className="text-xs text-gray-400 font-medium">or</span>
-              <div className="flex-1 h-px bg-gray-200" />
-            </div>
-
-            {/* Demo hint */}
-            <div className="rounded-xl border p-4" style={{ borderColor: '#B2D4D2', background: '#E8F4F3' }}>
-              <p className="text-xs font-semibold mb-2" style={{ color: '#0D4A47' }}>Demo credentials</p>
-              <div className="space-y-1 text-xs font-mono" style={{ color: '#1A7A75' }}>
-                <div>admin@trackpro.local</div>
-                <div>admin123!</div>
-              </div>
-            </div>
 
             {/* Footer */}
             <p className="mt-8 text-center text-xs text-gray-400">
