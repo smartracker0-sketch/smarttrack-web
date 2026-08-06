@@ -31,6 +31,8 @@ const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type DeviceRow = Record<string, any>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type LiveTabRow = Record<string, any>;
 
 const STATUS_COLOR: Record<string, string> = {
   moving: "#22C55E",
@@ -113,6 +115,18 @@ function timeAgo(value?: string | null) {
   if (hours < 24) return mins ? `${hours} hours and ${mins} minutes` : `${hours} hours`;
   const days = Math.floor(hours / 24);
   return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 function statusText(telem: DeviceRow | null) {
@@ -350,6 +364,85 @@ function VehicleStatusSummary({
   );
 }
 
+function LiveTabPanel({
+  tab,
+  rows,
+  loading,
+}: {
+  tab: string;
+  rows: LiveTabRow[];
+  loading: boolean;
+}) {
+  if (loading) {
+    return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading {tab.toLowerCase()}...</div>;
+  }
+
+  if (rows.length === 0) {
+    return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No live {tab.toLowerCase()} records yet.</div>;
+  }
+
+  if (tab === "Notifications") {
+    return (
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <article key={row.id} className="rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate text-[13px] font-extrabold text-[#061337]">{fieldText(row.alertType, "Alert")}</div>
+                <div className="mt-1 text-[11px] leading-snug text-[#536987]">{fieldText(row.message, row.relatedGeofenceName, "Vehicle notification")}</div>
+              </div>
+              <span className="rounded-full bg-[#fff1f3] px-2 py-1 text-[10px] font-bold text-[#f24464]">{fieldText(row.severity, "INFO")}</span>
+            </div>
+            <div className="mt-2 flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
+              <span>{formatDateTime(row.alertTime ?? row.receivedAt)}</span>
+              <span>{row.acknowledged ? "Acknowledged" : "New"}</span>
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  if (tab === "History") {
+    return (
+      <div className="space-y-2">
+        {rows.map((row) => (
+          <article key={row.id} className="rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 text-[13px] font-extrabold text-[#061337]">{fieldText(row.imei, row.deviceId)}</div>
+              <span className="rounded-full bg-[#ecfdf3] px-2 py-1 text-[10px] font-bold text-[#16a34a]">{Math.round(Number(row.speedKph ?? 0))} km/h</span>
+            </div>
+            <div className="mt-1 text-[11px] text-[#536987]">{coords(row)}</div>
+            <div className="mt-2 text-[10px] font-semibold text-[#94a3b8]">{formatDateTime(row.eventTime ?? row.receivedAt)}</div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row) => (
+        <article key={row.id} className="rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="truncate text-[13px] font-extrabold text-[#061337]">{fieldText(row.name, tab)}</div>
+              <div className="mt-1 text-[11px] leading-snug text-[#536987]">{fieldText(row.location, row.category, row.geofenceType)}</div>
+            </div>
+            <span className="rounded-full bg-[#eef7ff] px-2 py-1 text-[10px] font-bold text-[#2563eb]">{fieldText(row.geofenceType, "Zone")}</span>
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2 text-[10px] font-semibold text-[#536987]">
+            <span>Lat: {row.centerLat ?? "--"}</span>
+            <span>Lng: {row.centerLng ?? "--"}</span>
+            <span>Radius: {row.radiusM != null ? `${Math.round(Number(row.radiusM))} m` : "--"}</span>
+            <span>{row.active ? "Active" : "Inactive"}</span>
+          </div>
+        </article>
+      ))}
+    </div>
+  );
+}
+
 function AssetDetailDrawer({
   device,
   telem,
@@ -478,6 +571,8 @@ export default function AllVehiclesPage() {
   const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]["key"]>("all");
   const [activePanelTab, setActivePanelTab] = useState("Objects");
   const [vehicleSearch, setVehicleSearch] = useState("");
+  const [tabRows, setTabRows] = useState<LiveTabRow[]>([]);
+  const [tabLoading, setTabLoading] = useState(false);
 
   const notify = (msg: string) => setToast(msg);
 
@@ -533,6 +628,38 @@ export default function AllVehiclesPage() {
     }, 5000);
     return () => clearInterval(interval);
   }, [devices]);
+
+  useEffect(() => {
+    if (activePanelTab === "Objects") {
+      setTabRows([]);
+      setTabLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const loadTab = async (showSpinner = false) => {
+      if (showSpinner) setTabLoading(true);
+      try {
+        const params = new URLSearchParams({
+          tab: activePanelTab.toLowerCase(),
+          limit: activePanelTab === "History" ? "80" : "50",
+        });
+        if (selected) params.set("deviceId", selected);
+        const res = await fetch(`/api/live-tracking?${params}`, { cache: "no-store" });
+        const data = res.ok ? await res.json() : [];
+        if (!cancelled) setTabRows(Array.isArray(data) ? data : []);
+      } finally {
+        if (!cancelled && showSpinner) setTabLoading(false);
+      }
+    };
+
+    loadTab(true);
+    const interval = setInterval(() => loadTab(false), 10000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [activePanelTab, selected]);
 
   useEffect(() => {
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -775,8 +902,10 @@ export default function AllVehiclesPage() {
             </div>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 sm:px-3.5">
-            {loading ? (
+          <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 pt-2 sm:px-3.5">
+            {activePanelTab !== "Objects" ? (
+              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} />
+            ) : loading ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No vehicles registered yet.</div>
