@@ -567,7 +567,7 @@ export default function AllVehiclesPage() {
   const [refreshing, setRefreshing] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState("streets");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
-  const [vehiclePanelOpen, setVehiclePanelOpen] = useState(false);
+  const [vehiclePanelOpen, setVehiclePanelOpen] = useState(true);
   const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]["key"]>("all");
   const [activePanelTab, setActivePanelTab] = useState("Objects");
   const [vehicleSearch, setVehicleSearch] = useState("");
@@ -818,22 +818,27 @@ export default function AllVehiclesPage() {
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
 
-      <aside className={`group flex max-w-[100vw] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 md:max-w-[390px] md:hover:w-[390px] ${vehiclePanelOpen ? "w-[min(390px,100vw)]" : "w-14"}`}>
-        <button
-          type="button"
-          onClick={() => setVehiclePanelOpen((open) => !open)}
-          className="flex w-14 flex-shrink-0 flex-col items-center border-r border-[#dbe5ee] py-3.5"
-          aria-expanded={vehiclePanelOpen}
-          aria-label={vehiclePanelOpen ? "Close all vehicles" : "Open all vehicles"}
-        >
-          <FiTruck size={20} className="text-[#536987]" />
-          <div className="mt-2.5 grid h-5 min-w-5 place-items-center rounded-full bg-white px-1.5 text-[10px] font-bold text-[#061337] shadow-sm">
-            {loading ? "..." : devices.length}
-          </div>
-        </button>
-
-        <div className={`flex w-[calc(min(390px,100vw)-56px)] min-w-[calc(min(390px,100vw)-56px)] flex-none flex-col transition-opacity duration-150 md:w-[334px] md:min-w-[334px] md:group-hover:opacity-100 ${vehiclePanelOpen ? "opacity-100" : "opacity-0"}`}>
+      <aside className={`flex max-w-[100vw] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 md:max-w-[390px] ${vehiclePanelOpen ? "w-[min(390px,100vw)] md:w-[390px]" : "w-0 border-r-0"}`}>
+        <div className="flex w-[min(390px,100vw)] min-w-[min(390px,100vw)] flex-none flex-col md:w-[390px] md:min-w-[390px]">
           <div className="border-b border-[#dbe5ee] bg-[#f5f8fb] px-2.5 py-2.5">
+            <div className="mb-2 flex items-center justify-between gap-3 px-1">
+              <div className="min-w-0">
+                <div className="text-[13px] font-bold text-[#061337]">All Vehicles</div>
+                <div className="text-[11px] font-medium text-[#536987]">
+                  {loading ? "Loading..." : `${devices.length} Vehicle${devices.length === 1 ? "" : "s"}`}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVehiclePanelOpen(false)}
+                className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg bg-white text-[#536987] shadow-sm transition hover:bg-[#eef4f8]"
+                aria-label="Collapse vehicle list"
+                title="Collapse vehicle list"
+              >
+                <FiChevronRight size={18} className="rotate-180" />
+              </button>
+            </div>
+
             <VehicleStatusSummary counts={statusCounts} active={activeStatus} onChange={setActiveStatus} />
 
             <div className="mt-1.5 flex overflow-x-auto bg-[#f8fafc] text-[12px] font-semibold text-[#2b2f36] [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -925,9 +930,6 @@ export default function AllVehiclesPage() {
                     key={d.id}
                     onClick={() => {
                       setSelected(d.id);
-                      if (typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches) {
-                        setVehiclePanelOpen(false);
-                      }
                     }}
                     className={`mb-2 rounded-xl bg-white p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.07)] transition ${
                       isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
@@ -989,6 +991,20 @@ export default function AllVehiclesPage() {
       </aside>
 
       <main className="relative min-w-0 flex-1 overflow-hidden">
+        {!vehiclePanelOpen && (
+          <button
+            type="button"
+            onClick={() => setVehiclePanelOpen(true)}
+            className="absolute left-3 top-4 z-20 flex items-center gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-[#061337] shadow-lg transition hover:bg-[#eef4f8]"
+            aria-label="Open vehicle list"
+            title="Open vehicle list"
+          >
+            <FiTruck size={16} />
+            <span>Vehicles</span>
+            <span className="rounded-full bg-[#eef4f8] px-1.5 py-0.5 text-[10px]">{loading ? "..." : devices.length}</span>
+          </button>
+        )}
+
         <MapboxMap
           markers={markers}
           flyToId={selected ?? ""}
