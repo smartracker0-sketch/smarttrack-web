@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
-  FiBattery,
   FiChevronRight,
   FiClipboard,
   FiCopy,
@@ -11,12 +10,10 @@ import {
   FiFlag,
   FiInfo,
   FiLayers,
-  FiLock,
   FiMapPin,
   FiMessageCircle,
   FiNavigation,
   FiPackage,
-  FiPower,
   FiRefreshCw,
   FiSearch,
   FiShare2,
@@ -498,13 +495,6 @@ function AssetDetailDrawer({
             <div className="flex items-center justify-between gap-3">
               <span>Mobile</span>
               <span className="truncate font-semibold">{fieldText(device.driverPhone, device.mobileNumber, device.simNumber)}</span>
-            </div>
-            <div className="grid grid-cols-5 border-t border-[#eef2f6] pt-2.5 text-center">
-              <FiTruck className="mx-auto text-[#64748b]" size={16} />
-              <FiNavigation className="mx-auto" color={STATUS_COLOR[key]} size={16} />
-              <FiBattery className="mx-auto text-[#16a34a]" size={16} />
-              <FiPower className="mx-auto text-[#16a34a]" size={16} />
-              <FiLock className="mx-auto text-[#ef334a]" size={16} />
             </div>
           </div>
         </section>
