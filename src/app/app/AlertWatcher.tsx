@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FiAlertTriangle } from "react-icons/fi";
 
@@ -89,14 +89,44 @@ function playAlertSound() {
   oscillator.stop(ctx.currentTime + 0.34);
 }
 
+function alertSocketUrl() {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const wsBase = apiBase
+    ? apiBase.replace(/^http/, "ws")
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+  return `${wsBase}/ws/websocket`;
+}
+
+function parseStompMessages(frame: string) {
+  return frame
+    .split("\0")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith("MESSAGE"))
+    .map((part) => {
+      const bodyStart = part.indexOf("\n\n");
+      if (bodyStart < 0) return null;
+      try {
+        return JSON.parse(part.slice(bodyStart + 2)) as AlertRow;
+      } catch {
+        return null;
+      }
+    })
+    .filter((alert): alert is AlertRow => Boolean(alert));
+}
+
 export default function AlertWatcher() {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [settings, setSettings] = useState<Map<string, SettingRow>>(new Map());
   const [authenticated, setAuthenticated] = useState(true);
   const seenRef = useRef<Set<string>>(new Set());
+  const settingsRef = useRef(settings);
   const readyRef = useRef(false);
   const audioUnlockedRef = useRef(false);
   const authBlockedRef = useRef(false);
+
+  useEffect(() => {
+    settingsRef.current = settings;
+  }, [settings]);
 
   useEffect(() => {
     function unlockAudio() {
@@ -110,6 +140,27 @@ export default function AlertWatcher() {
       window.removeEventListener("click", unlockAudio);
       window.removeEventListener("keydown", unlockAudio);
     };
+  }, []);
+
+  const notifyAlert = useCallback((alert: AlertRow) => {
+    const activeSettings = settingsRef.current;
+    if (!shouldNotify(alert, activeSettings)) return;
+
+    const key = alertSettingKey(alert);
+    const setting = key ? activeSettings.get(key) : null;
+    const webEnabled = setting?.webNotifications !== false;
+    const soundEnabled = setting?.sound === true;
+
+    if (webEnabled && "Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(String(alert.alertType ?? "Fleet alert"), {
+          body: String(alert.message ?? "A new fleet alert was triggered."),
+        });
+      } else if (Notification.permission === "default") {
+        void Notification.requestPermission();
+      }
+    }
+    if (soundEnabled && audioUnlockedRef.current) playAlertSound();
   }, []);
 
   useEffect(() => {
@@ -165,24 +216,9 @@ export default function AlertWatcher() {
         return;
       }
 
-      const fresh = list.filter((alert) => !seenRef.current.has(alertId(alert)) && shouldNotify(alert, settings));
+      const fresh = list.filter((alert) => !seenRef.current.has(alertId(alert)));
       seenRef.current = currentIds;
-      fresh.slice(0, 3).forEach((alert) => {
-        const key = alertSettingKey(alert);
-        const setting = key ? settings.get(key) : null;
-        const webEnabled = setting?.webNotifications !== false;
-        const soundEnabled = setting?.sound === true;
-        if (webEnabled && "Notification" in window) {
-          if (Notification.permission === "granted") {
-            new Notification(String(alert.alertType ?? "Fleet alert"), {
-              body: String(alert.message ?? "A new fleet alert was triggered."),
-            });
-          } else if (Notification.permission === "default") {
-            void Notification.requestPermission();
-          }
-        }
-        if (soundEnabled && audioUnlockedRef.current) playAlertSound();
-      });
+      fresh.slice(0, 3).forEach(notifyAlert);
     }
 
     void loadAlerts();
@@ -191,7 +227,55 @@ export default function AlertWatcher() {
       cancelled = true;
       window.clearInterval(id);
     };
-  }, [settings]);
+  }, [notifyAlert]);
+
+  useEffect(() => {
+    let closed = false;
+    let reconnectId: number | null = null;
+    let socket: WebSocket | null = null;
+
+    function connect() {
+      if (closed || authBlockedRef.current) return;
+      let stompBuffer = "";
+      try {
+        socket = new WebSocket(alertSocketUrl());
+      } catch {
+        reconnectId = window.setTimeout(connect, 5000);
+        return;
+      }
+
+      socket.onopen = () => {
+        socket?.send("CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0");
+      };
+      socket.onmessage = (event) => {
+        stompBuffer += String(event.data);
+        if (stompBuffer.includes("CONNECTED")) {
+          socket?.send("SUBSCRIBE\nid:sub-user-alerts\ndestination:/topic/alerts\n\n\0");
+        }
+        parseStompMessages(stompBuffer).forEach((alert) => {
+          const id = alertId(alert);
+          if (seenRef.current.has(id)) return;
+          seenRef.current.add(id);
+          setAlerts((current) => [alert, ...current.filter((item) => alertId(item) !== id)].slice(0, 200));
+          notifyAlert(alert);
+        });
+        if (stompBuffer.includes("\0")) stompBuffer = "";
+      };
+      socket.onclose = () => {
+        if (!closed) reconnectId = window.setTimeout(connect, 5000);
+      };
+      socket.onerror = () => {
+        socket?.close();
+      };
+    }
+
+    connect();
+    return () => {
+      closed = true;
+      if (reconnectId !== null) window.clearTimeout(reconnectId);
+      socket?.close();
+    };
+  }, [notifyAlert]);
 
   const activeCount = useMemo(() => alerts.filter((alert) => !alert.acknowledged).length, [alerts]);
 
