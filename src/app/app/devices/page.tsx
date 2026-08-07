@@ -7,8 +7,6 @@ import {
   FiClipboard,
   FiCopy,
   FiDatabase,
-  FiFlag,
-  FiInfo,
   FiLayers,
   FiMapPin,
   FiMessageCircle,
@@ -22,7 +20,6 @@ import {
   FiX,
 } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
-import { objectIconSvg } from "@/lib/objectIcons";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
 
@@ -215,64 +212,6 @@ function fieldText(...values: unknown[]) {
   return "NA";
 }
 
-function durationText(...values: unknown[]) {
-  const direct = values.find((value) => typeof value === "string" && value.trim());
-  if (direct) return String(direct);
-  const minutes = numberFrom(...values);
-  if (minutes == null) return "--";
-  const hrs = Math.floor(minutes / 60);
-  const mins = Math.round(minutes % 60);
-  return `${String(hrs).padStart(2, "0")}:${String(mins).padStart(2, "0")} hrs`;
-}
-
-function minutesSinceLatest(telem: DeviceRow | null) {
-  const time = latestTime(telem);
-  if (!time) return null;
-  return Math.max(0, Math.floor((Date.now() - time) / 60000));
-}
-
-function activityDuration(
-  kind: "running" | "idle" | "stop" | "inactive",
-  telem: DeviceRow | null,
-  device: DeviceRow
-) {
-  const direct =
-    kind === "running"
-      ? durationText(telem?.runningDuration, telem?.runningTime, device.runningDuration, device.runningTime)
-      : kind === "idle"
-        ? durationText(telem?.idleDuration, telem?.idleTime, device.idleDuration, device.idleTime)
-        : kind === "stop"
-          ? durationText(telem?.stoppedDuration, telem?.stopDuration, telem?.stoppedTime, device.stoppedDuration, device.stopDuration, device.stoppedTime)
-          : durationText(telem?.inactiveDuration, telem?.inactiveTime, device.inactiveDuration, device.inactiveTime);
-  if (direct !== "--") return direct;
-
-  const explicitMinutes =
-    kind === "running"
-      ? numberFrom(telem?.runningMinutes, device.runningMinutes)
-      : kind === "idle"
-        ? numberFrom(telem?.idleMinutes, device.idleMinutes)
-        : kind === "stop"
-          ? numberFrom(telem?.stoppedMinutes, telem?.stopMinutes, device.stoppedMinutes, device.stopMinutes)
-          : numberFrom(telem?.inactiveMinutes, device.inactiveMinutes);
-  if (explicitMinutes != null) return durationText(explicitMinutes);
-
-  const status = statKey(telem);
-  const liveMinutes = minutesSinceLatest(telem);
-  if (liveMinutes == null) return "--";
-  if (kind === "running" && status === "moving") return durationText(Math.max(1, liveMinutes));
-  if (kind === "idle" && status === "idle") return durationText(Math.max(1, liveMinutes));
-  if (kind === "stop" && status === "stopped") return durationText(Math.max(1, liveMinutes));
-  if (kind === "inactive" && status === "offline") return durationText(Math.max(1, liveMinutes));
-  return durationText(0);
-}
-
-function odometerDigits(telem: DeviceRow | null, device: DeviceRow) {
-  const meters = numberFrom(telem?.odometerM, device?.odometerM, device?.odometerMeters);
-  const km = meters != null ? Math.round(meters / 1000) : numberFrom(telem?.odometerKm, device?.odometerKm, device?.mileageKm);
-  if (km == null) return ["-", "-", "-", "-", "-", "-", "-", "-"];
-  return String(Math.max(0, Math.round(km))).padStart(8, "0").slice(-8).split("");
-}
-
 function escapeHtml(value: unknown) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -317,16 +256,6 @@ function MetricBox({ value, label }: { value: string; label: string }) {
       <div className="text-[11px] font-extrabold">{value}</div>
       <div className="mt-0.5 text-[9px] font-medium leading-tight">{label}</div>
     </div>
-  );
-}
-
-function StatusBadge({ telem }: { telem: DeviceRow | null }) {
-  const key = statKey(telem);
-  const label = key === "moving" ? "Moving" : key === "idle" ? "Online" : key === "stopped" ? "Stopped" : "Offline";
-  return (
-    <span className="inline-flex min-w-[76px] items-center justify-center rounded-md px-2.5 py-1.5 text-xs font-bold text-white" style={{ background: STATUS_COLOR[key] }}>
-      {label}
-    </span>
   );
 }
 
@@ -437,113 +366,6 @@ function LiveTabPanel({
         </article>
       ))}
     </div>
-  );
-}
-
-function AssetDetailDrawer({
-  device,
-  telem,
-  location,
-  onClose,
-}: {
-  device: DeviceRow;
-  telem: DeviceRow | null;
-  location: string;
-  onClose: () => void;
-}) {
-  const key = statKey(telem);
-  const digits = odometerDigits(telem, device);
-  const iconKey = device.objectIcon ?? device.icon ?? device.assetIcon ?? device.vehicleType;
-  const todayKm = todayDistance(telem, device);
-  const speed = Math.round(Number(telem?.speedKph ?? 0));
-  const avgSpeed = numberFrom(telem?.avgSpeedKph, telem?.averageSpeedKph, device?.avgSpeedKph);
-  const maxSpeed = numberFrom(telem?.maxSpeedKph, telem?.topSpeedKph, device?.maxSpeedKph);
-  const fuel = numberFrom(telem?.fuelConsumedLiters, telem?.fuelConsumptionLiters, device?.fuelConsumptionLiters);
-
-  return (
-    <aside className="absolute right-3 top-3 z-20 max-h-[calc(100%-1.5rem)] w-[min(318px,calc(100%-1.5rem))] translate-x-0 overflow-y-auto rounded-xl border border-[#e2ebf2] bg-white shadow-xl transition-transform">
-      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e8eef4] bg-white px-3.5 py-2.5">
-        <div className="min-w-0">
-          <h2 className="truncate text-base font-bold text-[#2b2f36]">{shortName(device)}</h2>
-          <p className="text-[11px] font-medium text-[#64748b]">{fieldText(device.vehiclePlate, device.imei)}</p>
-        </div>
-        <button type="button" onClick={onClose} className="grid h-7 w-7 place-items-center rounded-lg text-[#536987] hover:bg-[#eef4f8]" aria-label="Close asset details">
-          <FiX size={16} />
-        </button>
-      </div>
-
-      <div className="space-y-2.5 p-2.5">
-        <section className="rounded-lg bg-white shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-          <div className="px-3 pt-2.5 text-base font-bold text-[#2b2f36]">{fieldText(device.vehiclePlate, device.name, device.imei)}</div>
-          <div className="mx-auto grid h-[118px] place-items-center" dangerouslySetInnerHTML={{ __html: objectIconSvg(iconKey, STATUS_COLOR[key]) }} />
-          <div className="mx-3 mt-6 flex items-center justify-between bg-[#f8fafc]">
-            <StatusBadge telem={telem} />
-            <span className="px-2.5 text-xs font-bold text-[#2b2f36]">{timeAgo(telem?.receivedAt ?? telem?.eventTime)}</span>
-          </div>
-          <div className="mx-3 mt-2.5 flex justify-center overflow-hidden rounded-md border border-[#e5edf4]">
-            {digits.map((digit, index) => (
-              <span key={`${digit}-${index}`} className="grid h-8 w-7 place-items-center border-r border-[#e5edf4] bg-[#f8fafc] text-base font-medium text-[#2b2f36] last:border-r-0">
-                {digit}
-              </span>
-            ))}
-          </div>
-          <div className="space-y-1.5 px-3 py-2.5 text-xs text-[#2b2f36]">
-            <div className="flex items-center justify-between gap-3">
-              <span>Driver</span>
-              <span className="truncate font-semibold text-[#2563eb]">{fieldText(device.driverName, device.ownerName, "Assign Driver")}</span>
-            </div>
-            <div className="flex items-center justify-between gap-3">
-              <span>Mobile</span>
-              <span className="truncate font-semibold">{fieldText(device.driverPhone, device.mobileNumber, device.simNumber)}</span>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg bg-white p-2.5 shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-          <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[#2b2f36]">
-            Location <FiInfo size={13} />
-          </div>
-          <div className="text-xs leading-relaxed text-[#2b2f36]">{location}</div>
-          <div className="mt-2 text-xs font-semibold text-[#2563eb]">{coords(telem)}</div>
-        </section>
-
-        <section className="rounded-lg bg-white p-2.5 shadow-[0_6px_16px_rgba(15,23,42,0.08)]">
-          <div className="mb-2.5 text-sm font-bold text-[#2b2f36]">Today Activity</div>
-          <div className="flex items-center gap-1.5">
-            <FiFlag className="text-[#7ac943]" size={19} />
-            <div className="h-0 flex-1 border-t-2 border-dashed border-[#111827]" />
-            <span className="text-xs font-semibold text-[#2b2f36]">{todayKm}</span>
-            <FiTruck className="text-[#39aaf5]" size={19} />
-          </div>
-          <div className="mt-2.5 space-y-1.5 text-xs">
-            <div className="flex justify-between"><span>Running</span><strong className="text-[#16a34a]">{activityDuration("running", telem, device)}</strong></div>
-            <div className="flex justify-between"><span>Idle</span><strong className="text-[#d99a13]">{activityDuration("idle", telem, device)}</strong></div>
-            <div className="flex justify-between"><span>Stop</span><strong className="text-[#ef334a]">{activityDuration("stop", telem, device)}</strong></div>
-            <div className="flex justify-between"><span>Inactive</span><strong className="text-[#2563eb]">{activityDuration("inactive", telem, device)}</strong></div>
-            <div className="flex justify-between"><span>Fuel Consumption</span><strong>{fuel != null ? `${fuel.toFixed(2)} Ltr` : "--"}</strong></div>
-          </div>
-        </section>
-
-        <div className="grid grid-cols-2 gap-2">
-          <div className="rounded-lg bg-[#dff2ff] p-2.5 text-center text-[#07152f] shadow-sm">
-            <div className="text-xs font-medium">Avg Speed</div>
-            <div className="mt-0.5 text-base font-bold">{avgSpeed != null ? `${avgSpeed.toFixed(1)} kmh` : "--"}</div>
-          </div>
-          <div className="rounded-lg bg-[#ffe1e4] p-2.5 text-center text-[#1f0b11] shadow-sm">
-            <div className="text-xs font-medium">Max Speed</div>
-            <div className="mt-0.5 text-base font-bold">{maxSpeed != null ? `${Math.round(maxSpeed)} kmh` : "--"}</div>
-          </div>
-          <div className="rounded-lg bg-[#daf8ee] p-2.5 text-center text-[#04170f] shadow-sm">
-            <div className="text-xs font-medium">Speed</div>
-            <div className="mt-0.5 text-base font-bold">{speed} kmh</div>
-          </div>
-          <div className="rounded-lg bg-[#fff0cf] p-2.5 text-center text-[#231505] shadow-sm">
-            <div className="text-xs font-medium">Battery</div>
-            <div className="mt-0.5 text-base font-bold">{batteryVoltage(telem, device)}</div>
-          </div>
-        </div>
-      </div>
-    </aside>
   );
 }
 
@@ -1004,15 +826,6 @@ export default function AllVehiclesPage() {
           className="h-full w-full"
           onMarkerClick={setSelected}
         />
-
-        {selectedDevice && (
-          <AssetDetailDrawer
-            device={selectedDevice}
-            telem={telemetry[selectedDevice.id] ?? null}
-            location={locationLine(selectedDevice, telemetry[selectedDevice.id] ?? null, addresses[addressKey(telemetry[selectedDevice.id] ?? null) ?? ""])}
-            onClose={() => setSelected(null)}
-          />
-        )}
 
         <div className="absolute right-4 top-4 z-10">
           <div className="relative">
