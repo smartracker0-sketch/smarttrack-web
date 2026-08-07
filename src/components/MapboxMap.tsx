@@ -126,6 +126,7 @@ export default function MapboxMap({
       if (progress < 1) {
         animationRef.current.set(id, window.requestAnimationFrame(step));
       } else {
+        marker.setLngLat([lng, lat]);
         animationRef.current.delete(id);
       }
     };

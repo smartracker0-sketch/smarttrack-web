@@ -485,12 +485,19 @@ export default function AllVehiclesPage() {
       );
       const telemMap: Record<string, DeviceRow> = {};
       telemResults.forEach((r, i) => {
-        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = mergeTelemetry(telemetry[devices[i].id], r.value) ?? r.value;
+        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = r.value;
       });
-      setTelemetry((prev) => ({ ...prev, ...telemMap }));
+      setTelemetry((prev) => {
+        const next = { ...prev };
+        Object.entries(telemMap).forEach(([deviceId, value]) => {
+          const merged = mergeTelemetry(prev[deviceId], value);
+          if (merged) next[deviceId] = merged;
+        });
+        return next;
+      });
     }, 5000);
     return () => clearInterval(interval);
-  }, [devices, telemetry]);
+  }, [devices]);
 
   useEffect(() => {
     if (devices.length === 0) return;
