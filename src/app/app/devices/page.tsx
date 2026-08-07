@@ -212,6 +212,31 @@ function escapeHtml(value: unknown) {
     .replaceAll("'", "&#039;");
 }
 
+function telemetrySocketUrl() {
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
+  const wsBase = apiBase
+    ? apiBase.replace(/^http/, "ws")
+    : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
+  return `${wsBase}/ws/websocket`;
+}
+
+function parseStompBodies(frame: string) {
+  return frame
+    .split("\0")
+    .map((part) => part.trim())
+    .filter((part) => part.startsWith("MESSAGE"))
+    .map((part) => {
+      const bodyStart = part.indexOf("\n\n");
+      if (bodyStart < 0) return null;
+      try {
+        return JSON.parse(part.slice(bodyStart + 2)) as DeviceRow;
+      } catch {
+        return null;
+      }
+    })
+    .filter((body): body is DeviceRow => Boolean(body));
+}
+
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 2800);
@@ -430,6 +455,54 @@ export default function AllVehiclesPage() {
       setTelemetry(telemMap);
     }, 5000);
     return () => clearInterval(interval);
+  }, [devices]);
+
+  useEffect(() => {
+    if (devices.length === 0) return;
+    let closed = false;
+    let reconnectId: number | null = null;
+    let socket: WebSocket | null = null;
+    const deviceIds = new Set(devices.map((d) => String(d.id)));
+
+    function connect() {
+      if (closed) return;
+      let stompBuffer = "";
+      try {
+        socket = new WebSocket(telemetrySocketUrl());
+      } catch {
+        reconnectId = window.setTimeout(connect, 5000);
+        return;
+      }
+
+      socket.onopen = () => {
+        socket?.send("CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0");
+      };
+      socket.onmessage = (event) => {
+        stompBuffer += String(event.data);
+        if (stompBuffer.includes("CONNECTED")) {
+          socket?.send("SUBSCRIBE\nid:sub-live-telemetry\ndestination:/topic/telemetry\n\n\0");
+        }
+        parseStompBodies(stompBuffer).forEach((payload) => {
+          const deviceId = String(payload.deviceId ?? "");
+          if (!deviceIds.has(deviceId)) return;
+          setTelemetry((prev) => ({ ...prev, [deviceId]: payload }));
+        });
+        if (stompBuffer.includes("\0")) stompBuffer = "";
+      };
+      socket.onclose = () => {
+        if (!closed) reconnectId = window.setTimeout(connect, 5000);
+      };
+      socket.onerror = () => {
+        socket?.close();
+      };
+    }
+
+    connect();
+    return () => {
+      closed = true;
+      if (reconnectId !== null) window.clearTimeout(reconnectId);
+      socket?.close();
+    };
   }, [devices]);
 
   useEffect(() => {
