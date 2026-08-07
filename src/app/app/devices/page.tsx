@@ -151,11 +151,12 @@ function todayDistanceKm(telem: DeviceRow | null, device?: DeviceRow | null) {
   const meters = numberFrom(telem?.distanceM, telem?.todayDistanceM, telem?.tripDistanceM);
   if (meters && meters > 0) return meters / 1000;
 
-  return isRecentlyReporting(telem) || isMoving(telem) ? 0.5 : 0;
+  return 0;
 }
 
 function todayDistance(telem: DeviceRow | null, device?: DeviceRow | null) {
-  return `${todayDistanceKm(telem, device).toFixed(1)} km`;
+  const km = todayDistanceKm(telem, device);
+  return km > 0 ? `${km.toFixed(1)} km` : null;
 }
 
 function batteryVoltage(telem: DeviceRow | null, device?: DeviceRow | null) {
@@ -693,6 +694,7 @@ export default function AllVehiclesPage() {
           const title = shortName(d);
           const location = locationLine(d, t ?? null, addresses[addressKey(t ?? null) ?? ""]);
           const coordinateText = coords(t ?? null);
+          const today = todayDistance(t ?? null, d);
           return {
             id: d.id,
             lat: t.latitude,
@@ -710,7 +712,7 @@ export default function AllVehiclesPage() {
                 <div class="tp-popup-title">${escapeHtml(title)} <span>-></span></div>
                 <div class="tp-popup-status">
                   <strong>${escapeHtml(statusText(t ?? null))}</strong>
-                  <span>| Today: ${escapeHtml(todayDistance(t ?? null, d))}</span>
+                  ${today ? `<span>| Today: ${escapeHtml(today)}</span>` : ""}
                 </div>
                 <div class="tp-popup-muted">Last data received ${escapeHtml(timeAgo(t.receivedAt ?? t.eventTime))}</div>
                 <div class="tp-popup-location">${escapeHtml(location)}</div>
@@ -837,6 +839,7 @@ export default function AllVehiclesPage() {
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
                 const isRef = refreshing === d.id;
+                const today = todayDistance(t, d);
                 const statusLabel =
                   key === "moving"
                     ? `Moving: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
@@ -881,7 +884,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold">
                       <span style={{ color: STATUS_COLOR[key] }}>{statusLabel}</span>
-                      <span className="text-[#536987]">| Today: <strong>{todayDistance(t, d)}</strong></span>
+                      {today && <span className="text-[#536987]">| Today: <strong>{today}</strong></span>}
                     </div>
 
                     <div className="mt-1.5 text-[11px] font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>

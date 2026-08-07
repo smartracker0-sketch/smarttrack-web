@@ -19,7 +19,8 @@ const ACTIVATION_COLORS: Record<string, { bg: string; color: string; label: stri
   UNREACHABLE:   { bg: "rgba(239,68,68,0.12)",   color: "#EF4444",  label: "No Response" },
 };
 
-const DEVICE_TYPES = ["GPS Tracker", "Dashcam", "Fuel Sensor"] as const;
+const DEVICE_TYPES = ["GPS Tracker", "Asset Tracker", "Dashcam", "Fuel Sensor"] as const;
+const DEVICE_MODEL_SUGGESTIONS = ["ATC700", "FMB920", "FMC130", "GT06N", "GV300"] as const;
 const FIRMWARE_OPTIONS = ["v4.2.1", "v4.1.0", "v3.8.2", "v2.1.0", "v1.9.0"];
 
 type FormMode = "single" | "bulk";
@@ -325,7 +326,10 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                     </Select>
                   </Field>
                   <Field label="Device Model *">
-                    <Input required placeholder="e.g. GT06N or FMB920" value={model} onChange={e => setModel(e.target.value)} />
+                    <Input required list="device-model-suggestions" placeholder="e.g. ATC700, GT06N or FMB920" value={model} onChange={e => setModel(e.target.value)} />
+                    <datalist id="device-model-suggestions">
+                      {DEVICE_MODEL_SUGGESTIONS.map(option => <option key={option} value={option} />)}
+                    </datalist>
                   </Field>
                   <Field label="SIM APN *">
                     <Input required placeholder="e.g. internet" value={simApn} onChange={e => setSimApn(e.target.value)} />
@@ -567,7 +571,7 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
             <Field label="SIM APN"><Input value={simApn} onChange={e => setSimApn(e.target.value)} /></Field>
             <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option></Select></Field>
-            <Field label="Device Model"><Input value={model} onChange={e => setModel(e.target.value)} /></Field>
+            <Field label="Device Model"><Input list="edit-device-model-suggestions" value={model} onChange={e => setModel(e.target.value)} /><datalist id="edit-device-model-suggestions">{DEVICE_MODEL_SUGGESTIONS.map(option => <option key={option} value={option} />)}</datalist></Field>
             <Field label="Mobile Carrier"><Input value={mobileCarrier} onChange={e => setMobileCarrier(e.target.value)} /></Field>
             <Field label={device.hasSmsCommandPassword ? "Replace Tracker SMS Password" : "Tracker SMS Password"}><Input type="password" placeholder={device.hasSmsCommandPassword ? "Leave blank to keep current password" : "Optional; encrypted"} value={smsCommandPassword} onChange={e => setSmsCommandPassword(e.target.value)} /></Field>
             <Field label="Vehicle Plate / Name"><Input value={vehiclePlate} onChange={e => setVehiclePlate(e.target.value)} /></Field>
