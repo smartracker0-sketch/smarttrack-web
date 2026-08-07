@@ -243,6 +243,13 @@ function mergeTelemetry(previous: DeviceRow | undefined, next: DeviceRow | null)
   return {
     ...previous,
     ...next,
+    latitude: next.latitude ?? previous.latitude,
+    longitude: next.longitude ?? previous.longitude,
+    altitudeM: next.altitudeM ?? previous.altitudeM,
+    speedKph: next.speedKph ?? previous.speedKph,
+    headingDeg: next.headingDeg ?? previous.headingDeg,
+    accuracyM: next.accuracyM ?? previous.accuracyM,
+    satellites: next.satellites ?? previous.satellites,
     voltageMv: next.voltageMv ?? previous.voltageMv,
     batteryVoltageMv: next.batteryVoltageMv ?? previous.batteryVoltageMv,
     vehicleVoltageMv: next.vehicleVoltageMv ?? previous.vehicleVoltageMv,
