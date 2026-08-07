@@ -597,18 +597,14 @@ export default function AllVehiclesPage() {
                   <strong>${escapeHtml(statusText(t ?? null))}</strong>
                   <span>| Today: ${escapeHtml(todayDistance(t ?? null, d))}</span>
                 </div>
-                <div class="tp-popup-indicators">
-                  <span class="${ignitionOn ? "is-on" : ""}">Ignition: ${escapeHtml(ignitionText(t ?? null))}</span>
-                  <span class="${motionActive ? "is-on" : ""}">Motion: ${escapeHtml(motionText(t ?? null))}</span>
-                </div>
                 <div class="tp-popup-muted">Last data received ${escapeHtml(timeAgo(t.receivedAt ?? t.eventTime))}</div>
                 <div class="tp-popup-location">${escapeHtml(location)}</div>
                 <div class="tp-popup-coords">${escapeHtml(coordinateText)} <span>□</span></div>
                 <div class="tp-popup-row">Trip: <strong>${escapeHtml(d.tripName ?? "Not Assigned")}</strong></div>
                 <div class="tp-popup-row">Consigner: <strong>${escapeHtml(d.consignerName ?? "Not Assigned")}</strong></div>
-                <div class="tp-popup-row">Driver: <strong>${escapeHtml(d.driverName ?? d.ownerName ?? "Not Assigned")}</strong></div>
+                <div class="tp-popup-row">Driver: <strong>${escapeHtml(fieldText(d.driverName, d.ownerName, d.driverPhone, d.mobileNumber, "Not Assigned"))}</strong></div>
                 <div class="tp-popup-actions">
-                  <span>⌯</span><span>♙</span><span>⇄</span><span>▱</span><span>▣</span><span>▤</span><span>◯</span><span>☷</span>
+                  <span>⌯</span><span>◉</span><span>⇄</span><span>▱</span><span>▣</span><span>▤</span><span>◯</span><span>☷</span>
                 </div>
               </div>
             `,
@@ -826,17 +822,17 @@ export default function AllVehiclesPage() {
           onMarkerClick={setSelected}
         />
 
-        <div className="absolute right-4 top-4 z-10">
+        <div className="absolute bottom-20 right-5 z-10">
           <div className="relative">
             <button
               onClick={() => setShowStyleMenu(!showStyleMenu)}
-              className="flex items-center gap-2 rounded-lg bg-[#061337] px-3 py-2 text-sm font-semibold text-white shadow transition-all hover:brightness-110"
+              className="flex items-center gap-2 rounded-lg bg-[#061337] px-3 py-2 text-sm font-semibold text-white shadow-xl transition-all hover:brightness-110"
             >
               <FiLayers size={16} />
               <span>{MAP_STYLES.find((s) => s.id === mapStyle)?.label || "Streets"}</span>
             </button>
             {showStyleMenu && (
-              <div className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">
+              <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">
                 {MAP_STYLES.map((style) => (
                   <button
                     key={style.id}
