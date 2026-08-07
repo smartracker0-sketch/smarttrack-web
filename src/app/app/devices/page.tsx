@@ -237,6 +237,27 @@ function parseStompBodies(frame: string) {
     .filter((body): body is DeviceRow => Boolean(body));
 }
 
+function mergeTelemetry(previous: DeviceRow | undefined, next: DeviceRow | null) {
+  if (!next) return previous;
+  if (!previous) return next;
+  return {
+    ...previous,
+    ...next,
+    voltageMv: next.voltageMv ?? previous.voltageMv,
+    batteryVoltageMv: next.batteryVoltageMv ?? previous.batteryVoltageMv,
+    vehicleVoltageMv: next.vehicleVoltageMv ?? previous.vehicleVoltageMv,
+    externalVoltageMv: next.externalVoltageMv ?? previous.externalVoltageMv,
+    voltage: next.voltage ?? previous.voltage,
+    batteryVoltage: next.batteryVoltage ?? previous.batteryVoltage,
+    vehicleVoltage: next.vehicleVoltage ?? previous.vehicleVoltage,
+    externalVoltage: next.externalVoltage ?? previous.externalVoltage,
+    batteryPercent: next.batteryPercent ?? previous.batteryPercent,
+    batteryPct: next.batteryPct ?? previous.batteryPct,
+    battery: next.battery ?? previous.battery,
+    gsmSignal: next.gsmSignal ?? previous.gsmSignal,
+  };
+}
+
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => {
     const t = setTimeout(onDone, 2800);
@@ -420,11 +441,18 @@ export default function AllVehiclesPage() {
         const telemResults = await Promise.allSettled(
           list.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then((r) => (r.ok && r.status !== 204 ? r.json() : null)))
         );
-        const telemMap: Record<string, DeviceRow> = {};
+        const telemMap: Record<string, DeviceRow | null> = {};
         telemResults.forEach((r, i) => {
           if (r.status === "fulfilled" && r.value) telemMap[list[i].id] = r.value;
         });
-        setTelemetry(telemMap);
+        setTelemetry((prev) => {
+          const next: Record<string, DeviceRow> = {};
+          Object.entries(telemMap).forEach(([deviceId, value]) => {
+            const merged = mergeTelemetry(prev[deviceId], value);
+            if (merged) next[deviceId] = merged;
+          });
+          return next;
+        });
       }
     } finally {
       if (showSpinner) setLoading(false);
@@ -450,12 +478,12 @@ export default function AllVehiclesPage() {
       );
       const telemMap: Record<string, DeviceRow> = {};
       telemResults.forEach((r, i) => {
-        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = r.value;
+        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = mergeTelemetry(telemetry[devices[i].id], r.value) ?? r.value;
       });
-      setTelemetry(telemMap);
+      setTelemetry((prev) => ({ ...prev, ...telemMap }));
     }, 5000);
     return () => clearInterval(interval);
-  }, [devices]);
+  }, [devices, telemetry]);
 
   useEffect(() => {
     if (devices.length === 0) return;
@@ -485,7 +513,7 @@ export default function AllVehiclesPage() {
         parseStompBodies(stompBuffer).forEach((payload) => {
           const deviceId = String(payload.deviceId ?? "");
           if (!deviceIds.has(deviceId)) return;
-          setTelemetry((prev) => ({ ...prev, [deviceId]: payload }));
+          setTelemetry((prev) => ({ ...prev, [deviceId]: mergeTelemetry(prev[deviceId], payload) ?? payload }));
         });
         if (stompBuffer.includes("\0")) stompBuffer = "";
       };
@@ -580,7 +608,7 @@ export default function AllVehiclesPage() {
       const res = await fetch(`/api/telemetry?type=latest&deviceId=${deviceId}`);
       if (res.ok && res.status !== 204) {
         const t = await res.json();
-        setTelemetry((prev) => ({ ...prev, [deviceId]: t }));
+        setTelemetry((prev) => ({ ...prev, [deviceId]: mergeTelemetry(prev[deviceId], t) ?? t }));
         notify(`Location refreshed for ${name}`);
       }
     } finally {
