@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
+  FiCamera,
   FiChevronRight,
   FiClipboard,
   FiCopy,
@@ -180,16 +181,6 @@ function motionText(telem: DeviceRow | null) {
   return "STOPPED";
 }
 
-function IndicatorPill({ active, label, value }: { active: boolean; label: string; value: string }) {
-  return (
-    <div className="flex min-h-[28px] items-center gap-1.5 rounded-full border border-[#d5e2ec] bg-white px-2.5 text-[#061337]">
-      <span className="h-2 w-2 rounded-full" style={{ background: active ? "#22C55E" : "#94A3B8" }} />
-      <span className="text-[9px] font-semibold text-[#536987]">{label}</span>
-      <strong className="text-[10px]">{value}</strong>
-    </div>
-  );
-}
-
 function coords(telem: DeviceRow | null) {
   if (telem?.latitude == null || telem?.longitude == null) return "Coordinates unavailable";
   return `(${Number(telem.latitude).toFixed(6)}, ${Number(telem.longitude).toFixed(6)})`;
@@ -252,9 +243,9 @@ function ActionIcon({ children, label, onClick }: { children: React.ReactNode; l
 
 function MetricBox({ value, label }: { value: string; label: string }) {
   return (
-    <div className="flex min-h-[43px] min-w-[53px] flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-1.5 text-center text-[#061337]">
-      <div className="text-[11px] font-extrabold">{value}</div>
-      <div className="mt-0.5 text-[9px] font-medium leading-tight">{label}</div>
+    <div className="flex h-[76px] min-w-0 flex-1 flex-col items-center justify-center rounded-lg border border-[#d5e2ec] bg-white px-1.5 text-center text-[#061337]">
+      <div className="text-[11px] font-extrabold leading-tight">{value}</div>
+      <div className="mt-1 text-[10px] font-medium leading-tight">{label}</div>
     </div>
   );
 }
@@ -732,24 +723,33 @@ export default function AllVehiclesPage() {
               visibleDevices.map((d) => {
                 const t = telemetry[d.id] ?? null;
                 const key = statKey(t);
-                const motionActive = isMotionActive(t);
-                const ignitionOn = isIgnitionOn(t);
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
                 const isRef = refreshing === d.id;
+                const statusLabel =
+                  key === "moving"
+                    ? `Moving: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
+                    : key === "idle"
+                      ? `Online: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
+                      : key === "stopped"
+                        ? `Stopped: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
+                        : "Offline";
                 return (
                   <article
                     key={d.id}
                     onClick={() => {
                       setSelected(d.id);
                     }}
-                    className={`mb-2 rounded-xl bg-white p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.07)] transition ${
+                    className={`mb-3 rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)] transition ${
                       isSelected ? "ring-2 ring-[#d7e4ee]" : "hover:shadow-[0_16px_36px_rgba(15,23,42,0.1)]"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <h2 className="min-w-0 truncate text-base font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
-                      <div className="flex flex-shrink-0 items-center gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex min-w-0 items-center gap-1.5">
+                        <FiCamera size={17} className="flex-shrink-0 text-[#536987]" />
+                        <h2 className="min-w-0 truncate text-[15px] font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
+                      </div>
+                      <div className="flex flex-shrink-0 items-center gap-1.5">
                         <ActionIcon label="Share" onClick={(e) => handleShare(e, d)}>
                           <FiShare2 size={14} />
                         </ActionIcon>
@@ -762,33 +762,32 @@ export default function AllVehiclesPage() {
                         <ActionIcon label="Vehicle">
                           <FiTruck size={15} />
                         </ActionIcon>
+                        <ActionIcon label="Camera">
+                          <FiCamera size={15} />
+                        </ActionIcon>
                       </div>
                     </div>
 
                     <div className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs font-semibold">
-                      <span style={{ color: STATUS_COLOR[key] }}>{statusText(t)}</span>
+                      <span style={{ color: STATUS_COLOR[key] }}>{statusLabel}</span>
                       <span className="text-[#536987]">| Today: <strong>{todayDistance(t, d)}</strong></span>
                     </div>
 
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      <IndicatorPill active={ignitionOn} label="Ignition" value={ignitionText(t)} />
-                      <IndicatorPill active={motionActive} label="Motion" value={motionText(t)} />
+                    <div className="mt-1.5 text-[11px] font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
+
+                    <div className="mt-3 flex items-center gap-2">
+                      <FiMapPin size={20} className="flex-shrink-0 text-[#061337]" />
+                      <div className="min-w-0 truncate text-[13px] font-medium leading-snug text-[#061337]" title={location}>{location}</div>
                     </div>
 
-                    <div className="mt-1 text-xs font-medium text-[#536987]">Last data received {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
-
-                    <div className="mt-2.5 flex items-start gap-1.5">
-                      <FiMapPin size={18} className="mt-0.5 flex-shrink-0 text-[#061337]" />
-                      <div className="min-w-0 text-[13px] font-medium leading-snug text-[#061337]" title={location}>{location}</div>
-                    </div>
-
-                    <div className="mt-2.5 flex flex-wrap items-stretch gap-1.5">
+                    <div className="mt-3 flex items-stretch gap-2">
+                      <MetricBox value={ignitionText(t)} label="Ignition" />
                       <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
-                      <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery" />
+                      <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery Voltage" />
                       <button
                         type="button"
                         onClick={(e) => handleRefresh(e, d.id, shortName(d))}
-                        className="grid min-h-[43px] w-6 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
+                        className="grid h-[76px] w-8 flex-shrink-0 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
                         aria-label="Refresh vehicle"
                       >
                         <FiChevronRight size={20} className={isRef ? "animate-spin" : ""} />
