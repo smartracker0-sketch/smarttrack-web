@@ -124,6 +124,30 @@ function formatDateTime(value?: string | null) {
   });
 }
 
+function formatNotificationTime(value?: string | null) {
+  if (!value) return "--";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "--";
+  return date.toLocaleString([], {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function compactAlertType(value: unknown) {
+  const raw = fieldText(value, "event");
+  return raw
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .map((part, index) => (index === 0 ? part : `${part.charAt(0).toUpperCase()}${part.slice(1)}`))
+    .join("");
+}
+
 function statusText(telem: DeviceRow | null) {
   const key = statKey(telem);
   if (key === "moving") return `Moving: ${Math.round(Number(telem?.speedKph ?? 0))} km/h`;
@@ -339,39 +363,23 @@ function LiveTabPanel({
   tab,
   rows,
   loading,
+  devices,
 }: {
   tab: string;
   rows: LiveTabRow[];
   loading: boolean;
+  devices: DeviceRow[];
 }) {
   if (loading) {
     return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading {tab.toLowerCase()}...</div>;
   }
 
-  if (rows.length === 0) {
-    return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No live {tab.toLowerCase()} records yet.</div>;
+  if (tab === "Notifications") {
+    return <NotificationsTable rows={rows} devices={devices} />;
   }
 
-  if (tab === "Notifications") {
-    return (
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <article key={row.id} className="rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <div className="truncate text-[13px] font-extrabold text-[#061337]">{fieldText(row.alertType, "Alert")}</div>
-                <div className="mt-1 text-[11px] leading-snug text-[#536987]">{fieldText(row.message, row.relatedGeofenceName, "Vehicle notification")}</div>
-              </div>
-              <span className="rounded-full bg-[#fff1f3] px-2 py-1 text-[10px] font-bold text-[#f24464]">{fieldText(row.severity, "INFO")}</span>
-            </div>
-            <div className="mt-2 flex items-center justify-between text-[10px] font-semibold text-[#94a3b8]">
-              <span>{formatDateTime(row.alertTime ?? row.receivedAt)}</span>
-              <span>{row.acknowledged ? "Acknowledged" : "New"}</span>
-            </div>
-          </article>
-        ))}
-      </div>
-    );
+  if (rows.length === 0) {
+    return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No live {tab.toLowerCase()} records yet.</div>;
   }
 
   if (tab === "History") {
@@ -410,6 +418,111 @@ function LiveTabPanel({
           </div>
         </article>
       ))}
+    </div>
+  );
+}
+
+function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: DeviceRow[] }) {
+  const [search, setSearch] = useState("");
+  const [eventFilter, setEventFilter] = useState("all");
+
+  const deviceNames = useMemo(() => {
+    const names: Record<string, string> = {};
+    devices.forEach((device) => {
+      names[String(device.id)] = shortName(device);
+    });
+    return names;
+  }, [devices]);
+
+  const eventTypes = useMemo(
+    () => Array.from(new Set(rows.map((row) => compactAlertType(row.alertType)).filter(Boolean))).sort(),
+    [rows]
+  );
+
+  const filteredRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return rows.filter((row) => {
+      const objectName = fieldText(row.deviceName, row.vehicleName, row.objectName, deviceNames[String(row.deviceId)], row.imei, row.deviceId);
+      const event = compactAlertType(row.alertType);
+      const matchesEvent = eventFilter === "all" || event === eventFilter;
+      if (!matchesEvent) return false;
+      if (!query) return true;
+      return [objectName, event, row.message, row.severity]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(query);
+    });
+  }, [deviceNames, eventFilter, rows, search]);
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-[#e2e8f0] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+      <div className="grid grid-cols-[1fr_132px] border-b border-[#eef2f6] bg-white">
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search Vehicle"
+          className="h-10 min-w-0 border-r border-[#eef2f6] bg-white px-3 text-[11px] font-medium text-[#061337] outline-none placeholder:text-[#94a3b8]"
+        />
+        <select
+          value={eventFilter}
+          onChange={(e) => setEventFilter(e.target.value)}
+          className="h-10 min-w-0 bg-white px-2 text-[11px] font-medium text-[#536987] outline-none"
+          aria-label="Event filter"
+        >
+          <option value="all">Event Filter</option>
+          {eventTypes.map((event) => (
+            <option key={event} value={event}>
+              {event}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-[1fr_1.28fr_1fr_22px] border-b border-[#dbe5ee] bg-[#f8fafc] text-[10px] font-semibold text-[#475569]">
+        <div className="border-r border-[#e2e8f0] px-2 py-2">Object</div>
+        <div className="border-r border-[#e2e8f0] px-2 py-2">Time</div>
+        <div className="px-2 py-2">Event</div>
+        <div />
+      </div>
+
+      {filteredRows.length === 0 ? (
+        <div className="px-3 py-6 text-center text-[11px] font-medium text-[#94a3b8]">No notifications match this filter.</div>
+      ) : (
+        <div className="max-h-[calc(100vh-330px)] overflow-y-auto">
+          {filteredRows.map((row, index) => {
+            const objectName = fieldText(row.deviceName, row.vehicleName, row.objectName, deviceNames[String(row.deviceId)], row.imei, row.deviceId);
+            return (
+              <div
+                key={row.id ?? `${row.deviceId}-${row.alertTime}-${index}`}
+                className={`grid grid-cols-[1fr_1.28fr_1fr_22px] items-center text-[10px] font-medium text-[#26364a] ${
+                  index % 2 === 0 ? "bg-white" : "bg-[#f7f9fb]"
+                }`}
+              >
+                <div className="min-w-0 px-2 py-3">
+                  <div className="truncate font-semibold uppercase">{objectName}</div>
+                </div>
+                <div className="min-w-0 px-2 py-3">
+                  <div className="truncate">{formatNotificationTime(row.alertTime ?? row.receivedAt)}</div>
+                </div>
+                <div className="min-w-0 px-2 py-3">
+                  <div className="truncate">{compactAlertType(row.alertType)}</div>
+                </div>
+                <button
+                  type="button"
+                  className="flex h-full min-h-10 flex-col items-center justify-center gap-0.5"
+                  aria-label={`Notification actions for ${objectName}`}
+                  title={fieldText(row.message, "Notification actions")}
+                >
+                  <span className="h-1 w-1 rounded-full bg-[#111827]" />
+                  <span className="h-1 w-1 rounded-full bg-[#111827]" />
+                  <span className="h-1 w-1 rounded-full bg-[#111827]" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -827,7 +940,7 @@ export default function AllVehiclesPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 pt-2 sm:px-3.5">
             {activePanelTab !== "Objects" ? (
-              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} />
+              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} devices={devices} />
             ) : loading ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
@@ -942,7 +1055,7 @@ export default function AllVehiclesPage() {
           onMarkerClick={setSelected}
         />
 
-        <div className="absolute bottom-20 right-5 z-10">
+        <div className="absolute right-5 top-5 z-10">
           <div className="relative">
             <button
               onClick={() => setShowStyleMenu(!showStyleMenu)}
@@ -952,7 +1065,7 @@ export default function AllVehiclesPage() {
               <span>{MAP_STYLES.find((s) => s.id === mapStyle)?.label || "Outdoors"}</span>
             </button>
             {showStyleMenu && (
-              <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">
+              <div className="absolute right-0 top-full mt-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">
                 {MAP_STYLES.map((style) => (
                   <button
                     key={style.id}
