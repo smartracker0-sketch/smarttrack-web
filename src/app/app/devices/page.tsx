@@ -422,7 +422,7 @@ export default function AllVehiclesPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState<string | null>(null);
-  const [mapStyle, setMapStyle] = useState("streets");
+  const [mapStyle, setMapStyle] = useState("outdoors");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
   const [vehiclePanelOpen, setVehiclePanelOpen] = useState(true);
   const [activeStatus, setActiveStatus] = useState<(typeof STATUS_FILTERS)[number]["key"]>("all");
@@ -935,7 +935,7 @@ export default function AllVehiclesPage() {
           flyToId={selected ?? ""}
           center={[9.082, 8.675]}
           zoom={markers.length > 0 ? 10 : 5}
-          style={MAP_STYLES.find((s) => s.id === mapStyle)?.style || "mapbox://styles/mapbox/streets-v12"}
+          style={MAP_STYLES.find((s) => s.id === mapStyle)?.style || "mapbox://styles/mapbox/outdoors-v12"}
           className="h-full w-full"
           onMarkerClick={setSelected}
         />
@@ -947,7 +947,7 @@ export default function AllVehiclesPage() {
               className="flex items-center gap-2 rounded-lg bg-[#061337] px-3 py-2 text-sm font-semibold text-white shadow-xl transition-all hover:brightness-110"
             >
               <FiLayers size={16} />
-              <span>{MAP_STYLES.find((s) => s.id === mapStyle)?.label || "Streets"}</span>
+              <span>{MAP_STYLES.find((s) => s.id === mapStyle)?.label || "Outdoors"}</span>
             </button>
             {showStyleMenu && (
               <div className="absolute bottom-full right-0 mb-2 w-40 overflow-hidden rounded-lg border border-[#d5e2ec] bg-white shadow-xl">

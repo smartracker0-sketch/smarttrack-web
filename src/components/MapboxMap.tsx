@@ -32,7 +32,7 @@ interface Props {
 
 const DEFAULT_CENTER: [number, number] = [6.5244, 3.3792];
 const DEFAULT_ZOOM = 12;
-const DEFAULT_STYLE = "mapbox://styles/mapbox/dark-v11";
+const DEFAULT_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
 export default function MapboxMap({
   markers,

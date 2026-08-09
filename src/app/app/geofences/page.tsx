@@ -375,7 +375,7 @@ export default function GeofencesPage() {
             flyToId={activeSelectedId ?? ""}
             center={[3.3792, 6.5244]}
             zoom={filteredZones.length > 0 ? 10 : 5}
-            style="mapbox://styles/mapbox/streets-v12"
+            style="mapbox://styles/mapbox/outdoors-v12"
             className="w-full h-full"
             onMarkerClick={setSelectedId}
           />

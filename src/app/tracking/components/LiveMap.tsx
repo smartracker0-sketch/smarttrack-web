@@ -111,7 +111,7 @@ export default function LiveMap({
         followId={followId}
         center={[6.5244, 3.3792]}
         zoom={12}
-        style="mapbox://styles/mapbox/dark-v11"
+        style="mapbox://styles/mapbox/outdoors-v12"
         className="w-full h-full"
         onMarkerClick={handleMarkerClick}
       />
