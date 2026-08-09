@@ -695,6 +695,7 @@ export default function AllVehiclesPage() {
           const location = locationLine(d, t ?? null, addresses[addressKey(t ?? null) ?? ""]);
           const coordinateText = coords(t ?? null);
           const today = todayDistance(t ?? null, d);
+          const voltage = batteryVoltage(t ?? null, d);
           return {
             id: d.id,
             lat: t.latitude,
@@ -720,6 +721,7 @@ export default function AllVehiclesPage() {
                 <div class="tp-popup-row">Trip: <strong>${escapeHtml(d.tripName ?? "Not Assigned")}</strong></div>
                 <div class="tp-popup-row">Consigner: <strong>${escapeHtml(d.consignerName ?? "Not Assigned")}</strong></div>
                 <div class="tp-popup-row">Driver: <strong>${escapeHtml(fieldText(d.driverName, d.ownerName, d.driverPhone, d.mobileNumber, "Not Assigned"))}</strong></div>
+                <div class="tp-popup-row">Vehicle Battery: <strong>${escapeHtml(voltage)}</strong></div>
                 <div class="tp-popup-actions">
                   <span>⌯</span><span>◉</span><span>⇄</span><span>▱</span><span>▣</span><span>▤</span><span>◯</span><span>☷</span>
                 </div>
