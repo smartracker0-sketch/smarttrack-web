@@ -50,7 +50,7 @@ const CONFIGURATIONS_SUB = [
 ];
 
 const SIDEBAR_ITEMS = [
-  { href: "/app",                  icon: FiPieChart,      label: "Analytics" },
+  { href: "/app/analytics",        icon: FiPieChart,      label: "Analytics" },
   { href: "/app/devices",          icon: FiTruck,         label: "Vehicles",  sub: VEHICLE_SUB },
   { href: "/app/history",          icon: FiNavigation,    label: "Trips",     sub: TRIPS_SUB },
   { href: "/app/alerts",           icon: FiAlertTriangle, label: "Alerts" },
@@ -99,6 +99,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [maintenanceOpen, setMaintenanceOpen] = useState(pathname.startsWith('/app/maintenance'));
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
+  const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : 'All Vehicles';
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -245,7 +246,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 Smart Tracker Telematics
               </div>
               <div className="text-sm font-extrabold leading-tight" style={{ color: '#0D4A47' }}>
-                All Vehicles
+                {pageTitle}
               </div>
             </div>
           </div>
