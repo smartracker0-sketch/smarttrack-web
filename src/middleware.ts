@@ -3,6 +3,20 @@ import { NextRequest, NextResponse } from "next/server";
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  const isApp =
+    pathname.startsWith("/app") &&
+    !pathname.startsWith("/api/");
+
+  if (isApp) {
+    const token = req.cookies.get("tp_access")?.value;
+    if (!token) {
+      const loginUrl = req.nextUrl.clone();
+      loginUrl.pathname = "/login";
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   // Protect all admin console pages (not login, not api routes)
   const isConsole =
     pathname.startsWith("/admin/") &&
@@ -23,5 +37,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  matcher: ["/app/:path*", "/admin/:path*"],
 };
