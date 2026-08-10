@@ -30,7 +30,7 @@ interface Props {
   onMarkerClick?: (id: string) => void;
 }
 
-const DEFAULT_CENTER: [number, number] = [6.5244, 3.3792];
+const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
 const DEFAULT_ZOOM = 12;
 const DEFAULT_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 
@@ -58,20 +58,20 @@ export default function MapboxMap({
     const assetSvg = objectIconSvg(objectIcon, color);
     const el = document.createElement("div");
     el.style.cssText = `
-      width: 112px; height: 112px; cursor: pointer; position: relative;
+      width: 0; height: 0; cursor: pointer; position: relative;
       pointer-events: auto; overflow: visible; transform: translateZ(0);
     `;
 
     el.innerHTML = `
       ${pulsing ? `
         <span style="
-          position:absolute; top:26px; left:26px; width:60px; height:60px; border-radius:50%;
+          position:absolute; left:-30px; top:-30px; width:60px; height:60px; border-radius:50%;
           background:${color}; opacity:0.2;
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
       <div style="
-        position:absolute; top:0; left:50%; transform:translateX(-50%); z-index:3; display:flex; gap:4px;
+        position:absolute; left:0; top:-55px; transform:translateX(-50%); z-index:3; display:flex; gap:4px;
         align-items:center; padding:3px 6px; border-radius:999px; background:#fff;
         box-shadow:0 4px 12px rgba(15,23,42,.18); color:#061337;
         font:800 9px/1 Inter, system-ui, sans-serif;
@@ -80,19 +80,19 @@ export default function MapboxMap({
         <span>${badgeLabel}</span>
       </div>
       <div style="
-        position:absolute; left:19px; top:19px; width:74px; height:74px; z-index:2;
-        transform:rotate(${heading}deg); transform-origin:37px 37px;
+        position:absolute; left:-37px; top:-37px; width:74px; height:74px; z-index:2;
+        transform:rotate(${heading}deg); transform-origin:center center;
         filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));
       ">${assetSvg}</div>
       <span style="
-        position:absolute; left:52px; top:52px; z-index:1; width:8px; height:8px;
+        position:absolute; left:-4px; top:-4px; z-index:1; width:8px; height:8px;
         box-sizing:border-box;
         border-radius:999px; background:${color}; border:2px solid #fff;
         box-shadow:0 1px 4px rgba(15,23,42,.28);
       "></span>
       ${label ? `
         <div style="
-          position:absolute; left:50%; top:94px; transform:translateX(-50%);
+          position:absolute; left:0; top:38px; transform:translateX(-50%);
           width:max-content; max-width:122px; padding:8px 10px; border-radius:10px;
           background:#fff; color:#061337; font:700 13px/1.15 Inter, system-ui, sans-serif;
           text-align:center; box-shadow:0 4px 12px rgba(15,23,42,.18);
