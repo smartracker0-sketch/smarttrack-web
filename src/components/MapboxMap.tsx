@@ -52,6 +52,7 @@ export default function MapboxMap({
   const clusterMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const popupsRef = useRef<Map<string, mapboxgl.Popup>>(new Map());
   const animationRef = useRef<Map<string, number>>(new Map());
+  const popupCloseTimersRef = useRef<Map<string, number>>(new Map());
   const clusterRunRef = useRef(0);
   const initializedRef = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -232,6 +233,33 @@ export default function MapboxMap({
     });
   }, [buildClusterEl, clearClusterMarkers]);
 
+  const closePopup = useCallback((id: string) => {
+    window.clearTimeout(popupCloseTimersRef.current.get(id));
+    popupCloseTimersRef.current.delete(id);
+    popupsRef.current.get(id)?.remove();
+  }, []);
+
+  const schedulePopupClose = useCallback((id: string) => {
+    window.clearTimeout(popupCloseTimersRef.current.get(id));
+    const timer = window.setTimeout(() => closePopup(id), 140);
+    popupCloseTimersRef.current.set(id, timer);
+  }, [closePopup]);
+
+  const openPopup = useCallback((id: string, marker: mapboxgl.Marker, map: mapboxgl.Map) => {
+    const popup = popupsRef.current.get(id);
+    if (!popup) return;
+    window.clearTimeout(popupCloseTimersRef.current.get(id));
+    popupCloseTimersRef.current.delete(id);
+    popup.setLngLat(marker.getLngLat()).addTo(map);
+    const popupEl = popup.getElement();
+    if (!popupEl) return;
+    popupEl.onmouseenter = () => {
+      window.clearTimeout(popupCloseTimersRef.current.get(id));
+      popupCloseTimersRef.current.delete(id);
+    };
+    popupEl.onmouseleave = () => schedulePopupClose(id);
+  }, [schedulePopupClose]);
+
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -239,6 +267,7 @@ export default function MapboxMap({
     const markerStore = markersRef.current;
     const clusterMarkerStore = clusterMarkersRef.current;
     const popupStore = popupsRef.current;
+    const popupTimerStore = popupCloseTimersRef.current;
     const animationStore = animationRef.current;
     let resizeObserver: ResizeObserver | null = null;
     let disposed = false;
@@ -287,6 +316,8 @@ export default function MapboxMap({
       markerStore.clear();
       clusterMarkerStore.forEach((marker) => marker.remove());
       clusterMarkerStore.clear();
+      popupTimerStore.forEach((timer) => window.clearTimeout(timer));
+      popupTimerStore.clear();
       popupStore.clear();
       initializedRef.current = false;
       animationStore.forEach((id) => window.cancelAnimationFrame(id));
@@ -305,10 +336,11 @@ export default function MapboxMap({
 
     const marker = new mgl.Marker({ element: el, anchor: "center", offset: [0, 0] })
       .setLngLat([m.lng, m.lat])
-      .setPopup(popup)
       .addTo(map);
 
     el.addEventListener("click", () => onMarkerClickRef.current?.(m.id));
+    el.addEventListener("mouseenter", () => openPopup(m.id, marker, map));
+    el.addEventListener("mouseleave", () => schedulePopupClose(m.id));
     markersRef.current.set(m.id, marker);
   }
 
@@ -349,7 +381,6 @@ export default function MapboxMap({
     if (!marker) return;
     const lngLat = marker.getLngLat();
     mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 16, duration: 1200, essential: true });
-    marker.getPopup()?.addTo(mapRef.current);
     applyClusters();
   }, [applyClusters, flyToId, markers]);
 
