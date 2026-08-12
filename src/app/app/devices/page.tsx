@@ -791,6 +791,7 @@ export default function AllVehiclesPage() {
       return haystack.includes(query);
     });
   }, [activeStatus, devices, telemetry, vehicleSearch]);
+  const focusedMarkerId = selected ?? (vehicleSearch.trim() && visibleDevices.length === 1 ? String(visibleDevices[0].id) : "");
 
   const markers: MarkerData[] = useMemo(
     () =>
@@ -1047,7 +1048,7 @@ export default function AllVehiclesPage() {
 
         <MapboxMap
           markers={markers}
-          flyToId={selected ?? ""}
+          flyToId={focusedMarkerId}
           center={[9.082, 8.675]}
           zoom={markers.length > 0 ? 10 : 5}
           style={MAP_STYLES.find((s) => s.id === mapStyle)?.style || "mapbox://styles/mapbox/outdoors-v12"}

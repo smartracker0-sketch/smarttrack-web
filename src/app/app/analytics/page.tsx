@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import {
   FiAlertTriangle,
@@ -119,13 +120,15 @@ function compactAlertType(value: unknown) {
     .join("");
 }
 
-function MetricCard({
+function VisualMetricCard({
   href,
   icon,
   label,
   value,
   helper,
   color,
+  image,
+  imageAlt,
 }: {
   href: string;
   icon: React.ReactNode;
@@ -133,22 +136,83 @@ function MetricCard({
   value: string;
   helper: string;
   color: string;
+  image: string;
+  imageAlt: string;
 }) {
   return (
     <Link
       href={href}
-      className="group rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(15,23,42,0.1)]"
+      className="group relative min-h-[124px] overflow-hidden rounded-lg border border-[#dbe5ee] bg-white p-3 shadow-[0_10px_24px_rgba(15,23,42,0.07)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_38px_rgba(15,23,42,0.11)]"
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="grid h-10 w-10 place-items-center rounded-lg text-white" style={{ background: color }}>
+      <div className="absolute inset-y-0 right-0 w-[58%] opacity-90">
+        <Image src={image} alt={imageAlt} fill sizes="(max-width: 768px) 50vw, 25vw" className="object-contain object-right-bottom" />
+      </div>
+      <div className="absolute inset-0 bg-gradient-to-r from-white via-white/95 to-white/35" />
+      <div className="relative z-10 flex items-start justify-between gap-3">
+        <div className="grid h-7 w-7 place-items-center rounded-md text-white shadow-sm" style={{ background: color }}>
           {icon}
         </div>
-        <FiArrowRight className="mt-1 text-[#94a3b8] transition group-hover:translate-x-0.5 group-hover:text-[#0D4A47]" size={16} />
+        <FiArrowRight className="mt-1 text-[#94a3b8] transition group-hover:translate-x-0.5 group-hover:text-[#0D4A47]" size={14} />
       </div>
-      <div className="mt-5 text-2xl font-extrabold leading-none text-[#061337]">{value}</div>
-      <div className="mt-2 text-sm font-bold text-[#0D4A47]">{label}</div>
-      <div className="mt-1 text-xs font-medium text-[#64748b]">{helper}</div>
+      <div className="relative z-10 mt-6 text-2xl font-extrabold leading-none text-[#061337]">{value}</div>
+      <div className="relative z-10 mt-1 text-xs font-extrabold text-[#0D4A47]">{label}</div>
+      <div className="relative z-10 mt-0.5 max-w-[145px] text-[10px] font-semibold leading-snug text-[#64748b]">{helper}</div>
     </Link>
+  );
+}
+
+function CompactMetric({
+  href,
+  icon,
+  label,
+  value,
+  helper,
+  children,
+}: {
+  href: string;
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  helper: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Link href={href} className="relative overflow-hidden rounded-lg border border-[#dbe5ee] bg-white p-3 shadow-sm transition hover:border-[#0D4A47]/30">
+      <div className="flex items-center gap-2 text-[11px] font-extrabold text-[#0D4A47]">
+        {icon}
+        {label}
+      </div>
+      <div className="mt-2 text-xl font-extrabold leading-none text-[#061337]">{value}</div>
+      <div className="mt-1 text-[10px] font-semibold text-[#64748b]">{helper}</div>
+      {children}
+    </Link>
+  );
+}
+
+function Sparkline() {
+  return (
+    <svg className="mt-2 h-12 w-full" viewBox="0 0 240 58" role="img" aria-label="Distance trend">
+      <path d="M0 37 C18 20 36 21 54 34 S91 52 112 27 S151 6 173 24 S212 51 240 19" fill="none" stroke="#cbd5e1" strokeWidth="2" />
+      <path d="M0 58 L0 37 C18 20 36 21 54 34 S91 52 112 27 S151 6 173 24 S212 51 240 19 L240 58 Z" fill="#eef2f7" opacity="0.8" />
+      <circle cx="54" cy="34" r="3" fill="#061337" />
+      <circle cx="173" cy="24" r="3" fill="#061337" />
+      <circle cx="230" cy="23" r="5" fill="#1A7A75" />
+    </svg>
+  );
+}
+
+function DotsGraph({ count }: { count: number }) {
+  const dots = Array.from({ length: 56 }, (_, index) => index);
+  return (
+    <div className="mt-3 grid grid-cols-[repeat(14,minmax(0,1fr))] gap-1">
+      {dots.map((dot) => (
+        <span
+          key={dot}
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ background: dot < Math.min(count, dots.length) ? "#0D4A47" : "#dbe5ee", opacity: dot % 5 === 0 ? 0.45 : 1 }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -270,21 +334,21 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <div className="min-h-full bg-[#f3f7fa] p-4 text-[#061337] md:p-6">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="min-h-full bg-[#f3f7fa] p-3 text-[#061337] md:p-5">
+      <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <div className="text-xs font-extrabold uppercase tracking-widest text-[#1A7A75]">Analytics</div>
-          <h1 className="mt-1 text-2xl font-extrabold tracking-tight text-[#061337]">Fleet performance dashboard</h1>
-          <p className="mt-2 max-w-2xl text-sm font-medium leading-6 text-[#64748b]">
+          <div className="text-[10px] font-extrabold uppercase tracking-widest text-[#1A7A75]">Analytics</div>
+          <h1 className="mt-0.5 text-xl font-extrabold tracking-tight text-[#061337] md:text-2xl">Fleet performance dashboard</h1>
+          <p className="mt-1 max-w-2xl text-xs font-medium leading-5 text-[#64748b]">
             Live operational metrics from your devices, telemetry, alerts, geofences, and route history.
           </p>
         </div>
         <button
           type="button"
           onClick={() => void load()}
-          className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#dbe5ee] bg-white px-4 text-sm font-bold text-[#0D4A47] shadow-sm"
+          className="inline-flex h-8 items-center gap-2 rounded-md border border-[#dbe5ee] bg-white px-3 text-xs font-bold text-[#0D4A47] shadow-sm"
         >
-          <FiRefreshCw className={loading ? "animate-spin" : ""} size={15} />
+          <FiRefreshCw className={loading ? "animate-spin" : ""} size={13} />
           Refresh
         </button>
       </div>
@@ -295,63 +359,55 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <MetricCard href="/app/devices" icon={<FiTruck size={19} />} label="Total assets" value={loading ? "..." : String(devices.length)} helper={`${analytics.online} reporting now`} color="#0D4A47" />
-        <MetricCard href="/app/devices" icon={<FiActivity size={19} />} label="Running" value={loading ? "..." : String(analytics.status.moving)} helper={`${analytics.status.idle} idling, ${analytics.status.stopped} stopped`} color="#22C55E" />
-        <MetricCard href="/app/alerts" icon={<FiAlertTriangle size={19} />} label="Alerts last 24h" value={loading ? "..." : String(analytics.recentAlerts.length)} helper={`${analytics.criticalAlerts} critical alerts`} color="#EF334A" />
-        <MetricCard href="/app/geofences" icon={<FiMapPin size={19} />} label="Geofences" value={loading ? "..." : String(geofences.length)} helper="Open zone management" color="#2563EB" />
+      <div className="grid gap-2 md:grid-cols-2">
+        <VisualMetricCard href="/app/devices" icon={<FiTruck size={15} />} label="Total assets" value={loading ? "..." : String(devices.length)} helper={`${analytics.online} reporting now`} color="#0D4A47" image="/industries/logistics.png" imageAlt="Fleet truck" />
+        <VisualMetricCard href="/app/devices" icon={<FiActivity size={15} />} label="Running" value={loading ? "..." : String(analytics.status.moving)} helper={`${analytics.status.idle} idling, ${analytics.status.stopped} stopped`} color="#1A7A75" image="/industries/vehicle-leasing.png" imageAlt="Connected car" />
+        <VisualMetricCard href="/app/alerts" icon={<FiAlertTriangle size={15} />} label="Alerts last 24h" value={loading ? "..." : String(analytics.recentAlerts.length)} helper={`${analytics.criticalAlerts} critical alerts`} color="#EF334A" image="/industries/emergency-services.png" imageAlt="Alert vehicle" />
+        <VisualMetricCard href="/app/geofences" icon={<FiMapPin size={15} />} label="Geofences" value={loading ? "..." : String(geofences.length)} helper="Open zone management" color="#2563EB" image="/industries/telecom.png" imageAlt="Map geofence" />
       </div>
 
-      <div className="mt-4 grid gap-3 lg:grid-cols-4">
-        <Link href="/app/history" className="rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-sm transition hover:border-[#0D4A47]/30">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0D4A47]"><FiNavigation size={16} /> Distance</div>
-          <div className="mt-3 text-2xl font-extrabold text-[#061337]">{formatKm(analytics.totalDistance)}</div>
-          <div className="mt-1 text-xs font-medium text-[#64748b]">Reported odometer/trip distance</div>
-        </Link>
-        <Link href="/app/history/routes" className="rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-sm transition hover:border-[#0D4A47]/30">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0D4A47]"><FiZap size={16} /> Average speed</div>
-          <div className="mt-3 text-2xl font-extrabold text-[#061337]">{Math.round(analytics.avgSpeed)} km/h</div>
-          <div className="mt-1 text-xs font-medium text-[#64748b]">Across latest device telemetry</div>
-        </Link>
-        <Link href="/app/reports" className="rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-sm transition hover:border-[#0D4A47]/30">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0D4A47]"><FiClock size={16} /> History points</div>
-          <div className="mt-3 text-2xl font-extrabold text-[#061337]">{history.length}</div>
-          <div className="mt-1 text-xs font-medium text-[#64748b]">Recent tracking records</div>
-        </Link>
-        <Link href="/app/maintenance" className="rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-sm transition hover:border-[#0D4A47]/30">
-          <div className="flex items-center gap-2 text-sm font-bold text-[#0D4A47]"><FiBatteryCharging size={16} /> Avg. voltage</div>
-          <div className="mt-3 text-2xl font-extrabold text-[#061337]">{analytics.avgVoltage ? `${analytics.avgVoltage.toFixed(2)} V` : "--"}</div>
-          <div className="mt-1 text-xs font-medium text-[#64748b]">Vehicle battery telemetry</div>
-        </Link>
+      <div className="mt-2 grid gap-2 lg:grid-cols-4">
+        <CompactMetric href="/app/history" icon={<FiNavigation size={13} />} label="Distance" value={formatKm(analytics.totalDistance)} helper="Reported odometer/trip distance">
+          <Sparkline />
+        </CompactMetric>
+        <CompactMetric href="/app/history/routes" icon={<FiZap size={13} />} label="Average speed" value={`${Math.round(analytics.avgSpeed)} km/h`} helper="Across latest device telemetry">
+          <div className="pointer-events-none absolute bottom-2 right-3 text-5xl opacity-20">⌖</div>
+        </CompactMetric>
+        <CompactMetric href="/app/reports" icon={<FiClock size={13} />} label="History points" value={String(history.length)} helper="Recent tracking records">
+          <DotsGraph count={history.length} />
+        </CompactMetric>
+        <CompactMetric href="/app/maintenance" icon={<FiBatteryCharging size={13} />} label="Avg. voltage" value={analytics.avgVoltage ? `${analytics.avgVoltage.toFixed(2)} V` : "--"} helper="Vehicle battery telemetry">
+          <div className="pointer-events-none absolute bottom-2 right-3 text-5xl opacity-20">▣</div>
+        </CompactMetric>
       </div>
 
-      <div className="mt-5 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <section className="rounded-xl border border-[#dbe5ee] bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between border-b border-[#edf2f6] px-4 py-3">
+      <div className="mt-2 grid gap-3 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="rounded-lg border border-[#dbe5ee] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+          <div className="flex items-center justify-between border-b border-[#edf2f6] px-3 py-2.5">
             <div>
-              <h2 className="text-sm font-extrabold text-[#061337]">Active assets</h2>
-              <p className="text-xs font-medium text-[#64748b]">Latest location and movement status</p>
+              <h2 className="text-xs font-extrabold text-[#061337]">Active assets</h2>
+              <p className="text-[10px] font-medium text-[#64748b]">Latest location and movement status</p>
             </div>
-            <Link href="/app/devices" className="text-xs font-bold text-[#0D4A47]">View map</Link>
+            <Link href="/app/devices" className="rounded-full border border-[#dbe5ee] px-2 py-1 text-[10px] font-bold text-[#0D4A47]">View map</Link>
           </div>
           <div className="divide-y divide-[#edf2f6]">
             {activeVehicles.length === 0 ? (
-              <div className="p-6 text-center text-sm font-semibold text-[#94a3b8]">No live telemetry yet.</div>
+              <div className="p-5 text-center text-xs font-semibold text-[#94a3b8]">No live telemetry yet.</div>
             ) : (
               activeVehicles.map(({ device, telemetry: t }) => {
                 const key = statusKey(t);
                 return (
-                  <Link key={String(device.id)} href={`/app/devices/${encodeURIComponent(String(device.id))}`} className="grid gap-3 px-4 py-3 transition hover:bg-[#f8fafc] sm:grid-cols-[1fr_110px_110px_100px] sm:items-center">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold text-[#061337]">{vehicleName(device)}</div>
-                      <div className="mt-1 flex items-center gap-2 text-xs font-semibold text-[#64748b]">
-                        <span className="h-2 w-2 rounded-full" style={{ background: STATUS_COLORS[key] }} />
-                        {key.toUpperCase()} · {timeAgo(t?.receivedAt ?? t?.eventTime)}
+                  <Link key={String(device.id)} href={`/app/devices/${encodeURIComponent(String(device.id))}`} className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-2 px-3 py-2.5 transition hover:bg-[#f8fafc]">
+                    <div className="min-w-0 flex items-center gap-2">
+                      <FiTruck className="shrink-0 text-[#0D4A47]" size={15} />
+                      <div className="min-w-0">
+                        <div className="truncate text-[11px] font-extrabold text-[#061337]">{vehicleName(device)}</div>
+                        <div className="mt-0.5 truncate text-[10px] font-semibold text-[#64748b]">{key.toUpperCase()} · {timeAgo(t?.receivedAt ?? t?.eventTime)}</div>
                       </div>
                     </div>
-                    <div className="text-xs font-bold text-[#536987]">{Math.round(Number(t?.speedKph ?? 0))} km/h</div>
-                    <div className="text-xs font-bold text-[#536987]">{batteryVoltage(t) ? `${batteryVoltage(t)?.toFixed(2)} V` : "No voltage"}</div>
-                    <div className="text-xs font-bold text-[#0D4A47]">Open <FiArrowRight className="inline" size={12} /></div>
+                    <span className="rounded-full px-2 py-1 text-[10px] font-bold text-white" style={{ background: STATUS_COLORS[key] }}>{Math.round(Number(t?.speedKph ?? 0))} km/h</span>
+                    <span className="hidden text-[10px] font-bold text-[#536987] sm:inline">{batteryVoltage(t) ? `${batteryVoltage(t)?.toFixed(2)} V` : "No voltage"}</span>
+                    <span className="rounded-full bg-[#ecfdf3] px-2 py-1 text-[10px] font-bold text-[#0D4A47]">Open ›</span>
                   </Link>
                 );
               })
@@ -359,26 +415,26 @@ export default function AnalyticsPage() {
           </div>
         </section>
 
-        <section className="rounded-xl border border-[#dbe5ee] bg-white shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between border-b border-[#edf2f6] px-4 py-3">
+        <section className="rounded-lg border border-[#dbe5ee] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+          <div className="flex items-center justify-between border-b border-[#edf2f6] px-3 py-2.5">
             <div>
-              <h2 className="text-sm font-extrabold text-[#061337]">Recent alerts</h2>
-              <p className="text-xs font-medium text-[#64748b]">Newest fleet events</p>
+              <h2 className="text-xs font-extrabold text-[#061337]">Recent alerts</h2>
+              <p className="text-[10px] font-medium text-[#64748b]">Newest fleet events</p>
             </div>
-            <Link href="/app/alerts" className="text-xs font-bold text-[#0D4A47]">View all</Link>
+            <Link href="/app/alerts" className="rounded-full border border-[#dbe5ee] px-2 py-1 text-[10px] font-bold text-[#0D4A47]">View all</Link>
           </div>
           <div className="divide-y divide-[#edf2f6]">
             {latestAlerts.length === 0 ? (
-              <div className="p-6 text-center text-sm font-semibold text-[#94a3b8]">No alerts recorded yet.</div>
+              <div className="p-5 text-center text-xs font-semibold text-[#94a3b8]">No alerts recorded yet.</div>
             ) : (
               latestAlerts.map((alert, index) => (
-                <Link key={String(alert.id ?? index)} href="/app/alerts" className="block px-4 py-3 transition hover:bg-[#f8fafc]">
+                <Link key={String(alert.id ?? index)} href="/app/alerts" className="block px-3 py-2.5 transition hover:bg-[#f8fafc]">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-extrabold text-[#061337]">{compactAlertType(alert.alertType ?? alert.type)}</div>
-                      <div className="mt-1 line-clamp-2 text-xs font-medium text-[#64748b]">{String(alert.message ?? "Fleet alert triggered")}</div>
+                      <div className="truncate text-[11px] font-extrabold text-[#061337]">{compactAlertType(alert.alertType ?? alert.type)}</div>
+                      <div className="mt-0.5 line-clamp-2 text-[10px] font-medium text-[#64748b]">{String(alert.message ?? "Fleet alert triggered")}</div>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[#f1f5f9] px-2 py-1 text-[10px] font-bold text-[#536987]">
+                    <span className="shrink-0 rounded-full bg-[#f1f5f9] px-2 py-1 text-[9px] font-bold text-[#536987]">
                       {timeAgo(alertTime(alert))}
                     </span>
                   </div>
@@ -389,26 +445,26 @@ export default function AnalyticsPage() {
         </section>
       </div>
 
-      <div className="mt-5 grid gap-3 md:grid-cols-4">
+      <div className="mt-3 grid gap-2 md:grid-cols-4">
         {[
           { label: "Moving", value: analytics.status.moving, href: "/app/devices", color: STATUS_COLORS.moving },
           { label: "Idling", value: analytics.status.idle, href: "/app/devices", color: STATUS_COLORS.idle },
           { label: "Stopped", value: analytics.status.stopped, href: "/app/devices", color: STATUS_COLORS.stopped },
           { label: "Offline", value: analytics.status.offline, href: "/app/devices/states", color: STATUS_COLORS.offline },
         ].map((item) => (
-          <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-xl border border-[#dbe5ee] bg-white px-4 py-3 shadow-sm transition hover:border-[#0D4A47]/30">
+          <Link key={item.label} href={item.href} className="flex items-center justify-between rounded-lg border border-[#dbe5ee] bg-white px-3 py-2.5 shadow-sm transition hover:border-[#0D4A47]/30">
             <div className="flex items-center gap-3">
-              <span className="h-3 w-3 rounded-full" style={{ background: item.color }} />
-              <span className="text-sm font-bold text-[#536987]">{item.label}</span>
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: item.color }} />
+              <span className="text-xs font-bold text-[#536987]">{item.label}</span>
             </div>
-            <span className="text-lg font-extrabold text-[#061337]">{loading ? "..." : item.value}</span>
+            <span className="text-base font-extrabold text-[#061337]">{loading ? "..." : item.value}</span>
           </Link>
         ))}
       </div>
 
-      <div className="mt-5 rounded-xl border border-[#dbe5ee] bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2 text-sm font-bold text-[#0D4A47]">
-          <FiWifi size={16} />
+      <div className="mt-3 rounded-lg border border-[#dbe5ee] bg-white p-3 shadow-sm">
+        <div className="flex items-center gap-2 text-xs font-bold text-[#0D4A47]">
+          <FiWifi size={14} />
           Data refreshes every 30 seconds from live backend APIs.
         </div>
       </div>

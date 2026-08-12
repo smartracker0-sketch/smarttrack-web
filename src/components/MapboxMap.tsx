@@ -33,6 +33,8 @@ interface Props {
 const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
 const DEFAULT_ZOOM = 12;
 const DEFAULT_STYLE = "mapbox://styles/mapbox/outdoors-v12";
+const CLUSTER_MAX_ZOOM = 15;
+const CLUSTER_RADIUS_PX = 72;
 
 export default function MapboxMap({
   markers,
@@ -47,11 +49,19 @@ export default function MapboxMap({
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
+  const clusterMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const popupsRef = useRef<Map<string, mapboxgl.Popup>>(new Map());
   const animationRef = useRef<Map<string, number>>(new Map());
+  const clusterRunRef = useRef(0);
   const initializedRef = useRef(false);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const markersDataRef = useRef(markers);
+  const flyToIdRef = useRef(flyToId);
+  const followIdRef = useRef(followId);
   onMarkerClickRef.current = onMarkerClick;
+  markersDataRef.current = markers;
+  flyToIdRef.current = flyToId;
+  followIdRef.current = followId;
 
   const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false, motionLabel?: string, objectIcon?: string) => {
     const badgeLabel = motionLabel ?? (moving ? "MOVING" : ignition ? "ON" : "OFF");
@@ -103,6 +113,21 @@ export default function MapboxMap({
     return el;
   }, []);
 
+  const buildClusterEl = useCallback((count: number) => {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.setAttribute("aria-label", `${count} vehicles in this area`);
+    el.style.cssText = `
+      width:44px;height:44px;border-radius:999px;border:3px solid #fff;
+      background:#0D4A47;color:#fff;display:grid;place-items:center;
+      font:900 14px/1 Inter,system-ui,sans-serif;cursor:pointer;
+      box-shadow:0 12px 28px rgba(15,23,42,.28),0 0 0 8px rgba(13,74,71,.14);
+      pointer-events:auto;
+    `;
+    el.innerHTML = `<span>${count}</span>`;
+    return el;
+  }, []);
+
   const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number) => {
     const current = marker.getLngLat();
     const startLng = current.lng;
@@ -133,11 +158,86 @@ export default function MapboxMap({
     animationRef.current.set(id, window.requestAnimationFrame(step));
   }, []);
 
+  const clearClusterMarkers = useCallback(() => {
+    clusterRunRef.current += 1;
+    clusterMarkersRef.current.forEach((marker) => marker.remove());
+    clusterMarkersRef.current.clear();
+  }, []);
+
+  const applyClusters = useCallback(() => {
+    const map = mapRef.current;
+    if (!map || !initializedRef.current) return;
+
+    clearClusterMarkers();
+    const clusterRun = clusterRunRef.current;
+    markersRef.current.forEach((marker) => {
+      marker.getElement().style.display = "";
+    });
+
+    const activeMarkers = markersDataRef.current;
+    if (map.getZoom() >= CLUSTER_MAX_ZOOM || activeMarkers.length < 2) return;
+
+    const isolatedIds = new Set([flyToIdRef.current, followIdRef.current].filter(Boolean).map(String));
+    const candidates = activeMarkers
+      .filter((marker) => !isolatedIds.has(marker.id))
+      .map((marker) => ({
+        marker,
+        point: map.project([marker.lng, marker.lat]),
+      }));
+    const visited = new Set<string>();
+
+    candidates.forEach((candidate) => {
+      if (visited.has(candidate.marker.id)) return;
+      const group = [candidate];
+      visited.add(candidate.marker.id);
+
+      candidates.forEach((other) => {
+        if (visited.has(other.marker.id)) return;
+        const dx = other.point.x - candidate.point.x;
+        const dy = other.point.y - candidate.point.y;
+        if (Math.sqrt(dx * dx + dy * dy) <= CLUSTER_RADIUS_PX) {
+          group.push(other);
+          visited.add(other.marker.id);
+        }
+      });
+
+      if (group.length < 2) return;
+
+      let lng = 0;
+      let lat = 0;
+      group.forEach(({ marker }) => {
+        lng += marker.lng;
+        lat += marker.lat;
+        markersRef.current.get(marker.id)?.getElement().style.setProperty("display", "none");
+      });
+      lng /= group.length;
+      lat /= group.length;
+
+      const ids = group.map(({ marker }) => marker.id);
+      const clusterId = ids.sort().join("|");
+      import("mapbox-gl").then((mbgl) => {
+        if (!mapRef.current || mapRef.current !== map || clusterRun !== clusterRunRef.current) return;
+        const mapboxgl = mbgl.default ?? mbgl;
+        const el = buildClusterEl(group.length);
+        el.addEventListener("click", () => {
+          const bounds = new mapboxgl.LngLatBounds();
+          group.forEach(({ marker }) => bounds.extend([marker.lng, marker.lat]));
+          map.fitBounds(bounds, { padding: 90, maxZoom: 17, duration: 900, essential: true });
+        });
+        const clusterMarker = new mapboxgl.Marker({ element: el, anchor: "center" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+        clusterMarkersRef.current.set(clusterId, clusterMarker);
+      });
+    });
+  }, [buildClusterEl, clearClusterMarkers]);
+
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     const container = containerRef.current;
     const markerStore = markersRef.current;
+    const clusterMarkerStore = clusterMarkersRef.current;
     const popupStore = popupsRef.current;
     const animationStore = animationRef.current;
     let resizeObserver: ResizeObserver | null = null;
@@ -175,6 +275,7 @@ export default function MapboxMap({
 
       map.on("load", () => {
         markers.forEach((m) => addMarker(m, mapboxgl, map as mapboxgl.Map));
+        window.requestAnimationFrame(applyClusters);
       });
     });
 
@@ -184,6 +285,8 @@ export default function MapboxMap({
       mapRef.current?.remove();
       mapRef.current = null;
       markerStore.clear();
+      clusterMarkerStore.forEach((marker) => marker.remove());
+      clusterMarkerStore.clear();
       popupStore.clear();
       initializedRef.current = false;
       animationStore.forEach((id) => window.cancelAnimationFrame(id));
@@ -235,9 +338,10 @@ export default function MapboxMap({
         markersRef.current.delete(id);
         popupsRef.current.delete(id);
       });
+      applyClusters();
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [markers]);
+  }, [markers, applyClusters]);
 
   useEffect(() => {
     if (!flyToId || !mapRef.current) return;
@@ -246,7 +350,8 @@ export default function MapboxMap({
     const lngLat = marker.getLngLat();
     mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 16, duration: 1200, essential: true });
     marker.getPopup()?.addTo(mapRef.current);
-  }, [flyToId, markers]);
+    applyClusters();
+  }, [applyClusters, flyToId, markers]);
 
   useEffect(() => {
     if (!followId || !mapRef.current) return;
@@ -254,7 +359,19 @@ export default function MapboxMap({
     if (!marker) return;
     const lngLat = marker.getLngLat();
     mapRef.current.easeTo({ center: [lngLat.lng, lngLat.lat], duration: 1000, essential: true });
-  }, [followId, markers]);
+    applyClusters();
+  }, [applyClusters, followId, markers]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    map.on("zoomend", applyClusters);
+    map.on("moveend", applyClusters);
+    return () => {
+      map.off("zoomend", applyClusters);
+      map.off("moveend", applyClusters);
+    };
+  }, [applyClusters]);
 
   useEffect(() => {
     if (!mapRef.current || !style) return;
