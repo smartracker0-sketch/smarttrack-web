@@ -13,6 +13,7 @@ import {
   FiMessageCircle,
   FiNavigation,
   FiPackage,
+  FiPlay,
   FiRefreshCw,
   FiSearch,
   FiShare2,
@@ -364,12 +365,18 @@ function LiveTabPanel({
   rows,
   loading,
   devices,
+  selectedDeviceId,
 }: {
   tab: string;
   rows: LiveTabRow[];
   loading: boolean;
   devices: DeviceRow[];
+  selectedDeviceId?: string | null;
 }) {
+  if (tab === "History") {
+    return <HistoryPanel devices={devices} selectedDeviceId={selectedDeviceId} />;
+  }
+
   if (loading) {
     return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading {tab.toLowerCase()}...</div>;
   }
@@ -380,23 +387,6 @@ function LiveTabPanel({
 
   if (rows.length === 0) {
     return <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">No live {tab.toLowerCase()} records yet.</div>;
-  }
-
-  if (tab === "History") {
-    return (
-      <div className="space-y-2">
-        {rows.map((row) => (
-          <article key={row.id} className="rounded-xl bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.07)]">
-            <div className="flex items-center justify-between gap-2">
-              <div className="min-w-0 text-[13px] font-extrabold text-[#061337]">{fieldText(row.imei, row.deviceId)}</div>
-              <span className="rounded-full bg-[#ecfdf3] px-2 py-1 text-[10px] font-bold text-[#16a34a]">{Math.round(Number(row.speedKph ?? 0))} km/h</span>
-            </div>
-            <div className="mt-1 text-[11px] text-[#536987]">{coords(row)}</div>
-            <div className="mt-2 text-[10px] font-semibold text-[#94a3b8]">{formatDateTime(row.eventTime ?? row.receivedAt)}</div>
-          </article>
-        ))}
-      </div>
-    );
   }
 
   return (
@@ -420,6 +410,168 @@ function LiveTabPanel({
       ))}
     </div>
   );
+}
+
+type PlaybackHistory = {
+  deviceName?: string;
+  distanceM?: number;
+  durationSeconds?: number;
+  points?: LiveTabRow[];
+};
+
+function HistoryPanel({ devices, selectedDeviceId }: { devices: DeviceRow[]; selectedDeviceId?: string | null }) {
+  const todayStart = useMemo(() => {
+    const date = new Date();
+    date.setHours(0, 0, 0, 0);
+    return localDateTime(date);
+  }, []);
+  const todayEnd = useMemo(() => localDateTime(new Date()), []);
+  const [deviceId, setDeviceId] = useState(selectedDeviceId ?? String(devices[0]?.id ?? ""));
+  const [period, setPeriod] = useState("today");
+  const [from, setFrom] = useState(todayStart);
+  const [to, setTo] = useState(todayEnd);
+  const [stopFilter, setStopFilter] = useState("all");
+  const [history, setHistory] = useState<PlaybackHistory | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (selectedDeviceId) setDeviceId(selectedDeviceId);
+    else if (!deviceId && devices[0]?.id) setDeviceId(String(devices[0].id));
+  }, [deviceId, devices, selectedDeviceId]);
+
+  function changePeriod(value: string) {
+    setPeriod(value);
+    const end = new Date();
+    const start = new Date();
+    if (value === "today") start.setHours(0, 0, 0, 0);
+    if (value === "yesterday") {
+      start.setDate(start.getDate() - 1);
+      start.setHours(0, 0, 0, 0);
+      end.setDate(end.getDate() - 1);
+      end.setHours(23, 59, 59, 999);
+    }
+    if (value === "six-hours") start.setTime(end.getTime() - 6 * 60 * 60 * 1000);
+    if (value !== "custom") {
+      setFrom(localDateTime(start));
+      setTo(localDateTime(end));
+    }
+  }
+
+  async function showHistory() {
+    if (!deviceId || !from || !to) return;
+    setLoading(true);
+    setError("");
+    try {
+      const params = playbackParams(deviceId, from, to);
+      const response = await fetch(`/api/playback?${params}`, { cache: "no-store" });
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || "History could not be loaded.");
+      setHistory(data);
+    } catch (cause) {
+      setHistory(null);
+      setError(cause instanceof Error ? cause.message : "History could not be loaded.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function playHistory() {
+    if (!deviceId || !from || !to) return;
+    const params = playbackParams(deviceId, from, to);
+    params.set("autoplay", "1");
+    window.location.assign(`/app/history?${params}`);
+  }
+
+  function exportHistory() {
+    const points = history?.points ?? [];
+    if (!points.length) return;
+    const csv = [
+      "time,latitude,longitude,speed_kph,ignition,voltage_mv",
+      ...points.map((point) => [point.eventTime, point.latitude, point.longitude, point.speedKph ?? 0, point.ignition ?? false, point.voltageMv ?? ""].join(",")),
+    ].join("\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `vehicle-history-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const points = (history?.points ?? []).filter((point) => stopFilter === "all" || Number(point.speedKph ?? 0) <= 1);
+
+  return (
+    <div className="space-y-3">
+      <div className="overflow-hidden rounded-lg border border-[#d4dde7] bg-white">
+        <HistoryField label="Reg No">
+          <select value={deviceId} onChange={(event) => setDeviceId(event.target.value)} className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-[12px] font-semibold text-[#20252d] outline-none focus:border-[#f24464]">
+            {devices.map((device) => <option key={device.id} value={device.id}>{shortName(device)}</option>)}
+          </select>
+        </HistoryField>
+        <HistoryField label="Filter">
+          <select value={period} onChange={(event) => changePeriod(event.target.value)} className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-[12px] font-semibold text-[#20252d] outline-none focus:border-[#f24464]">
+            <option value="today">Today</option>
+            <option value="yesterday">Yesterday</option>
+            <option value="six-hours">Last 6 hours</option>
+            <option value="custom">Custom</option>
+          </select>
+        </HistoryField>
+        <HistoryField label="From">
+          <input type="datetime-local" value={from} onChange={(event) => { setFrom(event.target.value); setPeriod("custom"); }} className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-2 text-[11px] font-semibold text-[#20252d] outline-none focus:border-[#f24464]" />
+        </HistoryField>
+        <HistoryField label="To">
+          <input type="datetime-local" value={to} onChange={(event) => { setTo(event.target.value); setPeriod("custom"); }} className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-2 text-[11px] font-semibold text-[#20252d] outline-none focus:border-[#f24464]" />
+        </HistoryField>
+        <HistoryField label="Stops">
+          <select value={stopFilter} onChange={(event) => setStopFilter(event.target.value)} className="h-10 w-full rounded-md border border-[#cbd5e1] bg-white px-3 text-[12px] font-semibold text-[#20252d] outline-none focus:border-[#f24464]">
+            <option value="all">All movement</option>
+            <option value="stops">Stops only</option>
+          </select>
+        </HistoryField>
+        <div className="grid grid-cols-3 gap-2 bg-[#f8fafc] p-2.5">
+          <button type="button" onClick={showHistory} disabled={loading} className="h-10 rounded-md bg-white text-xs font-bold text-[#111827] shadow-sm disabled:opacity-50">{loading ? "Loading" : "Show"}</button>
+          <button type="button" onClick={() => setHistory(null)} className="h-10 rounded-md bg-white text-xs font-bold text-[#111827] shadow-sm">Hide</button>
+          <button type="button" onClick={exportHistory} disabled={!history?.points?.length} className="h-10 rounded-md bg-white px-2 text-[11px] font-bold text-[#111827] shadow-sm disabled:opacity-40">Import/Export</button>
+        </div>
+      </div>
+
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-[11px] font-semibold text-red-700">{error}</div>}
+      {history && (
+        <div className="rounded-lg border border-[#dbe5ee] bg-white p-3 shadow-sm">
+          <div className="flex items-center justify-between gap-3">
+            <div><div className="text-[13px] font-extrabold text-[#061337]">{history.deviceName || "Playback history"}</div><div className="mt-1 text-[10px] font-semibold text-[#64748b]">{points.length} points · {formatPlaybackDistance(history.distanceM)} · {formatPlaybackDuration(history.durationSeconds)}</div></div>
+            <button type="button" onClick={playHistory} disabled={!history.points?.length} className="flex h-9 items-center gap-2 rounded-md bg-[#f24464] px-3 text-[11px] font-bold text-white disabled:opacity-40"><FiPlay /> Play</button>
+          </div>
+          <div className="mt-3 max-h-64 overflow-y-auto">
+            {points.slice().reverse().slice(0, 100).map((point, index) => <div key={point.id ?? index} className="flex items-center justify-between border-t border-[#eef2f6] py-2 text-[10px]"><span className="font-medium text-[#536987]">{formatDateTime(point.eventTime ?? point.receivedAt)}</span><span className="font-bold text-[#0D8A80]">{Math.round(Number(point.speedKph ?? 0))} km/h</span></div>)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function HistoryField({ label, children }: { label: string; children: React.ReactNode }) {
+  return <label className="grid grid-cols-[76px_1fr] items-center border-b border-[#eef2f6] bg-[#f8fafc] text-[12px] font-medium text-[#20252d]"><span className="px-3">{label}</span><span className="bg-white p-2">{children}</span></label>;
+}
+
+function localDateTime(date: Date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
+function playbackParams(deviceId: string, from: string, to: string) {
+  return new URLSearchParams({ deviceId, from: new Date(from).toISOString(), to: new Date(to).toISOString() });
+}
+
+function formatPlaybackDistance(meters?: number) {
+  return `${((meters ?? 0) / 1000).toFixed(2)} km`;
+}
+
+function formatPlaybackDuration(seconds?: number) {
+  const value = Number(seconds ?? 0);
+  const hours = Math.floor(value / 3600);
+  const minutes = Math.floor((value % 3600) / 60);
+  return hours ? `${hours}h ${minutes}m` : `${minutes} min`;
 }
 
 function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: DeviceRow[] }) {
@@ -662,7 +814,7 @@ export default function AllVehiclesPage() {
   }, [devices]);
 
   useEffect(() => {
-    if (activePanelTab === "Objects") {
+    if (activePanelTab === "Objects" || activePanelTab === "History") {
       setTabRows([]);
       setTabLoading(false);
       return;
@@ -888,6 +1040,7 @@ export default function AllVehiclesPage() {
               ))}
             </div>
 
+            {activePanelTab !== "History" && <>
             <div className="mt-2 grid grid-cols-[88px_1fr] gap-2">
               <select
                 value={activeStatus}
@@ -937,11 +1090,12 @@ export default function AllVehiclesPage() {
                 </button>
               </div>
             </div>
+            </>}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 pt-2 sm:px-3.5">
             {activePanelTab !== "Objects" ? (
-              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} devices={devices} />
+              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} devices={devices} selectedDeviceId={selected} />
             ) : loading ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (

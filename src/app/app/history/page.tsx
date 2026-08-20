@@ -21,7 +21,22 @@ export default function HistoryPage() {
   const [speed, setSpeed] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [queryPlaybackRequested, setQueryPlaybackRequested] = useState(false);
   const timerRef = useRef<number | null>(null);
+  const autoplayRef = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const queryDeviceId = params.get("deviceId");
+    const queryFrom = params.get("from");
+    const queryTo = params.get("to");
+    if (!queryDeviceId || !queryFrom || !queryTo) return;
+    setDeviceId(queryDeviceId);
+    setFrom(localInput(new Date(queryFrom)));
+    setTo(localInput(new Date(queryTo)));
+    autoplayRef.current = params.get("autoplay") === "1";
+    setQueryPlaybackRequested(true);
+  }, []);
 
   useEffect(() => {
     fetch("/api/devices", { cache: "no-store" })
@@ -46,6 +61,8 @@ export default function HistoryPage() {
       if (!res.ok) throw new Error(data?.message || "Playback history could not be loaded.");
       setPlayback(data);
       setCursor(0);
+      if (autoplayRef.current && Array.isArray(data?.points) && data.points.length > 0) setPlaying(true);
+      autoplayRef.current = false;
     } catch (cause) {
       setPlayback(null);
       setError(cause instanceof Error ? cause.message : "Playback history could not be loaded.");
@@ -53,6 +70,12 @@ export default function HistoryPage() {
       setLoading(false);
     }
   }, [deviceId, from, to]);
+
+  useEffect(() => {
+    if (!queryPlaybackRequested || !deviceId || !from || !to) return;
+    setQueryPlaybackRequested(false);
+    loadPlayback();
+  }, [deviceId, from, loadPlayback, queryPlaybackRequested, to]);
 
   useEffect(() => {
     if (!playing || !playback?.points.length) return;
