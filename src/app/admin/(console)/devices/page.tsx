@@ -20,7 +20,7 @@ const ACTIVATION_COLORS: Record<string, { bg: string; color: string; label: stri
 };
 
 const DEVICE_TYPES = ["GPS Tracker", "Asset Tracker", "Dashcam", "Fuel Sensor"] as const;
-const DEVICE_MODEL_SUGGESTIONS = ["ATC700", "FMB920", "FMC130", "GT06N", "GV300"] as const;
+const DEVICE_MODEL_SUGGESTIONS = ["MC202P", "ATC700", "FMB920", "FMC130", "GT06N", "GV300"] as const;
 const FIRMWARE_OPTIONS = ["v4.2.1", "v4.1.0", "v3.8.2", "v2.1.0", "v1.9.0"];
 
 type FormMode = "single" | "bulk";
@@ -290,7 +290,14 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                     </Field>
                   </div>
                   <Field label="Device Type *">
-                    <Select value={type} onChange={e => setType(e.target.value)}>
+                    <Select value={type} onChange={e => {
+                      const nextType = e.target.value;
+                      setType(nextType);
+                      if (nextType === "Dashcam") {
+                        setManufacturer("METTAX");
+                        setModel("MC202P");
+                      }
+                    }}>
                       {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </Select>
                   </Field>
@@ -323,6 +330,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       <option value="CONCOX">Concox / Queclink</option>
                       <option value="COBAN">Coban</option>
                       <option value="MEITRACK">Meitrack</option>
+                      <option value="METTAX">MettaX</option>
                     </Select>
                   </Field>
                   <Field label="Device Model *">
@@ -563,14 +571,21 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
           {error && <div className="rounded-xl px-4 py-3 text-xs font-semibold" style={{ background: "#EF44441a", color: "#EF4444", border: "1px solid #EF444433" }}>{error}</div>}
           <div className="grid grid-cols-2 gap-3">
             <div className="col-span-2"><Field label="Device Name *"><Input required value={name} onChange={e => setName(e.target.value)} /></Field></div>
-            <Field label="Device Type"><Select value={deviceType} onChange={e => setDeviceType(e.target.value)}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
+            <Field label="Device Type"><Select value={deviceType} onChange={e => {
+              const nextType = e.target.value;
+              setDeviceType(nextType);
+              if (nextType === "Dashcam") {
+                setManufacturer("METTAX");
+                setModel("MC202P");
+              }
+            }}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
             <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
             <div className="col-span-2"><Field label={`Object Icon: ${objectIconLabel(objectIcon)}`}><ObjectIconPicker value={objectIcon} onChange={setObjectIcon} /></Field></div>
             <Field label="SIM ICCID"><Input value={simIccid} onChange={e => setSimIccid(e.target.value)} /></Field>
             <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
             <Field label="SIM APN"><Input value={simApn} onChange={e => setSimApn(e.target.value)} /></Field>
-            <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option></Select></Field>
+            <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option><option value="METTAX">MettaX</option></Select></Field>
             <Field label="Device Model"><Input list="edit-device-model-suggestions" value={model} onChange={e => setModel(e.target.value)} /><datalist id="edit-device-model-suggestions">{DEVICE_MODEL_SUGGESTIONS.map(option => <option key={option} value={option} />)}</datalist></Field>
             <Field label="Mobile Carrier"><Input value={mobileCarrier} onChange={e => setMobileCarrier(e.target.value)} /></Field>
             <Field label={device.hasSmsCommandPassword ? "Replace Tracker SMS Password" : "Tracker SMS Password"}><Input type="password" placeholder={device.hasSmsCommandPassword ? "Leave blank to keep current password" : "Optional; encrypted"} value={smsCommandPassword} onChange={e => setSmsCommandPassword(e.target.value)} /></Field>
