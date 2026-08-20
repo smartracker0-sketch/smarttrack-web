@@ -76,13 +76,13 @@ export default function MapboxMap({
     el.innerHTML = `
       ${pulsing ? `
         <span style="
-          position:absolute; left:-30px; top:-30px; width:60px; height:60px; border-radius:50%;
+          position:absolute; left:-25px; top:-25px; width:50px; height:50px; border-radius:50%;
           background:${color}; opacity:0.2;
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
       ` : ""}
       <div style="
-        position:absolute; left:0; top:-55px; transform:translateX(-50%); z-index:3; display:flex; gap:4px;
+        position:absolute; left:0; top:-48px; transform:translateX(-50%); z-index:3; display:flex; gap:4px;
         align-items:center; padding:3px 6px; border-radius:999px; background:#fff;
         box-shadow:0 4px 12px rgba(15,23,42,.18); color:#061337;
         font:800 9px/1 Inter, system-ui, sans-serif;
@@ -91,7 +91,7 @@ export default function MapboxMap({
         <span>${badgeLabel}</span>
       </div>
       <div style="
-        position:absolute; left:-37px; top:-37px; width:74px; height:74px; z-index:2;
+        position:absolute; left:-27px; top:-27px; width:54px; height:54px; z-index:2;
         transform:rotate(${heading}deg); transform-origin:center center;
         filter:drop-shadow(0 5px 7px rgba(15,23,42,0.35));
       ">${assetSvg}</div>
@@ -103,7 +103,7 @@ export default function MapboxMap({
       "></span>
       ${label ? `
         <div style="
-          position:absolute; left:0; top:38px; transform:translateX(-50%);
+          position:absolute; left:0; top:31px; transform:translateX(-50%);
           width:max-content; max-width:122px; padding:8px 10px; border-radius:10px;
           background:#fff; color:#061337; font:700 13px/1.15 Inter, system-ui, sans-serif;
           text-align:center; box-shadow:0 4px 12px rgba(15,23,42,.18);
