@@ -46,9 +46,26 @@ export default function FleetAiAssistant() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: question, history: messages.slice(-8) }),
       });
-      const data = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(data?.message || "Fleet AI could not answer right now.");
-      setMessages([...next, { role: "assistant", content: data.answer, generatedAt: data.generatedAt }]);
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        throw new Error(data?.message || "Fleet AI could not answer right now.");
+      }
+      if (!response.body) throw new Error("Fleet AI returned no response.");
+
+      const assistantMessage: Message = { role: "assistant", content: "", generatedAt: new Date().toISOString() };
+      setMessages([...next, assistantMessage]);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let answer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        answer += decoder.decode(value, { stream: true });
+        setMessages([...next, { ...assistantMessage, content: answer }]);
+      }
+      answer += decoder.decode();
+      if (!answer.trim()) throw new Error("Fleet AI returned an empty response.");
+      setMessages([...next, { ...assistantMessage, content: answer.trim() }]);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Fleet AI could not answer right now.");
     } finally {
