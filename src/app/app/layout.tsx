@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import AlertWatcher from "./AlertWatcher";
+import FleetAiAssistant from "./FleetAiAssistant";
 import {
   FiMenu, FiX, FiLogOut, FiUser, FiChevronDown,
   FiPieChart, FiTruck, FiNavigation, FiAlertTriangle,
@@ -270,6 +271,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         <main className="flex-1 overflow-auto">
           {children}
         </main>
+        <FleetAiAssistant />
       </div>
 
       {/* ── Mobile drawer overlay ── */}
