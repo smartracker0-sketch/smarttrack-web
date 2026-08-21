@@ -100,16 +100,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [maintenanceOpen, setMaintenanceOpen] = useState(pathname.startsWith('/app/maintenance'));
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
+  const [sessionReady, setSessionReady] = useState(false);
   const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : 'All Vehicles';
 
   useEffect(() => {
     let active = true;
+    setSessionReady(false);
     void fetch("/api/auth/me", { cache: "no-store" }).then(async (response) => {
-      if (!active || response.status !== 401) return;
-      await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-      router.refresh();
-    }).catch(() => null);
+      if (!active) return;
+      if (response.status === 401) {
+        await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+        router.refresh();
+        return;
+      }
+      setSessionReady(true);
+    }).catch(() => {
+      if (active) setSessionReady(true);
+    });
     return () => { active = false; };
   }, [pathname, router]);
 
@@ -271,7 +279,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <button className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
               Geofences: All ▾
             </button>
-            <AlertWatcher />
+            {sessionReady && <AlertWatcher />}
             <Link href="/app/profile" className="flex items-center justify-center w-8 h-8 rounded-full" style={{ background: '#0D4A47', color: '#fff' }}>
               <FiUser size={14} />
             </Link>
@@ -280,9 +288,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">
-          {children}
+          {sessionReady ? children : <div className="grid h-full place-items-center text-sm font-semibold text-[#64748b]">Checking your session...</div>}
         </main>
-        <FleetAiAssistant />
+        {sessionReady && <FleetAiAssistant />}
       </div>
 
       {/* ── Mobile drawer overlay ── */}
