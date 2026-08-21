@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     secure,
     sameSite: "lax",
     path: "/",
-    maxAge: 60 * 60 * 24 * 30,
+    maxAge: 60 * 60 * 24 * 7,
   });
   return resp;
 }

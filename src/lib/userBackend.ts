@@ -77,7 +77,7 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   const secure = process.env.NODE_ENV === "production";
   const cookieStore = await cookies();
   cookieStore.set("tp_access", accessToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 8 });
-  cookieStore.set("tp_refresh", nextRefreshToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  cookieStore.set("tp_refresh", nextRefreshToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7 });
   return accessToken;
 }
 
