@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 
+const refreshRequests = new Map<string, Promise<string | null>>();
+
 export function backendUrl() {
   return (
     process.env.TRACKPRO_API_BASE_URL ??
@@ -9,17 +11,37 @@ export function backendUrl() {
   );
 }
 
-async function getAccessToken(): Promise<string | null> {
-  return (await cookies()).get("tp_access")?.value ?? null;
-}
-
 export async function userFetch(
   path: string,
   init: RequestInit = {}
 ): Promise<Response> {
-  const token = await getAccessToken();
+  const cookieStore = await cookies();
+  let token = cookieStore.get("tp_access")?.value ?? null;
+  const refreshToken = cookieStore.get("tp_refresh")?.value ?? null;
+
+  if (!token && refreshToken) token = await refreshAccessTokenOnce(refreshToken);
   if (!token) throw new Error("UNAUTHENTICATED");
 
+  let response = await authenticatedFetch(path, token, init);
+  if (response.status === 401 && refreshToken) {
+    token = await refreshAccessTokenOnce(refreshToken);
+    if (token) response = await authenticatedFetch(path, token, init);
+  }
+  return response;
+}
+
+async function refreshAccessTokenOnce(refreshToken: string): Promise<string | null> {
+  const pending = refreshRequests.get(refreshToken);
+  if (pending) return pending;
+
+  const request = refreshAccessToken(refreshToken).finally(() => {
+    refreshRequests.delete(refreshToken);
+  });
+  refreshRequests.set(refreshToken, request);
+  return request;
+}
+
+async function authenticatedFetch(path: string, token: string, init: RequestInit) {
   return fetch(`${backendUrl()}${path}`, {
     ...init,
     headers: {
@@ -29,6 +51,27 @@ export async function userFetch(
     },
     cache: "no-store",
   });
+}
+
+async function refreshAccessToken(refreshToken: string): Promise<string | null> {
+  const response = await fetch(`${backendUrl()}/api/v1/auth/refresh`, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+    cache: "no-store",
+  }).catch(() => null);
+  if (!response?.ok) return null;
+
+  const data = await response.json().catch(() => null);
+  const accessToken = data?.accessToken as string | undefined;
+  const nextRefreshToken = data?.refreshToken as string | undefined;
+  if (!accessToken || !nextRefreshToken) return null;
+
+  const secure = process.env.NODE_ENV === "production";
+  const cookieStore = await cookies();
+  cookieStore.set("tp_access", accessToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 8 });
+  cookieStore.set("tp_refresh", nextRefreshToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 });
+  return accessToken;
 }
 
 /**

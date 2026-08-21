@@ -1,27 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import { userFetch } from "@/lib/userBackend";
 
-const BASE_URL = process.env.TRACKPRO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
-
-export async function GET(req: NextRequest) {
-  const accessToken = req.cookies.get("tp_access")?.value ?? null;
-
-  if (!accessToken) {
-    return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
-  }
-
-  let upstream: Response;
+export async function GET() {
   try {
-    upstream = await fetch(`${BASE_URL}/api/v1/users/me`, {
-      headers: {
-        authorization: `Bearer ${accessToken}`,
-        "content-type": "application/json",
-      },
-      cache: "no-store",
-    });
-  } catch {
-    return NextResponse.json({ message: "Backend unavailable" }, { status: 503 });
+    const upstream = await userFetch("/api/v1/users/me");
+    const data = await upstream.json().catch(() => null);
+    return NextResponse.json(data ?? {}, { status: upstream.status });
+  } catch (error) {
+    const unauthorized = error instanceof Error && error.message === "UNAUTHENTICATED";
+    return NextResponse.json({ message: unauthorized ? "Unauthorized" : "Backend unavailable" }, { status: unauthorized ? 401 : 503 });
   }
-
-  const data = await upstream.json().catch(() => null);
-  return NextResponse.json(data ?? {}, { status: upstream.status });
 }
