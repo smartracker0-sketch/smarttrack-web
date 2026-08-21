@@ -27,7 +27,14 @@ export async function userFetch(
     token = await refreshAccessTokenOnce(refreshToken);
     if (token) response = await authenticatedFetch(path, token, init);
   }
+  if (response.status === 401) await clearUserSession();
   return response;
+}
+
+async function clearUserSession() {
+  const cookieStore = await cookies();
+  cookieStore.set("tp_access", "", { path: "/", maxAge: 0 });
+  cookieStore.set("tp_refresh", "", { path: "/", maxAge: 0 });
 }
 
 async function refreshAccessTokenOnce(refreshToken: string): Promise<string | null> {

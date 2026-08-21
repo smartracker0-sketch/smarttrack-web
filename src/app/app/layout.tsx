@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
@@ -101,6 +101,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
   const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : 'All Vehicles';
+
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/auth/me", { cache: "no-store" }).then(async (response) => {
+      if (!active || response.status !== 401) return;
+      await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      router.refresh();
+    }).catch(() => null);
+    return () => { active = false; };
+  }, [pathname, router]);
 
   async function logout() {
     await fetch("/api/auth/logout", { method: "POST" });
