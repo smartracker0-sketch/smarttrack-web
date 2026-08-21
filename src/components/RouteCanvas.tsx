@@ -8,6 +8,7 @@ type Coordinate = [number, number];
 type Props = {
   path: Coordinate[];
   cursorIndex?: number | null;
+  cursorHeading?: number;
   drawing?: boolean;
   onMapClick?: (coordinate: Coordinate) => void;
   className?: string;
@@ -19,7 +20,7 @@ const LINE_LAYER_ID = "tp-route-line";
 const TRAIL_LAYER_ID = "tp-route-trail";
 const POINT_LAYER_ID = "tp-route-points";
 
-export default function RouteCanvas({ path, cursorIndex = null, drawing = false, onMapClick, className = "h-full w-full" }: Props) {
+export default function RouteCanvas({ path, cursorIndex = null, cursorHeading = 0, drawing = false, onMapClick, className = "h-full w-full" }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const cursorMarkerRef = useRef<mapboxgl.Marker | null>(null);
@@ -106,14 +107,16 @@ export default function RouteCanvas({ path, cursorIndex = null, drawing = false,
       const mapboxgl = module.default ?? module;
       if (!cursorMarkerRef.current) {
         const element = document.createElement("div");
-        element.style.cssText = "width:22px;height:22px;border-radius:999px;background:#F24464;border:4px solid white;box-shadow:0 6px 18px rgba(15,23,42,.35)";
+        element.style.cssText = "width:34px;height:34px;border-radius:999px;background:#F24464;border:4px solid white;box-shadow:0 6px 18px rgba(15,23,42,.35);display:grid;place-items:center;color:white;font-size:16px;font-weight:900;transition:transform .25s ease";
+        element.textContent = "▲";
         cursorMarkerRef.current = new mapboxgl.Marker({ element, anchor: "center" }).setLngLat(coordinate).addTo(map);
       } else {
         cursorMarkerRef.current.setLngLat(coordinate);
       }
+      cursorMarkerRef.current.getElement().style.transform = `rotate(${Number(cursorHeading || 0)}deg)`;
       map.easeTo({ center: coordinate, duration: 450, essential: true });
     });
-  }, [cursorIndex, path]);
+  }, [cursorHeading, cursorIndex, path]);
 
   return <div ref={containerRef} className={className} />;
 }
