@@ -267,12 +267,13 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [deviceRes, alertRes, geofenceRes, historyRes, insightRes] = await Promise.all([
+      const [deviceRes, alertRes, geofenceRes, historyRes, insightRes, liveRes] = await Promise.all([
         fetch("/api/devices", { cache: "no-store" }),
         fetch("/api/telemetry?type=alerts&unacknowledgedOnly=false", { cache: "no-store" }),
         fetch("/api/geofences", { cache: "no-store" }),
         fetch("/api/live-tracking?tab=history&limit=80", { cache: "no-store" }),
         fetch("/api/assistant/insights?limit=30", { cache: "no-store" }),
+        fetch("/api/live-tracking?tab=objects", { cache: "no-store" }),
       ]);
 
       if (deviceRes.status === 401) {
@@ -287,17 +288,10 @@ export default function AnalyticsPage() {
       setHistory(historyRes.ok ? listFrom(await historyRes.json().catch(() => [])) : []);
       setInsights(insightRes.ok ? await insightRes.json().catch(() => null) : null);
 
-      const latestResults = await Promise.allSettled(
-        deviceList.map((device) =>
-          fetch(`/api/telemetry?type=latest&deviceId=${encodeURIComponent(String(device.id))}`, { cache: "no-store" })
-            .then((res) => (res.ok && res.status !== 204 ? res.json() : null))
-        )
-      );
       const nextTelemetry: Record<string, Row> = {};
-      latestResults.forEach((result, index) => {
-        if (result.status === "fulfilled" && result.value) {
-          nextTelemetry[String(deviceList[index].id)] = result.value;
-        }
+      const liveRows = liveRes.ok ? listFrom(await liveRes.json().catch(() => [])) : [];
+      liveRows.forEach((row) => {
+        if (row.latestTelemetry) nextTelemetry[String(row.id)] = row.latestTelemetry;
       });
       setTelemetry(nextTelemetry);
     } catch {

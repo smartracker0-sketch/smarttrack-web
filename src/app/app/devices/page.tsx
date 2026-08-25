@@ -713,15 +713,12 @@ export default function AllVehiclesPage() {
           return null;
         });
 
-        const telemResults = await Promise.allSettled(
-          list.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(async (r) => {
-            if (await redirectIfUnauthorized(r)) return null;
-            return r.ok && r.status !== 204 ? r.json() : null;
-          }))
-        );
+        const liveResponse = await fetch("/api/live-tracking?tab=objects");
+        if (await redirectIfUnauthorized(liveResponse)) return;
+        const liveRows: DeviceRow[] = liveResponse.ok ? await liveResponse.json() : [];
         const telemMap: Record<string, DeviceRow | null> = {};
-        telemResults.forEach((r, i) => {
-          if (r.status === "fulfilled" && r.value) telemMap[list[i].id] = r.value;
+        liveRows.forEach((row) => {
+          if (row.latestTelemetry) telemMap[String(row.id)] = row.latestTelemetry;
         });
         setTelemetry((prev) => {
           const next: Record<string, DeviceRow> = {};
@@ -751,15 +748,12 @@ export default function AllVehiclesPage() {
   useEffect(() => {
     const interval = setInterval(async () => {
       if (devices.length === 0) return;
-      const telemResults = await Promise.allSettled(
-        devices.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(async (r) => {
-          if (await redirectIfUnauthorized(r)) return null;
-          return r.ok && r.status !== 204 ? r.json() : null;
-        }))
-      );
+      const liveResponse = await fetch("/api/live-tracking?tab=objects");
+      if (await redirectIfUnauthorized(liveResponse)) return;
+      const liveRows: DeviceRow[] = liveResponse.ok ? await liveResponse.json() : [];
       const telemMap: Record<string, DeviceRow> = {};
-      telemResults.forEach((r, i) => {
-        if (r.status === "fulfilled" && r.value) telemMap[devices[i].id] = r.value;
+      liveRows.forEach((row) => {
+        if (row.latestTelemetry) telemMap[String(row.id)] = row.latestTelemetry;
       });
       setTelemetry((prev) => {
         const next = { ...prev };
@@ -893,10 +887,12 @@ export default function AllVehiclesPage() {
     e.stopPropagation();
     setRefreshing(deviceId);
     try {
-      const res = await fetch(`/api/telemetry?type=latest&deviceId=${deviceId}`);
+      const res = await fetch("/api/live-tracking?tab=objects");
       if (await redirectIfUnauthorized(res)) return;
-      if (res.ok && res.status !== 204) {
-        const t = await res.json();
+      if (res.ok) {
+        const rows: DeviceRow[] = await res.json();
+        const t = rows.find((row) => String(row.id) === deviceId)?.latestTelemetry;
+        if (!t) return;
         setTelemetry((prev) => ({ ...prev, [deviceId]: mergeTelemetry(prev[deviceId], t) ?? t }));
         notify(`Location refreshed for ${name}`);
       }
