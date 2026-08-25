@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { FiAlertTriangle } from "react-icons/fi";
+import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AlertRow = Record<string, any>;
@@ -187,6 +188,7 @@ export default function AlertWatcher() {
       if (res?.status === 401) {
         authBlockedRef.current = true;
         setAuthenticated(false);
+        await redirectIfUnauthorized(res);
         return;
       }
       if (!res?.ok || cancelled) return;
@@ -217,6 +219,7 @@ export default function AlertWatcher() {
       if (res?.status === 401) {
         authBlockedRef.current = true;
         setAuthenticated(false);
+        await redirectIfUnauthorized(res);
         return;
       }
       if (!res?.ok || cancelled) return;

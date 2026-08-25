@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { FiDownload, FiMessageCircle, FiSend, FiTrash2, FiX, FiZap } from "react-icons/fi";
+import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 type Message = { role: "user" | "assistant"; content: string; generatedAt?: string };
 
@@ -46,6 +47,7 @@ export default function FleetAiAssistant() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ message: question, history: messages.slice(-8) }),
       });
+      if (await redirectIfUnauthorized(response)) return;
       if (!response.ok) {
         const data = await response.json().catch(() => null);
         throw new Error(data?.message || "Fleet AI could not answer right now.");

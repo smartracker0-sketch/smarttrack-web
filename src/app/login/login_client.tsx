@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { FiMail, FiLock, FiEye, FiEyeOff, FiArrowRight } from "react-icons/fi";
 
@@ -18,8 +17,6 @@ const FLEET_PHOTOS = [
 ];
 
 export default function LoginClient({ nextPath }: { nextPath: string }) {
-  const router = useRouter();
-
   const [form, setForm] = useState<FormState>({ email: "", password: "" });
   const [step, setStep] = useState<"email" | "password">("email");
   const [showPassword, setShowPassword] = useState(false);
@@ -49,6 +46,7 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
     try {
       const resp = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email: form.email.trim(), password: form.password }),
       });
@@ -57,8 +55,18 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
         setError(data?.message ?? "Invalid email or password.");
         return;
       }
-      router.replace(nextPath || "/app/devices");
-      router.refresh();
+
+      const session = await fetch("/api/auth/me", {
+        cache: "no-store",
+        credentials: "same-origin",
+      });
+      if (!session.ok) {
+        await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => null);
+        setError("Your sign-in could not be completed. Please try again.");
+        return;
+      }
+
+      window.location.replace(nextPath || "/app/devices");
     } catch {
       setError("Network error. Check your connection.");
     } finally {

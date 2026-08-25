@@ -22,6 +22,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
+import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
 
@@ -702,6 +703,7 @@ export default function AllVehiclesPage() {
     if (showSpinner) setLoading(true);
     try {
       const res = await fetch("/api/devices");
+      if (await redirectIfUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
         const list: DeviceRow[] = Array.isArray(data) ? data : data?.content ?? [];
@@ -712,7 +714,10 @@ export default function AllVehiclesPage() {
         });
 
         const telemResults = await Promise.allSettled(
-          list.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then((r) => (r.ok && r.status !== 204 ? r.json() : null)))
+          list.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(async (r) => {
+            if (await redirectIfUnauthorized(r)) return null;
+            return r.ok && r.status !== 204 ? r.json() : null;
+          }))
         );
         const telemMap: Record<string, DeviceRow | null> = {};
         telemResults.forEach((r, i) => {
@@ -747,7 +752,10 @@ export default function AllVehiclesPage() {
     const interval = setInterval(async () => {
       if (devices.length === 0) return;
       const telemResults = await Promise.allSettled(
-        devices.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then((r) => (r.ok && r.status !== 204 ? r.json() : null)))
+        devices.map((d) => fetch(`/api/telemetry?type=latest&deviceId=${d.id}`).then(async (r) => {
+          if (await redirectIfUnauthorized(r)) return null;
+          return r.ok && r.status !== 204 ? r.json() : null;
+        }))
       );
       const telemMap: Record<string, DeviceRow> = {};
       telemResults.forEach((r, i) => {
@@ -886,6 +894,7 @@ export default function AllVehiclesPage() {
     setRefreshing(deviceId);
     try {
       const res = await fetch(`/api/telemetry?type=latest&deviceId=${deviceId}`);
+      if (await redirectIfUnauthorized(res)) return;
       if (res.ok && res.status !== 204) {
         const t = await res.json();
         setTelemetry((prev) => ({ ...prev, [deviceId]: mergeTelemetry(prev[deviceId], t) ?? t }));

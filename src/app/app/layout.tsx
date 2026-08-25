@@ -6,6 +6,7 @@ import Image from "next/image";
 import { useRouter, usePathname } from "next/navigation";
 import AlertWatcher from "./AlertWatcher";
 import FleetAiAssistant from "./FleetAiAssistant";
+import { redirectIfUnauthorized } from "@/lib/clientSession";
 import {
   FiMenu, FiX, FiLogOut, FiUser, FiChevronDown,
   FiPieChart, FiTruck, FiNavigation, FiAlertTriangle,
@@ -108,12 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setSessionReady(false);
     void fetch("/api/auth/me", { cache: "no-store" }).then(async (response) => {
       if (!active) return;
-      if (response.status === 401) {
-        await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
-        router.replace(`/login?next=${encodeURIComponent(pathname)}`);
-        router.refresh();
-        return;
-      }
+      if (await redirectIfUnauthorized(response)) return;
       setSessionReady(true);
     }).catch(() => {
       if (active) setSessionReady(true);
