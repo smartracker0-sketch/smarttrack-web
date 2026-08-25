@@ -267,6 +267,9 @@ function parseStompBodies(frame: string) {
 function mergeTelemetry(previous: DeviceRow | undefined, next: DeviceRow | null) {
   if (!next) return previous;
   if (!previous) return next;
+  const previousTime = latestTime(previous) ?? 0;
+  const nextTime = latestTime(next) ?? 0;
+  if (previousTime > 0 && nextTime > 0 && nextTime < previousTime) return previous;
   return {
     ...previous,
     ...next,
@@ -741,31 +744,9 @@ export default function AllVehiclesPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       load(false);
-    }, 10000);
-    return () => clearInterval(interval);
-  }, [load]);
-
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      if (devices.length === 0) return;
-      const liveResponse = await fetch("/api/live-tracking?tab=objects");
-      if (await redirectIfUnauthorized(liveResponse)) return;
-      const liveRows: DeviceRow[] = liveResponse.ok ? await liveResponse.json() : [];
-      const telemMap: Record<string, DeviceRow> = {};
-      liveRows.forEach((row) => {
-        if (row.latestTelemetry) telemMap[String(row.id)] = row.latestTelemetry;
-      });
-      setTelemetry((prev) => {
-        const next = { ...prev };
-        Object.entries(telemMap).forEach(([deviceId, value]) => {
-          const merged = mergeTelemetry(prev[deviceId], value);
-          if (merged) next[deviceId] = merged;
-        });
-        return next;
-      });
     }, 5000);
     return () => clearInterval(interval);
-  }, [devices]);
+  }, [load]);
 
   useEffect(() => {
     if (devices.length === 0) return;

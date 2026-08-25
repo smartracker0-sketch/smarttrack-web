@@ -52,6 +52,7 @@ export default function MapboxMap({
   const clusterMarkersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
   const popupsRef = useRef<Map<string, mapboxgl.Popup>>(new Map());
   const animationRef = useRef<Map<string, number>>(new Map());
+  const animationTargetsRef = useRef<Map<string, [number, number]>>(new Map());
   const popupCloseTimersRef = useRef<Map<string, number>>(new Map());
   const clusterRunRef = useRef(0);
   const initializedRef = useRef(false);
@@ -130,6 +131,9 @@ export default function MapboxMap({
   }, []);
 
   const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number) => {
+    const activeTarget = animationTargetsRef.current.get(id);
+    if (activeTarget && activeTarget[0] === lng && activeTarget[1] === lat) return;
+
     const current = marker.getLngLat();
     const startLng = current.lng;
     const startLat = current.lat;
@@ -137,9 +141,11 @@ export default function MapboxMap({
     const deltaLat = lat - startLat;
 
     window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
+    animationTargetsRef.current.set(id, [lng, lat]);
 
     if (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001) {
       marker.setLngLat([lng, lat]);
+      animationTargetsRef.current.delete(id);
       return;
     }
 
@@ -154,6 +160,7 @@ export default function MapboxMap({
       } else {
         marker.setLngLat([lng, lat]);
         animationRef.current.delete(id);
+        animationTargetsRef.current.delete(id);
       }
     };
     animationRef.current.set(id, window.requestAnimationFrame(step));
@@ -366,6 +373,9 @@ export default function MapboxMap({
       });
 
       existing.forEach((id) => {
+        window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
+        animationRef.current.delete(id);
+        animationTargetsRef.current.delete(id);
         markersRef.current.get(id)?.remove();
         markersRef.current.delete(id);
         popupsRef.current.delete(id);
