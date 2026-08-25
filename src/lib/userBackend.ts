@@ -1,11 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 import {
-  LEGACY_ACCESS_COOKIE,
-  LEGACY_REFRESH_COOKIE,
   USER_ACCESS_COOKIE,
   USER_REFRESH_COOKIE,
-  sessionCookieDomain,
   sessionCookieOptions,
 } from "@/lib/sessionCookies";
 
@@ -35,19 +32,7 @@ export async function userFetch(
     token = await refreshAccessTokenOnce(refreshToken);
     if (token) response = await authenticatedFetch(path, token, init);
   }
-  if (response.status === 401) await clearUserSession();
   return response;
-}
-
-async function clearUserSession() {
-  const cookieStore = await cookies();
-  const requestHeaders = await headers();
-  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
-  const domain = sessionCookieDomain(host);
-  for (const name of [USER_ACCESS_COOKIE, USER_REFRESH_COOKIE, LEGACY_ACCESS_COOKIE, LEGACY_REFRESH_COOKIE]) {
-    cookieStore.set(name, "", { path: "/", maxAge: 0 });
-    if (domain) cookieStore.set(name, "", { path: "/", domain, maxAge: 0 });
-  }
 }
 
 async function refreshAccessTokenOnce(refreshToken: string): Promise<string | null> {

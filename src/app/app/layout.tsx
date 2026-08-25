@@ -109,7 +109,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     setSessionReady(false);
     void fetch("/api/auth/me", { cache: "no-store" }).then(async (response) => {
       if (!active) return;
-      if (await redirectIfUnauthorized(response)) return;
+      if (await redirectIfUnauthorized(response, { verifySession: false })) return;
       setSessionReady(true);
     }).catch(() => {
       if (active) setSessionReady(true);

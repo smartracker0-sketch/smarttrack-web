@@ -42,11 +42,20 @@ export default function FleetAiAssistant() {
     setError("");
     setLoading(true);
     try {
-      const response = await fetch("/api/assistant/chat", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ message: question, history: messages.slice(-8) }),
-      });
+      const requestChat = () => fetch("/api/assistant/chat", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ message: question, history: messages.slice(-8) }),
+        });
+      let response = await requestChat();
+      if (response.status === 401) {
+        const session = await fetch("/api/auth/me", {
+          cache: "no-store",
+          credentials: "same-origin",
+        }).catch(() => null);
+        if (session?.ok) response = await requestChat();
+      }
       if (await redirectIfUnauthorized(response)) return;
       if (!response.ok) {
         const data = await response.json().catch(() => null);
