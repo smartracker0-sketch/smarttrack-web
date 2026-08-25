@@ -1,5 +1,13 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
+import {
+  LEGACY_ACCESS_COOKIE,
+  LEGACY_REFRESH_COOKIE,
+  USER_ACCESS_COOKIE,
+  USER_REFRESH_COOKIE,
+  sessionCookieDomain,
+  sessionCookieOptions,
+} from "@/lib/sessionCookies";
 
 const refreshRequests = new Map<string, Promise<string | null>>();
 
@@ -16,8 +24,8 @@ export async function userFetch(
   init: RequestInit = {}
 ): Promise<Response> {
   const cookieStore = await cookies();
-  let token = cookieStore.get("tp_access")?.value ?? null;
-  const refreshToken = cookieStore.get("tp_refresh")?.value ?? null;
+  let token = cookieStore.get(USER_ACCESS_COOKIE)?.value ?? null;
+  const refreshToken = cookieStore.get(USER_REFRESH_COOKIE)?.value ?? null;
 
   if (!token && refreshToken) token = await refreshAccessTokenOnce(refreshToken);
   if (!token) throw new Error("UNAUTHENTICATED");
@@ -33,8 +41,13 @@ export async function userFetch(
 
 async function clearUserSession() {
   const cookieStore = await cookies();
-  cookieStore.set("tp_access", "", { path: "/", maxAge: 0 });
-  cookieStore.set("tp_refresh", "", { path: "/", maxAge: 0 });
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
+  const domain = sessionCookieDomain(host);
+  for (const name of [USER_ACCESS_COOKIE, USER_REFRESH_COOKIE, LEGACY_ACCESS_COOKIE, LEGACY_REFRESH_COOKIE]) {
+    cookieStore.set(name, "", { path: "/", maxAge: 0 });
+    if (domain) cookieStore.set(name, "", { path: "/", domain, maxAge: 0 });
+  }
 }
 
 async function refreshAccessTokenOnce(refreshToken: string): Promise<string | null> {
@@ -74,10 +87,11 @@ async function refreshAccessToken(refreshToken: string): Promise<string | null> 
   const nextRefreshToken = data?.refreshToken as string | undefined;
   if (!accessToken || !nextRefreshToken) return null;
 
-  const secure = process.env.NODE_ENV === "production";
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host");
   const cookieStore = await cookies();
-  cookieStore.set("tp_access", accessToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 8 });
-  cookieStore.set("tp_refresh", nextRefreshToken, { httpOnly: true, secure, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 7 });
+  cookieStore.set(USER_ACCESS_COOKIE, accessToken, sessionCookieOptions(host, 60 * 60 * 8));
+  cookieStore.set(USER_REFRESH_COOKIE, nextRefreshToken, sessionCookieOptions(host, 60 * 60 * 24 * 7));
   return accessToken;
 }
 

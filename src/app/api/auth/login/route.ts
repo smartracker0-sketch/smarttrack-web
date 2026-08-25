@@ -1,4 +1,11 @@
 import { NextResponse } from "next/server";
+import {
+  LEGACY_ACCESS_COOKIE,
+  LEGACY_REFRESH_COOKIE,
+  USER_ACCESS_COOKIE,
+  USER_REFRESH_COOKIE,
+  sessionCookieOptions,
+} from "@/lib/sessionCookies";
 
 const BASE_URL = process.env.TRACKPRO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
 
@@ -38,21 +45,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Invalid auth response from backend" }, { status: 502 });
   }
 
-  const secure = process.env.NODE_ENV === "production";
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host");
   const resp = NextResponse.json({ ok: true });
-  resp.cookies.set("tp_access", accessToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 8,
-  });
-  resp.cookies.set("tp_refresh", refreshToken, {
-    httpOnly: true,
-    secure,
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+  resp.cookies.set(USER_ACCESS_COOKIE, accessToken, sessionCookieOptions(host, 60 * 60 * 8));
+  resp.cookies.set(USER_REFRESH_COOKIE, refreshToken, sessionCookieOptions(host, 60 * 60 * 24 * 7));
+  resp.cookies.set(LEGACY_ACCESS_COOKIE, "", { path: "/", maxAge: 0 });
+  resp.cookies.set(LEGACY_REFRESH_COOKIE, "", { path: "/", maxAge: 0 });
   return resp;
 }

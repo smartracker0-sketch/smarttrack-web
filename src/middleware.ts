@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { USER_ACCESS_COOKIE, USER_REFRESH_COOKIE } from "@/lib/sessionCookies";
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -8,8 +9,9 @@ export function middleware(req: NextRequest) {
     !pathname.startsWith("/api/");
 
   if (isApp) {
-    const token = req.cookies.get("tp_access")?.value;
-    if (!token) {
+    const token = req.cookies.get(USER_ACCESS_COOKIE)?.value;
+    const refresh = req.cookies.get(USER_REFRESH_COOKIE)?.value;
+    if (!token && !refresh) {
       const loginUrl = req.nextUrl.clone();
       loginUrl.pathname = "/login";
       loginUrl.searchParams.set("next", pathname);
