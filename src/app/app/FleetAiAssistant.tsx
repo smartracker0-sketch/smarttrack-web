@@ -1,16 +1,18 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { FiDownload, FiMessageCircle, FiSend, FiTrash2, FiX, FiZap } from "react-icons/fi";
+import { FiDownload, FiMessageCircle, FiRefreshCw, FiSend, FiSquare, FiTrash2, FiX, FiZap } from "react-icons/fi";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 type Message = { role: "user" | "assistant"; content: string; generatedAt?: string };
+type PendingAction = { actionId: string; action: string; summary: string; requiresConfirmation: boolean };
 
-const STARTERS = [
-  "Give me today's fleet health report",
-  "Which vehicles need urgent attention?",
-  "Summarise recent safety alerts",
-  "How can I reduce fuel and idle costs?",
+const DEFAULT_STARTERS = [
+  "Where are my vehicles?",
+  "Summarize today's fleet activity.",
+  "Show vehicles with active alerts.",
+  "Which vehicles are currently idle?",
+  "Show fuel anomalies from today.",
 ];
 
 export default function FleetAiAssistant() {
@@ -19,7 +21,11 @@ export default function FleetAiAssistant() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [starters, setStarters] = useState(DEFAULT_STARTERS);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const requestRef = useRef<AbortController | null>(null);
+  const lastQuestionRef = useRef("");
 
   useEffect(() => {
     try {
@@ -29,9 +35,26 @@ export default function FleetAiAssistant() {
   }, []);
 
   useEffect(() => {
+    fetch("/api/assistant/suggestions", { cache: "force-cache", credentials: "same-origin" })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data) => { if (Array.isArray(data?.suggestions) && data.suggestions.length) setStarters(data.suggestions); })
+      .catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     sessionStorage.setItem("trackpro-ai-chat", JSON.stringify(messages.slice(-20)));
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    const openInsight = (event: Event) => {
+      const question = (event as CustomEvent<{ question?: string }>).detail?.question;
+      setOpen(true);
+      if (question) setInput(question);
+    };
+    window.addEventListener("fleet-ai:ask", openInsight);
+    return () => window.removeEventListener("fleet-ai:ask", openInsight);
+  }, []);
 
   async function ask(message: string) {
     const question = message.trim();
@@ -41,12 +64,16 @@ export default function FleetAiAssistant() {
     setInput("");
     setError("");
     setLoading(true);
+    lastQuestionRef.current = question;
+    const controller = new AbortController();
+    requestRef.current = controller;
     try {
       const requestChat = () => fetch("/api/assistant/chat", {
           method: "POST",
           credentials: "same-origin",
           headers: { "content-type": "application/json" },
           body: JSON.stringify({ message: question, history: messages.slice(-8) }),
+          signal: controller.signal,
         });
       let response = await requestChat();
       if (response.status === 401) {
@@ -68,18 +95,37 @@ export default function FleetAiAssistant() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let answer = "";
+      let buffer = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
-        answer += decoder.decode(value, { stream: true });
-        setMessages([...next, { ...assistantMessage, content: answer }]);
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split("\n\n");
+        buffer = events.pop() || "";
+        for (const eventBlock of events) {
+          const event = eventBlock.split("\n").find((line) => line.startsWith("event: "))?.slice(7);
+          const raw = eventBlock.split("\n").find((line) => line.startsWith("data: "))?.slice(6);
+          if (!raw) continue;
+          const data = JSON.parse(raw) as { content?: string; message?: string; actionId?: string; action?: string; summary?: string; requiresConfirmation?: boolean };
+          if (event === "token" && data.content) {
+            answer += data.content;
+            setMessages([...next, { ...assistantMessage, content: answer }]);
+          }
+          if (event === "busy" || event === "error") throw new Error(data.message || "Fleet AI could not answer right now.");
+          if (event === "action_confirmation" && data.actionId && data.action && data.summary) {
+            setPendingAction({ actionId: data.actionId, action: data.action, summary: data.summary, requiresConfirmation: Boolean(data.requiresConfirmation) });
+            answer = data.summary;
+            setMessages([...next, { ...assistantMessage, content: answer }]);
+          }
+        }
       }
-      answer += decoder.decode();
       if (!answer.trim()) throw new Error("Fleet AI returned an empty response.");
       setMessages([...next, { ...assistantMessage, content: answer.trim() }]);
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Fleet AI could not answer right now.");
+      if (cause instanceof DOMException && cause.name === "AbortError") setError("Generation cancelled.");
+      else setError(cause instanceof Error ? cause.message : "Fleet AI could not answer right now.");
     } finally {
+      requestRef.current = null;
       setLoading(false);
     }
   }
@@ -90,9 +136,27 @@ export default function FleetAiAssistant() {
   }
 
   function clearChat() {
+    requestRef.current?.abort();
     setMessages([]);
     setError("");
+    setPendingAction(null);
     sessionStorage.removeItem("trackpro-ai-chat");
+  }
+
+  async function resolveAction(operation: "confirm" | "cancel") {
+    if (!pendingAction) return;
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch(`/api/assistant/actions/${pendingAction.actionId}/${operation}`, { method: "POST", credentials: "same-origin" });
+      if (await redirectIfUnauthorized(response)) return;
+      const data = await response.json().catch(() => null);
+      if (!response.ok) throw new Error(data?.message || "Fleet AI action failed.");
+      setMessages((current) => [...current, { role: "assistant", content: data.summary || (operation === "confirm" ? "Action completed." : "Action cancelled."), generatedAt: new Date().toISOString() }]);
+      setPendingAction(null);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Fleet AI action failed.");
+    } finally { setLoading(false); }
   }
 
   function downloadReport(content: string) {
@@ -124,7 +188,7 @@ export default function FleetAiAssistant() {
               <div className="rounded-md border border-[#d8e6e5] bg-white p-4">
                 <div className="text-sm font-extrabold text-[#0d4a47]">What would you like to know?</div>
                 <p className="mt-1 text-xs leading-5 text-[#64748b]">Ask about your vehicles, live status, recent alerts, operational risks, or request a management report.</p>
-                <div className="mt-3 grid gap-2">{STARTERS.map((starter) => <button key={starter} type="button" onClick={() => ask(starter)} className="rounded-md border border-[#d8e6e5] bg-[#f8fbfb] px-3 py-2 text-left text-[11px] font-semibold text-[#0d4a47] hover:border-[#1a7a75]">{starter}</button>)}</div>
+                <div className="mt-3 grid gap-2">{starters.slice(0, 5).map((starter) => <button key={starter} type="button" onClick={() => ask(starter)} className="rounded-md border border-[#d8e6e5] bg-[#f8fbfb] px-3 py-2 text-left text-[11px] font-semibold text-[#0d4a47] hover:border-[#1a7a75]">{starter}</button>)}</div>
               </div>
             )}
             {messages.map((message, index) => (
@@ -134,12 +198,13 @@ export default function FleetAiAssistant() {
               </article>
             ))}
             {loading && <div className="flex w-fit items-center gap-2 rounded-md border border-[#d8e6e5] bg-white px-3 py-2.5 text-xs font-semibold text-[#536987]"><span className="h-2 w-2 animate-pulse rounded-full bg-[#f97316]" />Analysing your fleet...</div>}
-            {error && <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">{error}</div>}
+            {pendingAction && <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-[#334155]"><div className="font-bold">Confirmation required</div><p className="mt-1 leading-5">{pendingAction.summary}</p><div className="mt-3 flex gap-2"><button type="button" onClick={() => resolveAction("confirm")} className="rounded bg-[#0d4a47] px-3 py-2 font-bold text-white">Confirm</button><button type="button" onClick={() => resolveAction("cancel")} className="rounded border border-[#cbd5e1] bg-white px-3 py-2 font-bold">Cancel</button></div></div>}
+            {error && <div className="flex items-center justify-between gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700"><span>{error}</span>{lastQuestionRef.current && <button type="button" title="Retry" onClick={() => ask(lastQuestionRef.current)} className="grid h-7 w-7 shrink-0 place-items-center rounded hover:bg-red-100"><FiRefreshCw /></button>}</div>}
           </div>
 
           <form onSubmit={submit} className="flex items-end gap-2 border-t border-[#dbe5e4] bg-white p-3">
             <textarea value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); ask(input); } }} rows={2} maxLength={2000} placeholder="Ask Fleet AI..." className="min-h-10 flex-1 resize-none rounded-md border border-[#cbd5e1] px-3 py-2 text-xs text-[#203239] outline-none focus:border-[#1a7a75]" />
-            <button type="submit" disabled={!input.trim() || loading} aria-label="Send question" className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#f97316] text-white disabled:opacity-40"><FiSend /></button>
+            {loading ? <button type="button" onClick={() => requestRef.current?.abort()} aria-label="Cancel generation" title="Cancel generation" className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#dc3545] text-white"><FiSquare size={14} /></button> : <button type="submit" disabled={!input.trim()} aria-label="Send question" className="grid h-10 w-10 shrink-0 place-items-center rounded-md bg-[#f97316] text-white disabled:opacity-40"><FiSend /></button>}
           </form>
         </section>
       )}

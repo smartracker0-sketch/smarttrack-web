@@ -12,7 +12,11 @@ export async function POST(request: Request) {
     }
     return new Response(upstream.body, {
       status: 200,
-      headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache, no-transform",
+        "x-accel-buffering": "no",
+      },
     });
   } catch (error) {
     const status = error instanceof Error && error.message === "UNAUTHENTICATED" ? 401 : 503;

@@ -7,6 +7,8 @@ import {
   FiAlertTriangle,
   FiArrowRight,
   FiActivity,
+  FiCheck,
+  FiCpu,
   FiBatteryCharging,
   FiClock,
   FiMapPin,
@@ -19,6 +21,38 @@ import {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Row = Record<string, any>;
+
+type FleetInsight = {
+  id: string;
+  type: string;
+  category: string;
+  severity: string;
+  title: string;
+  summary: string;
+  reason?: string;
+  entityId?: string;
+  entityName?: string;
+  metric?: Record<string, unknown>;
+  recommendedAction: string;
+  status: string;
+  lastObservedAt: string;
+};
+
+type InsightDashboard = {
+  fleetHealthScore: number;
+  healthFormula: string;
+  summary: { critical: number; high: number; medium: number; low: number; info: number };
+  categories: Record<string, number>;
+  topInsights: FleetInsight[];
+};
+
+const SEVERITY_STYLES: Record<string, string> = {
+  CRITICAL: "border-red-200 bg-red-50 text-red-700",
+  HIGH: "border-orange-200 bg-orange-50 text-orange-700",
+  MEDIUM: "border-amber-200 bg-amber-50 text-amber-700",
+  LOW: "border-blue-200 bg-blue-50 text-blue-700",
+  INFO: "border-slate-200 bg-slate-50 text-slate-600",
+};
 
 const STATUS_COLORS = {
   moving: "#22C55E",
@@ -222,6 +256,10 @@ export default function AnalyticsPage() {
   const [alerts, setAlerts] = useState<Row[]>([]);
   const [geofences, setGeofences] = useState<Row[]>([]);
   const [history, setHistory] = useState<Row[]>([]);
+  const [insights, setInsights] = useState<InsightDashboard | null>(null);
+  const [insightCategory, setInsightCategory] = useState("ALL");
+  const [insightSeverity, setInsightSeverity] = useState("ALL");
+  const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -229,11 +267,12 @@ export default function AnalyticsPage() {
     setLoading(true);
     setError(null);
     try {
-      const [deviceRes, alertRes, geofenceRes, historyRes] = await Promise.all([
+      const [deviceRes, alertRes, geofenceRes, historyRes, insightRes] = await Promise.all([
         fetch("/api/devices", { cache: "no-store" }),
         fetch("/api/telemetry?type=alerts&unacknowledgedOnly=false", { cache: "no-store" }),
         fetch("/api/geofences", { cache: "no-store" }),
         fetch("/api/live-tracking?tab=history&limit=80", { cache: "no-store" }),
+        fetch("/api/assistant/insights?limit=30", { cache: "no-store" }),
       ]);
 
       if (deviceRes.status === 401) {
@@ -246,6 +285,7 @@ export default function AnalyticsPage() {
       setAlerts(alertRes.ok ? listFrom(await alertRes.json().catch(() => [])) : []);
       setGeofences(geofenceRes.ok ? listFrom(await geofenceRes.json().catch(() => [])) : []);
       setHistory(historyRes.ok ? listFrom(await historyRes.json().catch(() => [])) : []);
+      setInsights(insightRes.ok ? await insightRes.json().catch(() => null) : null);
 
       const latestResults = await Promise.allSettled(
         deviceList.map((device) =>
@@ -272,6 +312,30 @@ export default function AnalyticsPage() {
     const id = window.setInterval(load, 30000);
     return () => window.clearInterval(id);
   }, []);
+
+  async function acknowledgeInsight(id: string) {
+    const response = await fetch(`/api/assistant/insights/${encodeURIComponent(id)}/acknowledge`, {
+      method: "POST",
+      credentials: "same-origin",
+    });
+    if (response.ok) {
+      setInsights((current) => current ? {
+        ...current,
+        topInsights: current.topInsights.map((item) => item.id === id ? { ...item, status: "ACKNOWLEDGED" } : item),
+      } : current);
+    }
+  }
+
+  function askFleetAi(insight: FleetInsight) {
+    window.dispatchEvent(new CustomEvent("fleet-ai:ask", {
+      detail: { question: `Explain this ${insight.severity.toLowerCase()} fleet insight for ${insight.entityName ?? "my fleet"}: ${insight.title}. What should I do next?` },
+    }));
+  }
+
+  const visibleInsights = useMemo(() => (insights?.topInsights ?? []).filter((item) =>
+    (insightCategory === "ALL" || item.category === insightCategory) &&
+    (insightSeverity === "ALL" || item.severity === insightSeverity)
+  ), [insights, insightCategory, insightSeverity]);
 
   const analytics = useMemo(() => {
     const status = { moving: 0, idle: 0, stopped: 0, offline: 0 };
@@ -358,6 +422,63 @@ export default function AnalyticsPage() {
           {error}
         </div>
       )}
+
+      <section className="mb-3 overflow-hidden rounded-lg border border-[#cfe0df] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.06)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5eeee] bg-[#f8fbfb] px-3 py-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-[#0D4A47] text-white"><FiCpu size={17} /></span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-extrabold text-[#061337]">AI Fleet Health</h2>
+                <span className="rounded-full bg-[#e7f3f2] px-2 py-0.5 text-[9px] font-extrabold text-[#0D4A47]">RULE-BASED</span>
+              </div>
+              <p className="mt-0.5 text-[10px] font-semibold text-[#64748b]" title={insights?.healthFormula}>
+                Verified telemetry findings with traceable evidence and recommended action
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right"><div className="text-[9px] font-bold uppercase text-[#64748b]">Health score</div><div className="text-2xl font-extrabold leading-none text-[#0D4A47]">{insights ? insights.fleetHealthScore : "--"}<span className="text-xs text-[#94a3b8]">/100</span></div></div>
+            <div className="grid grid-cols-5 gap-1">
+              {(["critical", "high", "medium", "low", "info"] as const).map((level) => (
+                <button key={level} type="button" onClick={() => setInsightSeverity(insightSeverity === level.toUpperCase() ? "ALL" : level.toUpperCase())} className={`min-w-10 rounded-md border px-1.5 py-1 text-center ${SEVERITY_STYLES[level.toUpperCase()]}`}>
+                  <div className="text-xs font-extrabold">{insights?.summary[level] ?? 0}</div><div className="text-[8px] font-bold uppercase">{level.slice(0, 4)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-1 overflow-x-auto border-b border-[#edf2f6] px-3 py-2">
+          {["ALL", ...Object.keys(insights?.categories ?? {})].map((category) => (
+            <button key={category} type="button" onClick={() => setInsightCategory(category)} className={`whitespace-nowrap rounded-md px-2.5 py-1 text-[10px] font-bold ${insightCategory === category ? "bg-[#0D4A47] text-white" : "bg-[#f1f5f9] text-[#536987]"}`}>
+              {category === "ALL" ? "All insights" : category.toLowerCase().replaceAll("_", " ")} {category !== "ALL" && `(${insights?.categories[category] ?? 0})`}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid gap-2 p-3 lg:grid-cols-2 xl:grid-cols-3">
+          {loading && !insights ? (
+            <div className="col-span-full py-6 text-center text-xs font-semibold text-[#64748b]">Checking fleet signals...</div>
+          ) : visibleInsights.length === 0 ? (
+            <div className="col-span-full flex items-center justify-center gap-2 py-6 text-xs font-semibold text-[#1A7A75]"><FiCheck /> No active insights match this filter.</div>
+          ) : visibleInsights.slice(0, 9).map((item) => (
+            <article key={item.id} className="rounded-md border border-[#dbe5ee] bg-white p-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0"><div className="truncate text-xs font-extrabold text-[#061337]">{item.title}</div><div className="mt-0.5 truncate text-[10px] font-bold text-[#536987]">{item.entityName ?? "Fleet-wide"} · {timeAgo(item.lastObservedAt)}</div></div>
+                <span className={`shrink-0 rounded border px-2 py-1 text-[9px] font-extrabold ${SEVERITY_STYLES[item.severity] ?? SEVERITY_STYLES.INFO}`}>{item.severity}</span>
+              </div>
+              <p className="mt-2 line-clamp-2 text-[10px] font-medium leading-4 text-[#536987]">{item.summary}</p>
+              {expandedInsight === item.id && <div className="mt-2 border-t border-[#edf2f6] pt-2 text-[10px] leading-4 text-[#475569]"><div><strong>Why:</strong> {item.reason || "Based on the latest verified telemetry."}</div><div className="mt-1"><strong>Action:</strong> {item.recommendedAction}</div></div>}
+              <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                <button type="button" onClick={() => setExpandedInsight(expandedInsight === item.id ? null : item.id)} className="rounded border border-[#dbe5ee] px-2 py-1 text-[9px] font-bold text-[#0D4A47]">{expandedInsight === item.id ? "Hide" : "Details"}</button>
+                <button type="button" onClick={() => askFleetAi(item)} className="rounded bg-[#e7f3f2] px-2 py-1 text-[9px] font-bold text-[#0D4A47]">Ask Fleet AI</button>
+                {item.status === "ACTIVE" ? <button type="button" onClick={() => void acknowledgeInsight(item.id)} className="ml-auto rounded bg-[#0D4A47] px-2 py-1 text-[9px] font-bold text-white">Acknowledge</button> : <span className="ml-auto inline-flex items-center gap-1 text-[9px] font-bold text-[#1A7A75]"><FiCheck /> Acknowledged</span>}
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-2 md:grid-cols-2">
         <VisualMetricCard href="/app/devices" icon={<FiTruck size={15} />} label="Total assets" value={loading ? "..." : String(devices.length)} helper={`${analytics.online} reporting now`} color="#0D4A47" image="/industries/logistics.png" imageAlt="Fleet truck" />
