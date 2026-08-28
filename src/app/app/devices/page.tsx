@@ -23,6 +23,7 @@ import {
 } from "react-icons/fi";
 import type { MarkerData } from "@/components/MapboxMap";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
+import { objectIconImage } from "@/lib/objectIcons";
 
 const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
 
@@ -97,6 +98,11 @@ function shortName(d: DeviceRow) {
 
 function markerLabel(d: DeviceRow) {
   return shortName(d).replace(/\s+/g, "_");
+}
+
+function cardObjectIcon(d: DeviceRow) {
+  if (String(d.deviceType ?? "").toLowerCase() === "dashcam") return "/dashcam-object-icon.png";
+  return objectIconImage(d.objectIcon ?? d.icon ?? d.assetIcon ?? d.vehicleType ?? "car");
 }
 
 function timeAgo(value?: string | null) {
@@ -1116,7 +1122,13 @@ export default function AllVehiclesPage() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex min-w-0 items-center gap-1.5">
-                        <FiCamera size={17} className="flex-shrink-0 text-[#536987]" />
+                        <img
+                          src={cardObjectIcon(d)}
+                          alt=""
+                          width={22}
+                          height={22}
+                          className="h-[22px] w-[22px] flex-shrink-0 object-contain"
+                        />
                         <h2 className="min-w-0 truncate text-[15px] font-extrabold leading-tight tracking-tight text-[#061337]">{shortName(d)}</h2>
                       </div>
                       <div className="flex flex-shrink-0 items-center gap-1.5">
