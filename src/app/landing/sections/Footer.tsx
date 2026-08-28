@@ -14,6 +14,7 @@ const PRODUCTS = [
 ];
 
 const COMPANY = [
+  { label: "Business Profile", href: "/business-profile" },
   { label: "About Us", href: "/company/about-us" },
   { label: "Careers", href: "/company/careers" },
   { label: "Blog", href: "/resources/blog" },
