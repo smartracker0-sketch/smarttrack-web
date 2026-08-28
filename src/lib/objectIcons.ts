@@ -46,5 +46,5 @@ export function objectIconImage(value?: string | null) {
 
 export function objectIconSvg(value: string | null | undefined, color = "#EF334A") {
   const key = normaliseObjectIcon(value);
-  return `<img src="${objectIconImage(key)}" alt="${objectIconLabel(key)}" width="54" height="54" style="display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 1px ${color});" />`;
+  return `<img src="${TRACKER_ICON}" alt="${objectIconLabel(key)}" width="54" height="54" style="display:block;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 1px ${color});" />`;
 }
