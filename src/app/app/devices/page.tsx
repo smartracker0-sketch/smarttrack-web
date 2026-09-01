@@ -58,11 +58,10 @@ const STATUS_FILTERS = [
 ] as const;
 
 function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offline" {
-  if (!telem) return "offline";
+  if (!telem || !isRecentlyReporting(telem)) return "offline";
   const spd = Number(telem.speedKph ?? 0);
   if (spd > 5) return "moving";
   if (isIgnitionOn(telem)) return "idle";
-  if (isRecentlyReporting(telem)) return "idle";
   return "stopped";
 }
 
@@ -71,12 +70,13 @@ function isMoving(telem: DeviceRow | null) {
 }
 
 function isMotionActive(telem: DeviceRow | null) {
-  return isMoving(telem) || isRecentlyReporting(telem);
+  const motion = String(telem?.motion ?? telem?.motionStatus ?? "").toLowerCase();
+  return isMoving(telem) || motion === "moving" || motion === "updating";
 }
 
 function isIgnitionOn(telem: DeviceRow | null) {
   if (!telem) return false;
-  return Boolean(telem.ignition) || isMoving(telem) || isRecentlyReporting(telem);
+  return Boolean(telem.ignition) || isMoving(telem);
 }
 
 function latestTime(telem: DeviceRow | null) {
