@@ -66,16 +66,17 @@ function statKey(telem: DeviceRow | null): "moving" | "stopped" | "idle" | "offl
 }
 
 function isMoving(telem: DeviceRow | null) {
-  return Number(telem?.speedKph ?? 0) > 5;
+  return isRecentlyReporting(telem) && Number(telem?.speedKph ?? 0) > 5;
 }
 
 function isMotionActive(telem: DeviceRow | null) {
+  if (!isRecentlyReporting(telem)) return false;
   const motion = String(telem?.motion ?? telem?.motionStatus ?? "").toLowerCase();
   return isMoving(telem) || motion === "moving" || motion === "updating";
 }
 
 function isIgnitionOn(telem: DeviceRow | null) {
-  if (!telem) return false;
+  if (!telem || !isRecentlyReporting(telem)) return false;
   return Boolean(telem.ignition) || isMoving(telem);
 }
 
@@ -161,7 +162,7 @@ function statusText(telem: DeviceRow | null) {
   if (key === "moving") return `Moving: ${Math.round(Number(telem?.speedKph ?? 0))} km/h`;
   if (key === "idle") return isRecentlyReporting(telem) ? `Online: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}` : `Idle: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
   if (key === "stopped") return `Stopped: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
-  return "Offline";
+  return `Disconnected: ${timeAgo(telem?.receivedAt ?? telem?.eventTime)}`;
 }
 
 function numberFrom(...values: unknown[]) {
@@ -205,10 +206,12 @@ function batteryVoltage(telem: DeviceRow | null, device?: DeviceRow | null) {
 }
 
 function ignitionText(telem: DeviceRow | null) {
+  if (!isRecentlyReporting(telem)) return "--";
   return isIgnitionOn(telem) ? "ON" : "OFF";
 }
 
 function motionText(telem: DeviceRow | null) {
+  if (!isRecentlyReporting(telem)) return "DISCONNECTED";
   if (isMoving(telem)) return "MOVING";
   if (isRecentlyReporting(telem)) return "UPDATING";
   return "STOPPED";
@@ -1109,7 +1112,7 @@ export default function AllVehiclesPage() {
                       ? `Online: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
                       : key === "stopped"
                         ? `Stopped: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`
-                        : "Offline";
+                        : `Disconnected: ${timeAgo(t?.receivedAt ?? t?.eventTime)}`;
                 return (
                   <article
                     key={d.id}
@@ -1164,7 +1167,7 @@ export default function AllVehiclesPage() {
 
                     <div className="mt-3 flex items-stretch gap-2">
                       <MetricBox value={ignitionText(t)} label="Ignition" />
-                      <MetricBox value={`${Math.round(Number(t?.speedKph ?? 0))} km/h`} label="Speed" />
+                      <MetricBox value={isRecentlyReporting(t) ? `${Math.round(Number(t?.speedKph ?? 0))} km/h` : "--"} label="Speed" />
                       <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery Voltage" />
                       <button
                         type="button"
