@@ -3,12 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   FiAlertCircle,
-  FiBell,
+  FiCalendar,
   FiChevronLeft,
   FiChevronRight,
   FiDownload,
+  FiFilter,
   FiMail,
+  FiMapPin,
+  FiMoreVertical,
+  FiRefreshCw,
   FiSearch,
+  FiTruck,
   FiX,
 } from "react-icons/fi";
 
@@ -245,12 +250,6 @@ const PERIODS: Record<PeriodKey, { label: string; ms: number | null }> = {
   all: { label: "All Time", ms: null },
 };
 
-const SEVERITY_STYLE: Record<string, string> = {
-  CRITICAL: "#EF4444",
-  WARNING: "#F59E0B",
-  INFO: "#1A7A75",
-};
-
 function norm(value?: string | null) {
   return String(value ?? "").trim().toUpperCase();
 }
@@ -364,6 +363,9 @@ export default function AlertsPage() {
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [settingsError, setSettingsError] = useState<string | null>(null);
   const [mountedAt, setMountedAt] = useState<string | null>(null);
+  const [tableSearch, setTableSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   async function load() {
     setLoading(true);
@@ -422,6 +424,13 @@ export default function AlertsPage() {
 
   const selectedCategory = ALERT_CATEGORIES.find((category) => category.key === selectedKey) ?? ALERT_CATEGORIES[0];
   const selectedAlerts = useMemo(() => alertsByCategory.get(selectedCategory.key) ?? [], [alertsByCategory, selectedCategory]);
+  const filteredSelectedAlerts = useMemo(() => {
+    const query = tableSearch.trim().toLowerCase();
+    if (!query) return selectedAlerts;
+    return selectedAlerts.filter((alert) => `${vehicleName(alert, deviceMaps)} ${driverName(alert, deviceMaps)} ${alert.message ?? ""} ${alert.relatedGeofenceName ?? ""} ${alert.alertType ?? ""}`.toLowerCase().includes(query));
+  }, [selectedAlerts, tableSearch, deviceMaps]);
+  const pageCount = Math.max(1, Math.ceil(filteredSelectedAlerts.length / pageSize));
+  const pagedAlerts = filteredSelectedAlerts.slice((Math.min(page, pageCount) - 1) * pageSize, Math.min(page, pageCount) * pageSize);
   const savedSettingsByKey = useMemo(() => {
     const next = new Map<string, SavedSettingRow>();
     savedSettings.forEach((setting) => {
@@ -457,6 +466,29 @@ export default function AlertsPage() {
     if (!ms) return "All available alert history";
     return `${dateText(new Date(now.getTime() - ms).toISOString())} to ${dateText(now.toISOString())}`;
   })();
+
+  function selectCategory(key: string) {
+    setSelectedKey(key);
+    setPage(1);
+  }
+
+  function exportAlerts() {
+    const rows = filteredSelectedAlerts.map((alert) => [
+      vehicleName(alert, deviceMaps),
+      driverName(alert, deviceMaps),
+      dateText(alertTime(alert)),
+      alert.message ?? alert.relatedGeofenceName ?? alert.alertType ?? "",
+      norm(alert.severity || "INFO"),
+    ]);
+    const csv = [["Vehicle Number", "Driver", "Alert Time", "Details", "Severity"], ...rows]
+      .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+      .join("\n");
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+    link.download = `${selectedCategory.key}-alerts.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
 
   async function openSettings(category: AlertCategory) {
     setSettingCategory(category);
@@ -541,197 +573,96 @@ export default function AlertsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-88px)] min-h-[680px] overflow-hidden bg-[#f3f7fa] text-[#061337]">
-      <aside className="flex w-[350px] shrink-0 flex-col border-r border-[#d7e2ec] bg-white">
-        <div className="border-b border-[#edf2f6] p-4">
-          <div className="relative">
-            <FiSearch className="absolute right-4 top-1/2 -translate-y-1/2 text-[#9bb0c6]" size={22} />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Type to search"
-              className="h-12 w-full rounded-lg border border-[#d5e2ec] bg-white px-4 pr-12 text-sm font-medium text-[#061337] outline-none placeholder:text-[#b6c8d9]"
-            />
+    <div className="flex h-[calc(100vh-88px)] min-h-[680px] overflow-hidden bg-[#f7faf9] text-[#102a2d] max-lg:h-auto max-lg:min-h-0 max-lg:flex-col max-lg:overflow-visible">
+      <aside className="flex w-[300px] shrink-0 flex-col border-r border-[#e2ecea] bg-white max-lg:w-full max-lg:border-b max-lg:border-r-0">
+        <div className="flex gap-2 border-b border-[#edf3f2] p-4">
+          <div className="relative min-w-0 flex-1">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#7b9191]" size={16} />
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search alerts..." className="h-10 w-full rounded-md border border-[#dce7e5] bg-white pl-9 pr-3 text-xs font-medium outline-none focus:border-[#0b756c]" />
           </div>
+          <button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-[#dce7e5] bg-white text-[#52706e]" aria-label="Filter alert types"><FiFilter size={17} /></button>
         </div>
 
-        <div className="border-b border-[#edf2f6] px-4 py-3">
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: "All", label: "All", count: knownAlerts.length + configuredAlertCount },
-              { key: "Critical", label: "Critical", count: criticalCount },
-              { key: "Non Critical", label: "Non Critical", count: nonCriticalCount },
-            ].map((item) => (
-              <button
-                key={item.key}
-                type="button"
-                onClick={() => setSeverityFilter(item.key as typeof severityFilter)}
-                className="inline-flex h-9 items-center gap-2 rounded-full px-3 text-xs font-bold transition"
-                style={{
-                  border: `1px solid ${severityFilter === item.key ? "#23b8c8" : "#edf2f6"}`,
-                  background: severityFilter === item.key ? "#eefcff" : "#f7fafc",
-                  color: severityFilter === item.key ? "#087a8c" : "#536987",
-                }}
-              >
-                {item.key === "Critical" && <FiAlertCircle size={14} className="text-[#f5a623]" />}
-                <span>{item.label}</span>
-                <strong className="rounded-full bg-white px-2 py-0.5 text-[#087a8c]">{loading ? "..." : item.count}</strong>
-              </button>
-            ))}
-          </div>
+        <div className="space-y-2 border-b border-[#edf3f2] p-4">
+          {[
+            { key: "All", label: "All Alerts", count: knownAlerts.length + configuredAlertCount, color: "#08766c", bg: "#08766c" },
+            { key: "Critical", label: "Critical", count: criticalCount, color: "#ef476f", bg: "#fff5f6" },
+            { key: "Non Critical", label: "Non Critical", count: nonCriticalCount, color: "#e49a13", bg: "#fffaf0" },
+          ].map((item) => (
+            <button key={item.key} type="button" onClick={() => setSeverityFilter(item.key as typeof severityFilter)} className="flex h-10 w-full items-center justify-between rounded-md px-3 text-xs font-bold transition" style={{ background: severityFilter === item.key ? item.bg : "transparent", color: severityFilter === item.key && item.key === "All" ? "white" : item.color }}>
+              <span className="flex items-center gap-2">{item.key !== "All" && <FiAlertCircle size={15} />}{item.label}</span>
+              <strong className="text-base">{loading ? "..." : item.count}</strong>
+            </button>
+          ))}
         </div>
 
-        <div className="border-b border-[#edf2f6] px-4 py-4 text-sm font-semibold text-[#536987]">
-          <div>Showing Alerts from :</div>
-          <div className="mt-3 text-[#536987]">{showingFrom}</div>
+        <div className="border-b border-[#edf3f2] px-4 py-4">
+          <p className="mb-2 text-[10px] font-extrabold uppercase text-[#496765]">Showing alerts from</p>
+          <div className="flex items-center gap-2 rounded-md border border-[#dce7e5] px-3 py-2 text-xs font-semibold text-[#52706e]"><FiCalendar size={14} /><span className="truncate">{showingFrom}</span></div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3">
-          {loading ? (
-            <div className="rounded-lg bg-[#f4f8fb] p-5 text-sm font-semibold text-[#7890aa]">Loading alerts...</div>
-          ) : visibleCategories.length === 0 ? (
-            <div className="rounded-lg bg-[#f4f8fb] p-5 text-sm font-semibold text-[#7890aa]">No alert category matches your search.</div>
-          ) : (
-            visibleCategories.map((category, index) => {
-              const count = categoryCounts.get(category.key) ?? 0;
-              const isConfigured = savedSettingsByKey.has(category.key);
-              const selected = selectedCategory.key === category.key;
-              const countLabel = count > 0 ? count : isConfigured ? "Alert Set" : category.autoGenerated ? 0 : "No Alert Set";
-              const showGroup = category.group && category.group !== visibleCategories[index - 1]?.group;
-              return (
-                <div key={category.key}>
-                  {showGroup && (
-                    <div className="mb-3 mt-2 rounded-lg bg-[#eefcff] px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-[#087a8c]">
-                      {category.group}
-                    </div>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setSelectedKey(category.key)}
-                    className="mb-2 w-full rounded-lg border p-4 text-left transition"
-                    style={{
-                      borderColor: selected ? "#e8f0f6" : "transparent",
-                      background: selected ? "#f2f7fa" : "#ffffff",
-                      boxShadow: selected ? "0 10px 24px rgba(15,23,42,0.06)" : "none",
-                    }}
-                  >
-                    <div className="flex items-start gap-2">
-                      {category.autoGenerated && <FiAlertCircle className="mt-0.5 shrink-0 text-[#f5a623]" size={15} />}
-                      <div className="min-w-0">
-                        <div className="text-sm font-bold leading-snug text-[#536987]">
-                          <span className={selected ? "text-[#087a8c]" : ""}>{category.title} :</span>{" "}
-                          <strong className="text-[#061337]">{countLabel}</strong>
-                        </div>
-                        {category.description && <p className="mt-3 text-xs font-medium leading-6 text-[#536987]">{category.description}</p>}
-                        {(category.autoGenerated || isConfigured) && (
-                          <span className="mt-3 inline-flex rounded-md bg-[#dbeaf4] px-4 py-2 text-xs font-bold text-[#536987]">
-                            {isConfigured ? "Configured" : "Auto Generated"}
-                          </span>
-                        )}
-                        <button
-                          type="button"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void openSettings(category);
-                          }}
-                          className="mt-4 text-xs font-semibold text-[#b5c7d6]"
-                        >
-                          <span className="font-bold text-[#23b8c8]">Set alert</span>{" "}
-                          {category.autoGenerated ? "to receive notifications" : "to Receive Data"}
-                        </button>
-                      </div>
-                    </div>
-                  </button>
+        <div className="min-h-0 flex-1 overflow-y-auto p-3 max-lg:max-h-[420px]">
+          {loading ? <div className="p-5 text-sm font-semibold text-[#78908e]">Loading alerts...</div> : visibleCategories.length === 0 ? <div className="p-5 text-sm font-semibold text-[#78908e]">No alert category matches your search.</div> : visibleCategories.map((category, index) => {
+            const count = categoryCounts.get(category.key) ?? 0;
+            const isConfigured = savedSettingsByKey.has(category.key);
+            const selected = selectedCategory.key === category.key;
+            const showGroup = category.group && category.group !== visibleCategories[index - 1]?.group;
+            return <div key={category.key}>
+              {showGroup && <div className="mb-2 mt-3 px-1 text-[10px] font-extrabold uppercase text-[#0b756c]">{category.group}</div>}
+              <button type="button" onClick={() => selectCategory(category.key)} className="mb-2 w-full rounded-md border p-3 text-left transition" style={{ borderColor: selected ? "#b9ddd8" : "#e8efee", background: selected ? "#f2fbf9" : "#fff" }}>
+                <div className="flex gap-3">
+                  <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-[#b9ddd8] bg-[#f2fbf9] text-[#08766c]">{category.key === "geofence" ? <FiMapPin size={18} /> : category.key === "unexpectedMovement" ? <FiTruck size={18} /> : <FiAlertCircle size={18} />}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-xs font-extrabold leading-5 text-[#294946]">{category.title} <b className="text-[#08766c]">{count > 0 ? `: ${count}` : isConfigured ? ": Alert Set" : ""}</b></span>
+                    {category.description && <span className="mt-1 block text-[10px] font-medium leading-4 text-[#718986]">{category.description}</span>}
+                    <span className="mt-2 inline-flex rounded-full bg-[#ddf4ef] px-2.5 py-1 text-[9px] font-bold text-[#08766c]">{isConfigured ? "Configured" : category.autoGenerated ? "Auto Generated" : "Not Configured"}</span>
+                    <span onClick={(event) => { event.stopPropagation(); void openSettings(category); }} className="mt-2 block cursor-pointer text-[10px] font-bold text-[#0b8b80]">Set alert to receive notifications</span>
+                  </span>
                 </div>
-              );
-            })
-          )}
+              </button>
+            </div>;
+          })}
         </div>
       </aside>
 
-      <main className="min-w-0 flex-1 overflow-hidden p-5">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-extrabold text-[#061337]">Alerts</h1>
-          <div className="flex items-center gap-3">
-            <select
-              value={period}
-              onChange={(event) => setPeriod(event.target.value as PeriodKey)}
-              className="h-10 min-w-[190px] rounded-lg border border-[#d5e2ec] bg-white px-4 text-sm font-semibold text-[#536987] outline-none"
-            >
-              {Object.entries(PERIODS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}
-            </select>
-            <button type="button" onClick={load} className="grid h-10 w-10 place-items-center rounded-lg border border-[#edf2f6] bg-white text-[#536987]" aria-label="Refresh alerts">
-              <FiBell size={18} />
-            </button>
+      <main className="min-w-0 flex-1 overflow-hidden p-5 max-lg:min-h-[720px] max-sm:p-3">
+        <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
+          <div><h1 className="text-2xl font-extrabold text-[#173d3a]">Alerts</h1><p className="mt-1 text-xs font-medium text-[#6d8381]">Monitor and manage all vehicle alerts in real time.</p></div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex h-10 items-center gap-2 rounded-md border border-[#dce7e5] bg-white px-3 text-xs font-semibold text-[#45635f]"><FiCalendar size={15} /><select value={period} onChange={(event) => { setPeriod(event.target.value as PeriodKey); setPage(1); }} className="bg-transparent outline-none">{Object.entries(PERIODS).map(([key, item]) => <option key={key} value={key}>{item.label}</option>)}</select></label>
+            <button type="button" onClick={() => setSeverityFilter(severityFilter === "All" ? "Critical" : severityFilter === "Critical" ? "Non Critical" : "All")} className="inline-flex h-10 items-center gap-2 rounded-md border border-[#dce7e5] bg-white px-3 text-xs font-bold text-[#45635f]"><FiFilter size={15} />Filters</button>
+            <button type="button" onClick={() => setTableSearch(tableSearch ? "" : search)} className="grid h-10 w-10 place-items-center rounded-md border border-[#dce7e5] bg-white text-[#45635f]" aria-label="Search table"><FiSearch size={17} /></button>
+            <button type="button" onClick={exportAlerts} className="grid h-10 w-10 place-items-center rounded-md border border-[#dce7e5] bg-white text-[#45635f]" aria-label="Download alerts"><FiDownload size={17} /></button>
+            <button type="button" className="grid h-10 w-10 place-items-center rounded-md border border-[#dce7e5] bg-white text-[#45635f]" aria-label="Send alerts"><FiMail size={17} /></button>
+            <button type="button" onClick={load} className="grid h-10 w-10 place-items-center rounded-md border border-[#dce7e5] bg-white text-[#45635f]" aria-label="Refresh alerts"><FiRefreshCw size={17} /></button>
           </div>
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-base font-extrabold text-[#061337]">{selectedCategory.title} Alerts</h2>
-          <div className="flex items-center gap-3">
-            <button type="button" className="grid h-10 w-10 place-items-center rounded-lg bg-white text-[#536987]" aria-label="Search table">
-              <FiSearch size={21} />
-            </button>
-            <button type="button" className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-[#536987]">
-              <FiChevronLeft size={16} /> Filters
-            </button>
-            <button type="button" className="grid h-10 w-10 place-items-center rounded-lg bg-white text-[#536987]" aria-label="Download alerts">
-              <FiDownload size={18} />
-            </button>
-            <button type="button" className="grid h-10 w-10 place-items-center rounded-lg bg-white text-[#536987]" aria-label="Send alerts">
-              <FiMail size={18} />
-            </button>
+        {tableSearch !== "" && <div className="relative mb-3 max-w-sm"><FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-[#78908e]" size={15} /><input autoFocus value={tableSearch} onChange={(event) => { setTableSearch(event.target.value); setPage(1); }} placeholder="Search table..." className="h-10 w-full rounded-md border border-[#dce7e5] bg-white pl-9 pr-9 text-xs outline-none" /><button type="button" onClick={() => setTableSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#78908e]" aria-label="Close search"><FiX /></button></div>}
+
+        <div className="mb-3 flex items-center gap-2"><h2 className="text-sm font-extrabold text-[#173d3a]">{selectedCategory.title} Alerts</h2><span className="rounded-full bg-[#ddf4ef] px-2.5 py-1 text-[10px] font-bold text-[#08766c]">{filteredSelectedAlerts.length}</span></div>
+
+        <div className="overflow-hidden rounded-md border border-[#e3ecea] bg-white">
+          <div className="grid grid-cols-[1.15fr_.8fr_.9fr_1.45fr_.65fr_28px] gap-3 bg-[#f0f7f6] px-4 py-3 text-[10px] font-extrabold text-[#55716e] max-md:hidden"><div>Vehicle Number</div><div>Driver</div><div>Alert Time</div><div>Details</div><div>Severity</div><div /></div>
+          <div className="max-h-[calc(100vh-300px)] min-h-[360px] overflow-auto">
+            {loading ? <div className="py-16 text-center text-sm font-semibold text-[#78908e]">Loading alerts...</div> : pagedAlerts.length === 0 ? <div className="py-16 text-center text-sm font-semibold text-[#78908e]">No records for this alert type in the selected period.</div> : pagedAlerts.map((alert) => {
+              const severity = norm(alert.severity || "INFO");
+              const critical = severity === "CRITICAL";
+              return <div key={alert.id ?? `${alert.alertType}-${alertTime(alert)}`} className="grid min-h-[68px] grid-cols-[1.15fr_.8fr_.9fr_1.45fr_.65fr_28px] items-center gap-3 border-b border-[#edf3f2] px-4 py-3 text-xs text-[#496562] last:border-b-0 max-md:grid-cols-[1fr_auto] max-md:gap-y-2">
+                <div className="flex min-w-0 items-center gap-3"><span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#e4f6f2] text-[#08766c]"><FiTruck size={15} /></span><span className="min-w-0"><strong className="block truncate text-[#173d3a]">{vehicleName(alert, deviceMaps)}</strong><span className="mt-0.5 block truncate text-[10px]">{alert.vehiclePlate ?? alert.deviceImei ?? "Tracked vehicle"}</span></span></div>
+                <div className="flex items-center gap-2 max-md:justify-end"><span className="grid h-7 w-7 place-items-center rounded-full bg-[#e4f6f2] text-[10px] font-extrabold text-[#08766c]">{driverName(alert, deviceMaps).charAt(0).toUpperCase()}</span><span className="truncate">{driverName(alert, deviceMaps)}</span></div>
+                <div className="flex items-center gap-2"><FiCalendar className="shrink-0 text-[#08766c]" size={15} /><span>{dateText(alertTime(alert))}</span></div>
+                <div className="min-w-0 max-md:text-right"><div className="flex items-center gap-2 max-md:justify-end"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#08766c]" /><span className="truncate">{alert.message ?? alert.relatedGeofenceName ?? alert.alertType ?? "-"}</span></div>{(alert.address || alert.relatedGeofenceName) && <div className="mt-1 flex items-center gap-1 truncate text-[10px] text-[#78908e] max-md:justify-end"><FiMapPin size={11} />{alert.address ?? alert.relatedGeofenceName}</div>}</div>
+                <div><span className="inline-flex rounded-full px-2.5 py-1 text-[9px] font-bold" style={{ color: critical ? "#df365f" : "#c67e00", background: critical ? "#fff1f4" : "#fff7e7" }}>{critical ? "Critical" : "Non Critical"}</span></div>
+                <button type="button" className="grid h-7 w-7 place-items-center text-[#59716f]" aria-label="Alert options"><FiMoreVertical size={16} /></button>
+              </div>;
+            })}
           </div>
         </div>
 
-        <div className="h-[calc(100%-92px)] overflow-hidden rounded-lg bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]">
-          <div className="grid grid-cols-[1.1fr_1fr_1fr_1fr] bg-[#dceaf4] px-5 py-4 text-xs font-extrabold text-[#536987]">
-            <div>Vehicle Number</div>
-            <div>Driver</div>
-            <div>{selectedCategory.key === "ignition" ? "Ignition On Time" : "Alert Time"}</div>
-            <div>{selectedCategory.key === "ignition" ? "Ignition Off Time" : "Details"}</div>
-          </div>
-
-          <div className="h-[calc(100%-48px)] overflow-auto">
-            {loading ? (
-              <div className="py-16 text-center text-sm font-semibold text-[#7890aa]">Loading alerts...</div>
-            ) : selectedAlerts.length === 0 ? (
-              <div className="py-16 text-center text-sm font-semibold text-[#7890aa]">No records for this alert type in the selected period.</div>
-            ) : (
-              selectedAlerts.map((alert) => {
-                const severity = norm(alert.severity || "INFO");
-                return (
-                  <div key={alert.id ?? `${alert.alertType}-${alertTime(alert)}`} className="grid min-h-[78px] grid-cols-[1.1fr_1fr_1fr_1fr] items-center border-b border-[#eef2f6] px-5 text-sm font-semibold text-[#536987]">
-                    <div className="truncate">{vehicleName(alert, deviceMaps)}</div>
-                    <div className="truncate">{driverName(alert, deviceMaps)}</div>
-                    <div>{dateText(alertTime(alert))}</div>
-                    <div className="min-w-0">
-                      {selectedCategory.key === "ignition" ? (
-                        alert.ackAt ? dateText(alert.ackAt) : "-"
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="h-2 w-2 rounded-full" style={{ background: SEVERITY_STYLE[severity] ?? "#1A7A75" }} />
-                          <span className="truncate">{alert.message ?? alert.relatedGeofenceName ?? alert.alertType ?? "-"}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 flex items-center justify-end gap-4 text-sm font-semibold text-[#536987]">
-          <span>Showing {selectedAlerts.length === 0 ? 0 : 1} - {selectedAlerts.length} of {selectedAlerts.length}</span>
-          <button type="button" className="grid h-8 w-8 place-items-center text-[#b5c7d6]" aria-label="Previous page">
-            <FiChevronLeft />
-          </button>
-          <span className="grid h-10 w-10 place-items-center rounded-lg bg-white text-[#061337]">1</span>
-          <span>/ 1</span>
-          <button type="button" className="grid h-8 w-8 place-items-center text-[#b5c7d6]" aria-label="Next page">
-            <FiChevronRight />
-          </button>
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-xs font-semibold text-[#5f7774]">
+          <span>Showing {filteredSelectedAlerts.length === 0 ? 0 : (Math.min(page, pageCount) - 1) * pageSize + 1} to {Math.min(Math.min(page, pageCount) * pageSize, filteredSelectedAlerts.length)} of {filteredSelectedAlerts.length} alerts</span>
+          <div className="flex items-center gap-1"><button type="button" disabled={page <= 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[#dce7e5] bg-white disabled:opacity-40" aria-label="Previous page"><FiChevronLeft /></button>{Array.from({ length: Math.min(pageCount, 5) }, (_, index) => index + 1).map((number) => <button key={number} type="button" onClick={() => setPage(number)} className="grid h-8 w-8 place-items-center rounded-md border text-xs font-bold" style={{ background: page === number ? "#08766c" : "white", borderColor: page === number ? "#08766c" : "#dce7e5", color: page === number ? "white" : "#496562" }}>{number}</button>)}<button type="button" disabled={page >= pageCount} onClick={() => setPage((value) => Math.min(pageCount, value + 1))} className="grid h-8 w-8 place-items-center rounded-md border border-[#dce7e5] bg-white disabled:opacity-40" aria-label="Next page"><FiChevronRight /></button></div>
         </div>
       </main>
 
