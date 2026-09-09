@@ -8,7 +8,7 @@ import {
   FiDollarSign, FiSettings, FiHeadphones, FiLogOut,
   FiActivity, FiFileText, FiSliders, FiChevronDown,
   FiChevronRight, FiBell, FiSearch, FiExternalLink,
-  FiUser, FiMenu, FiX,
+  FiUser, FiMenu, FiX, FiMail,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
@@ -19,6 +19,7 @@ const NAV = [
   { href: "/admin/users",          icon: FiUser,          label: "Users" },
   { href: "/admin/devices",        icon: FiCpu,           label: "Devices" },
   { href: "/admin/alerts",         icon: FiAlertTriangle, label: "Alerts" },
+  { href: "/admin/crm",            icon: FiMail,          label: "CRM Mail" },
   { href: "/admin/billing",        icon: FiDollarSign,    label: "Billing" },
 ];
 
@@ -178,6 +179,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
     "/admin/users": "Global Users",
     "/admin/devices": "Device Manager",
     "/admin/alerts": "Global Alerts",
+    "/admin/crm": "CRM Mail",
     "/admin/billing": "Billing",
     "/admin/system/health": "System Health",
     "/admin/system/audit-log": "Audit Log",

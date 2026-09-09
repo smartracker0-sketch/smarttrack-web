@@ -1,0 +1,6 @@
+import { proxyAdmin } from "@/lib/adminBackend";
+
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return proxyAdmin(req, `/api/v1/admin/crm/emails/${encodeURIComponent(id)}`);
+}
