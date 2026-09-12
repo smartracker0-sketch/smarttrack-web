@@ -98,6 +98,9 @@ export default function HistoryPage() {
   const segments = useMemo(() => buildSegments(points), [points]);
   const shownSegments = stopFilter === "stops" ? segments.filter((segment) => !segment.moving) : segments;
   const current = points[cursor] ?? null;
+  const transitionMs = Math.max(90, 700 / speed);
+  const currentHeading = current?.headingDeg ?? routeBearing(points[Math.max(0, cursor - 1)], current);
+  const progress = points.length > 1 ? Math.round((cursor / (points.length - 1)) * 100) : 0;
   const currentDistance = useMemo(() => distanceAlong(points, cursor), [cursor, points]);
 
   function changePeriod(value: string) {
@@ -158,13 +161,14 @@ export default function HistoryPage() {
       </aside>
 
       <main className="relative min-w-0 flex-1 bg-[#e8f0ef]">
-        <RouteCanvas path={path} cursorIndex={points.length ? cursor : null} cursorHeading={current?.headingDeg} />
+        <RouteCanvas path={path} cursorIndex={points.length ? cursor : null} cursorHeading={currentHeading} cursorSpeedKph={current?.speedKph} playbackActive={playing} playbackMode transitionMs={transitionMs} />
         {!loading && !points.length && <div className="pointer-events-none absolute inset-0 grid place-items-center"><div className="rounded-md bg-white/95 px-5 py-4 text-center shadow-lg"><FiMapPin className="mx-auto text-[#f24464]" /><div className="mt-2 text-sm font-bold text-[#172033]">Choose a vehicle and period</div><div className="mt-1 text-xs text-[#64748b]">Select Show to draw its reported route.</div></div></div>}
-        {!!points.length && <section className="absolute inset-x-4 bottom-4 z-10 mx-auto max-w-[780px] overflow-hidden rounded-md border border-white/80 bg-white/95 shadow-[0_18px_48px_rgba(15,23,42,0.22)] backdrop-blur">
+        {!!points.length && <section className="absolute inset-x-3 bottom-3 z-10 mx-auto max-w-[820px] overflow-hidden rounded-md border border-white/80 bg-white/95 shadow-[0_20px_55px_rgba(15,23,42,0.25)] backdrop-blur-md">
+          <div className="flex items-center justify-between border-b border-[#e4e9ef] px-4 py-2 text-[10px] font-bold uppercase text-[#64748b]"><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${playing ? "animate-pulse bg-[#22a878]" : "bg-[#94a3b8]"}`} />{playing ? "Playback in motion" : cursor >= points.length - 1 ? "Playback complete" : "Playback paused"}</span><span>{progress}% complete</span></div>
           <div className="flex items-center gap-4 px-4 py-3">
             <button type="button" aria-label={playing ? "Pause playback" : "Play history"} onClick={() => setPlaying((value) => !value)} className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[#f24464] text-xl text-white shadow-lg">{playing ? <FiPause /> : <FiPlay className="ml-1" />}</button>
             <button type="button" title="Restart" aria-label="Restart playback" onClick={() => { setCursor(0); setPlaying(false); }} className="playback-icon"><FiSkipBack /></button>
-            <input type="range" min={0} max={Math.max(0, points.length - 1)} value={cursor} onChange={(event) => { setCursor(Number(event.target.value)); setPlaying(false); }} className="min-w-0 flex-1 accent-[#f24464]" />
+            <input type="range" min={0} max={Math.max(0, points.length - 1)} value={cursor} onChange={(event) => { setCursor(Number(event.target.value)); setPlaying(false); }} className="h-2 min-w-0 flex-1 cursor-pointer accent-[#f24464]" aria-label="Playback position" />
             <button type="button" title="Playback speed" onClick={() => setSpeed((value) => value === 4 ? 0.5 : value * 2)} className="grid h-10 min-w-10 place-items-center rounded-full bg-[#f24464] px-2 text-xs font-extrabold text-white">{speed}x</button>
             <button type="button" title="Replay" onClick={() => { setCursor(0); setPlaying(true); }} className="playback-icon bg-[#f24464] text-white"><FiRotateCcw /></button>
           </div>
@@ -198,6 +202,7 @@ function buildSegments(points: Point[]) {
 function isMoving(point: Point) { return Number(point.speedKph ?? 0) > 3; }
 function distanceAlong(points: Point[], cursor: number) { let meters = 0; for (let index = 1; index <= Math.min(cursor, points.length - 1); index += 1) meters += haversine(points[index - 1], points[index]); return meters; }
 function haversine(a: Point, b: Point) { const r = 6371000; const p1 = a.latitude * Math.PI / 180; const p2 = b.latitude * Math.PI / 180; const dp = (b.latitude - a.latitude) * Math.PI / 180; const dl = (b.longitude - a.longitude) * Math.PI / 180; const value = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2; return r * 2 * Math.atan2(Math.sqrt(value), Math.sqrt(1 - value)); }
+function routeBearing(from?: Point | null, to?: Point | null) { if (!from || !to) return 0; const lat1 = from.latitude * Math.PI / 180; const lat2 = to.latitude * Math.PI / 180; const deltaLng = (to.longitude - from.longitude) * Math.PI / 180; const y = Math.sin(deltaLng) * Math.cos(lat2); const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(deltaLng); return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360; }
 function listFrom<T>(data: unknown): T[] { if (Array.isArray(data)) return data as T[]; if (data && typeof data === "object" && Array.isArray((data as { content?: unknown[] }).content)) return (data as { content: T[] }).content; return []; }
 function startOfToday() { const date = new Date(); date.setHours(0, 0, 0, 0); return localInput(date); }
 function localInput(date: Date) { return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
