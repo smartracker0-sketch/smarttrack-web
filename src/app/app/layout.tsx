@@ -54,6 +54,7 @@ const CONFIGURATIONS_SUB = [
 const SIDEBAR_ITEMS = [
   { href: "/app/analytics",        icon: FiPieChart,      label: "Analytics" },
   { href: "/app/devices",          icon: FiTruck,         label: "Vehicles",  sub: VEHICLE_SUB },
+  { href: "/app/cctv",             icon: FiVideo,         label: "Dash Cams" },
   { href: "/app/history",          icon: FiNavigation,    label: "Trips",     sub: TRIPS_SUB },
   { href: "/app/alerts",           icon: FiAlertTriangle, label: "Alerts" },
   { href: "/app/reports",          icon: FiBarChart2,     label: "Reports",   sub: REPORTS_SUB },
@@ -69,7 +70,6 @@ const SIDEBAR_ITEMS = [
   { href: "/app/settings",         icon: FiSettings,      label: "Configurations", sub: CONFIGURATIONS_SUB },
   { href: "/app/elock",            icon: FiLock,          label: "E-Lock Status" },
   { href: "/app/ev",               icon: FiZap,           label: "EV" },
-  { href: "/app/cctv",             icon: FiVideo,         label: "CCTV" },
 ];
 
 const DRAWER_GROUPS = [
