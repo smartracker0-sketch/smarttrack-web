@@ -14,6 +14,7 @@ import {
   FiUsers, FiMapPin, FiShoppingCart, FiDisc,
   FiCpu, FiHelpCircle, FiSettings, FiLock,
   FiZap, FiVideo,
+  FiDroplet,
 } from "react-icons/fi";
 
 const VEHICLE_SUB = [
@@ -55,6 +56,7 @@ const SIDEBAR_ITEMS = [
   { href: "/app/analytics",        icon: FiPieChart,      label: "Analytics" },
   { href: "/app/devices",          icon: FiTruck,         label: "Vehicles",  sub: VEHICLE_SUB },
   { href: "/app/cctv",             icon: FiVideo,         label: "Dash Cams" },
+  { href: "/app/fuel-monitoring",  icon: FiDroplet,       label: "Fuel Monitoring" },
   { href: "/app/history",          icon: FiNavigation,    label: "Trips",     sub: TRIPS_SUB },
   { href: "/app/alerts",           icon: FiAlertTriangle, label: "Alerts" },
   { href: "/app/reports",          icon: FiBarChart2,     label: "Reports",   sub: REPORTS_SUB },
@@ -75,19 +77,19 @@ const SIDEBAR_ITEMS = [
 const DRAWER_GROUPS = [
   {
     label: "Overview",
-    links: SIDEBAR_ITEMS.slice(0, 4),
+    links: SIDEBAR_ITEMS.slice(0, 5),
   },
   {
     label: "Operations",
-    links: SIDEBAR_ITEMS.slice(4, 9),
+    links: SIDEBAR_ITEMS.slice(5, 10),
   },
   {
     label: "Fleet",
-    links: SIDEBAR_ITEMS.slice(9, 13),
+    links: SIDEBAR_ITEMS.slice(10, 14),
   },
   {
     label: "System",
-    links: SIDEBAR_ITEMS.slice(13),
+    links: SIDEBAR_ITEMS.slice(14),
   },
 ];
 
@@ -102,7 +104,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
   const [sessionReady, setSessionReady] = useState(false);
-  const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : 'All Vehicles';
+  const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : pathname.startsWith('/app/fuel-monitoring') ? 'Fuel Monitoring' : 'All Vehicles';
 
   useEffect(() => {
     let active = true;

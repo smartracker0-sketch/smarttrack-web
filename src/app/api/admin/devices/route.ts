@@ -38,6 +38,12 @@ export async function POST(req: Request) {
   if (body.mobileCarrier) payload.mobileCarrier = body.mobileCarrier;
   if (body.objectIcon)   payload.objectIcon     = body.objectIcon;
   if (body.smsCommandPassword) payload.smsCommandPassword = body.smsCommandPassword;
+  if (body.bleMacAddress) payload.bleMacAddress = body.bleMacAddress;
+  if (body.gatewayDeviceId) payload.gatewayDeviceId = body.gatewayDeviceId;
+  if (body.fuelMeasurementRange) payload.fuelMeasurementRange = Number(body.fuelMeasurementRange);
+  if (body.tankCapacityLiters) payload.tankCapacityLiters = Number(body.tankCapacityLiters);
+  if (body.fuelCalibrationJson) payload.fuelCalibrationJson = body.fuelCalibrationJson;
+  if (body.sensorBatteryLowMv) payload.sensorBatteryLowMv = Number(body.sensorBatteryLowMv);
 
   return proxyAdmin(req, "/api/v1/admin/devices/bulk", {
     method: "POST",

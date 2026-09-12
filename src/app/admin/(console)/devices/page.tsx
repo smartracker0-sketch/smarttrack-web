@@ -20,16 +20,38 @@ const ACTIVATION_COLORS: Record<string, { bg: string; color: string; label: stri
 };
 
 const DEVICE_TYPES = ["GPS Tracker", "Asset Tracker", "Dashcam", "Fuel Sensor"] as const;
-const DEVICE_MODEL_SUGGESTIONS = ["MC202P", "ATC700", "FMB920", "FMC130", "GT06N", "GV300"] as const;
+const DEVICE_MODEL_SUGGESTIONS = ["TD-BLE", "MC202P", "ATC700", "FMB920", "FMC130", "GT06N", "GV300"] as const;
 const FIRMWARE_OPTIONS = ["v4.2.1", "v4.1.0", "v3.8.2", "v2.1.0", "v1.9.0"];
 
 type FormMode = "single" | "bulk";
+
+function calibrationJson(value: string) {
+  if (!value.trim()) return "";
+  const points = value.split(/\r?\n/).filter(line => line.trim()).map((line) => {
+    const [levelText, litersText] = line.split(",").map(part => part.trim());
+    const level = Number(levelText);
+    const liters = Number(litersText);
+    if (!Number.isFinite(level) || !Number.isFinite(liters) || level < 1 || liters < 0) throw new Error("Each calibration row must be: raw level, litres");
+    return { level, liters };
+  }).sort((a, b) => a.level - b.level);
+  if (points.length < 2) throw new Error("Add at least two calibration points, or leave calibration blank for linear conversion.");
+  return JSON.stringify(points);
+}
+
+function calibrationText(value?: string | null) {
+  if (!value) return "";
+  try {
+    const points = JSON.parse(value) as { level: number; liters: number }[];
+    return points.map(point => `${point.level}, ${point.liters}`).join("\n");
+  } catch { return ""; }
+}
 
 interface AddDeviceModalProps {
   onClose: () => void;
   onSuccess: (devices: Device[]) => void;
   orgs: { id: string; name: string }[];
   users: { id: string; displayName: string; email: string }[];
+  devices: DeviceEx[];
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
@@ -99,7 +121,7 @@ function ObjectIconPicker({ value, onChange }: { value: string; onChange: (value
   );
 }
 
-function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps) {
+function AddDeviceModal({ onClose, onSuccess, orgs, users, devices }: AddDeviceModalProps) {
   const [mode, setMode] = useState<FormMode>("single");
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -124,6 +146,12 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
   const [assignUser, setAssignUser]   = useState("");
   const [assignVehicle, setAssignVehicle] = useState("");
   const [notes, setNotes]             = useState("");
+  const [bleMacAddress, setBleMacAddress] = useState("");
+  const [gatewayDeviceId, setGatewayDeviceId] = useState("");
+  const [fuelMeasurementRange, setFuelMeasurementRange] = useState("4095");
+  const [tankCapacityLiters, setTankCapacityLiters] = useState("");
+  const [fuelCalibration, setFuelCalibration] = useState("");
+  const [sensorBatteryLowMv, setSensorBatteryLowMv] = useState("3200");
 
   /* ── Bulk mode fields ── */
   const [bulkImeis, setBulkImeis]     = useState("");
@@ -143,7 +171,14 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
   async function handleSingleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    if (!validateImei(imei)) { setError("IMEI must be exactly 15 digits."); return; }
+    const isFuelSensor = type === "Fuel Sensor";
+    if (!isFuelSensor && !validateImei(imei)) { setError("IMEI must be exactly 15 digits."); return; }
+    if (isFuelSensor && !/^[A-Za-z0-9_-]{6,32}$/.test(imei.trim())) { setError("Enter the 6-32 character serial number printed on the TD-BLE sensor."); return; }
+    if (isFuelSensor && !/^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(bleMacAddress.trim())) { setError("Enter a valid BLE MAC address, for example AA:BB:CC:DD:EE:FF."); return; }
+    if (isFuelSensor && (!gatewayDeviceId || Number(tankCapacityLiters) <= 0)) { setError("Select a gateway tracker and enter the tank capacity."); return; }
+    let fuelCalibrationJson = "";
+    try { fuelCalibrationJson = isFuelSensor ? calibrationJson(fuelCalibration) : ""; }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Invalid calibration table."); return; }
 
     setLoading(true);
     try {
@@ -151,6 +186,11 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
         imeis: [imei.trim()], name, type, firmware, serialNo,
         vehicle: assignVehicle, notes, objectIcon,
         simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, smsCommandPassword,
+        ...(isFuelSensor ? {
+          bleMacAddress, gatewayDeviceId, fuelMeasurementRange: Number(fuelMeasurementRange),
+          tankCapacityLiters: Number(tankCapacityLiters), fuelCalibrationJson,
+          sensorBatteryLowMv: Number(sensorBatteryLowMv),
+        } : {}),
       };
       if (assignMode === "org" && assignOrg) payload.orgId = assignOrg;
       if (assignMode === "user" && assignUser) payload.userId = assignUser;
@@ -285,8 +325,8 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                     </Field>
                   </div>
                   <div className="col-span-2">
-                    <Field label="IMEI Number *">
-                      <Input required placeholder="352749081299010" value={imei} onChange={e => setImei(e.target.value)} maxLength={15} />
+                    <Field label={type === "Fuel Sensor" ? "Sensor Serial Number *" : "IMEI Number *"}>
+                      <Input required placeholder={type === "Fuel Sensor" ? "Serial number on sensor head" : "352749081299010"} value={imei} onChange={e => setImei(e.target.value)} maxLength={type === "Fuel Sensor" ? 32 : 15} />
                     </Field>
                   </div>
                   <Field label="Device Type *">
@@ -296,11 +336,22 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       if (nextType === "Dashcam") {
                         setManufacturer("METTAX");
                         setModel("MC202P");
+                      } else if (nextType === "Fuel Sensor") {
+                        setManufacturer("ESCORT");
+                        setModel("TD-BLE");
                       }
                     }}>
                       {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </Select>
                   </Field>
+                  {type === "Fuel Sensor" && <>
+                    <Field label="BLE MAC Address *"><Input required placeholder="AA:BB:CC:DD:EE:FF" value={bleMacAddress} onChange={e => setBleMacAddress(e.target.value.toUpperCase())} /></Field>
+                    <Field label="Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select BLE-capable tracker</option>{devices.filter(d => d.type !== "Fuel Sensor").map(d => <option key={d.id} value={d.id}>{d.name || d.imei} ({d.imei})</option>)}</Select></Field>
+                    <Field label="Measurement Range"><Select value={fuelMeasurementRange} onChange={e => setFuelMeasurementRange(e.target.value)}><option value="4095">1-4095 (recommended)</option><option value="1023">1-1023 (sensor under 500 mm)</option></Select></Field>
+                    <Field label="Tank Capacity (litres) *"><Input required type="number" min="1" step="0.1" placeholder="e.g. 300" value={tankCapacityLiters} onChange={e => setTankCapacityLiters(e.target.value)} /></Field>
+                    <Field label="Low Sensor Battery (mV)"><Input type="number" min="2500" max="4000" value={sensorBatteryLowMv} onChange={e => setSensorBatteryLowMv(e.target.value)} /></Field>
+                    <div className="col-span-2"><Field label="Tank Calibration Points (raw level, litres)"><textarea rows={4} placeholder={"1, 0\n850, 75\n1900, 150\n4095, 300"} value={fuelCalibration} onChange={e => setFuelCalibration(e.target.value)} className="w-full rounded-xl px-3 py-2 font-mono text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)", resize: "vertical" }} /><p className="mt-1 text-[10px] text-[#4A8A87]">Enter the Escort Configurator table in ascending order. When blank, Smart Tracker uses linear conversion.</p></Field></div>
+                  </>}
                   <Field label="Firmware Version">
                     <Select value={firmware} onChange={e => setFirmware(e.target.value)}>
                       {FIRMWARE_OPTIONS.map(f => <option key={f} value={f}>{f}</option>)}
@@ -320,12 +371,13 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
-                  <Field label="SIM Phone Number *">
+                  {type !== "Fuel Sensor" && <Field label="SIM Phone Number *">
                     <Input required placeholder="e.g. 2348012345678" value={simNumber} onChange={e => setSimNumber(e.target.value)} />
-                  </Field>
+                  </Field>}
                   <Field label="Manufacturer *">
                     <Select required value={manufacturer} onChange={e => setManufacturer(e.target.value)}>
                       <option value="GENERIC">Generic</option>
+                      <option value="ESCORT">Escort</option>
                       <option value="TELTONIKA">Teltonika</option>
                       <option value="CONCOX">Concox / Queclink</option>
                       <option value="COBAN">Coban</option>
@@ -339,15 +391,15 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
                       {DEVICE_MODEL_SUGGESTIONS.map(option => <option key={option} value={option} />)}
                     </datalist>
                   </Field>
-                  <Field label="SIM APN *">
+                  {type !== "Fuel Sensor" && <Field label="SIM APN *">
                     <Input required placeholder="e.g. internet" value={simApn} onChange={e => setSimApn(e.target.value)} />
-                  </Field>
-                  <Field label="Mobile Carrier">
+                  </Field>}
+                  {type !== "Fuel Sensor" && <Field label="Mobile Carrier">
                     <Input placeholder="e.g. MTN" value={mobileCarrier} onChange={e => setMobileCarrier(e.target.value)} />
-                  </Field>
-                  <Field label="Tracker SMS Password">
+                  </Field>}
+                  {type !== "Fuel Sensor" && <Field label="Tracker SMS Password">
                     <Input type="password" placeholder="Optional; encrypted" value={smsCommandPassword} onChange={e => setSmsCommandPassword(e.target.value)} />
-                  </Field>
+                  </Field>}
                 </div>
 
                 <div style={{ borderTop: "1px solid rgba(255,255,255,0.07)", paddingTop: "1rem" }}>
@@ -510,11 +562,12 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users }: AddDeviceModalProps
 
 interface EditDeviceModalProps {
   device: DeviceEx;
+  devices: DeviceEx[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
+function EditDeviceModal({ device, devices, onClose, onSuccess }: EditDeviceModalProps) {
   const [name, setName] = useState(device.name ?? "");
   const [deviceType, setDeviceType] = useState<string>(device.type ?? "GPS Tracker");
   const [firmware, setFirmware] = useState(device.firmware ?? "");
@@ -529,6 +582,12 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
   const [objectIcon, setObjectIcon] = useState(normaliseObjectIcon(device.objectIcon));
   const [smsCommandPassword, setSmsCommandPassword] = useState("");
   const [notes, setNotes] = useState(device.notes ?? "");
+  const [bleMacAddress, setBleMacAddress] = useState(device.bleMacAddress ?? "");
+  const [gatewayDeviceId, setGatewayDeviceId] = useState(device.gatewayDeviceId ?? "");
+  const [fuelMeasurementRange, setFuelMeasurementRange] = useState(String(device.fuelMeasurementRange ?? 4095));
+  const [tankCapacityLiters, setTankCapacityLiters] = useState(String(device.tankCapacityLiters ?? ""));
+  const [fuelCalibration, setFuelCalibration] = useState(calibrationText(device.fuelCalibrationJson));
+  const [sensorBatteryLowMv, setSensorBatteryLowMv] = useState(String(device.sensorBatteryLowMv ?? 3200));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -539,12 +598,16 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
       return;
     }
     setError("");
+    const isFuelSensor = deviceType === "Fuel Sensor";
+    let fuelCalibrationJson = "";
+    try { fuelCalibrationJson = isFuelSensor ? calibrationJson(fuelCalibration) : ""; }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Invalid calibration table."); return; }
     setLoading(true);
     try {
       const response = await fetch(`/api/admin/devices/${device.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, objectIcon, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes }),
+        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, objectIcon, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes, ...(isFuelSensor ? { bleMacAddress, gatewayDeviceId, fuelMeasurementRange: Number(fuelMeasurementRange), tankCapacityLiters: Number(tankCapacityLiters), fuelCalibrationJson, sensorBatteryLowMv: Number(sensorBatteryLowMv) } : {}) }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null) as { message?: string } | null;
@@ -577,10 +640,21 @@ function EditDeviceModal({ device, onClose, onSuccess }: EditDeviceModalProps) {
               if (nextType === "Dashcam") {
                 setManufacturer("METTAX");
                 setModel("MC202P");
+              } else if (nextType === "Fuel Sensor") {
+                setManufacturer("ESCORT");
+                setModel("TD-BLE");
               }
             }}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
             <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
             <div className="col-span-2"><Field label={`Object Icon: ${objectIconLabel(objectIcon)}`}><ObjectIconPicker value={objectIcon} onChange={setObjectIcon} /></Field></div>
+            {deviceType === "Fuel Sensor" && <>
+              <Field label="BLE MAC Address *"><Input required value={bleMacAddress} onChange={e => setBleMacAddress(e.target.value.toUpperCase())} /></Field>
+              <Field label="Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select BLE-capable tracker</option>{devices.filter(item => item.id !== device.id && item.type !== "Fuel Sensor").map(item => <option key={item.id} value={item.id}>{item.name || item.imei} ({item.imei})</option>)}</Select></Field>
+              <Field label="Measurement Range"><Select value={fuelMeasurementRange} onChange={e => setFuelMeasurementRange(e.target.value)}><option value="4095">1-4095 (recommended)</option><option value="1023">1-1023 (under 500 mm)</option></Select></Field>
+              <Field label="Tank Capacity (litres) *"><Input required type="number" min="1" step="0.1" value={tankCapacityLiters} onChange={e => setTankCapacityLiters(e.target.value)} /></Field>
+              <Field label="Low Sensor Battery (mV)"><Input type="number" min="2500" max="4000" value={sensorBatteryLowMv} onChange={e => setSensorBatteryLowMv(e.target.value)} /></Field>
+              <div className="col-span-2"><Field label="Tank Calibration Points (raw level, litres)"><textarea rows={4} value={fuelCalibration} onChange={e => setFuelCalibration(e.target.value)} className="w-full rounded-xl px-3 py-2 font-mono text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }} /></Field></div>
+            </>}
             <Field label="SIM ICCID"><Input value={simIccid} onChange={e => setSimIccid(e.target.value)} /></Field>
             <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
@@ -616,6 +690,13 @@ type DeviceEx = Device & {
   simIccid?: string | null;
   mobileCarrier?: string | null;
   objectIcon?: string | null;
+  bleMacAddress?: string | null;
+  gatewayDeviceId?: string | null;
+  gatewayDeviceName?: string | null;
+  fuelMeasurementRange?: number | null;
+  tankCapacityLiters?: number | null;
+  fuelCalibrationJson?: string | null;
+  sensorBatteryLowMv?: number | null;
   hasSmsCommandPassword?: boolean;
   activationStatus: string;
   activationAttempts: number;
@@ -645,6 +726,13 @@ function fromApiDto(d: any): DeviceEx {
     simIccid: d.simIccid ?? "",
     mobileCarrier: d.mobileCarrier ?? "",
     objectIcon: d.objectIcon ?? "car",
+    bleMacAddress: d.bleMacAddress ?? "",
+    gatewayDeviceId: d.gatewayDeviceId ?? null,
+    gatewayDeviceName: d.gatewayDeviceName ?? null,
+    fuelMeasurementRange: d.fuelMeasurementRange ?? null,
+    tankCapacityLiters: d.tankCapacityLiters ?? null,
+    fuelCalibrationJson: d.fuelCalibrationJson ?? null,
+    sensorBatteryLowMv: d.sensorBatteryLowMv ?? null,
     hasSmsCommandPassword: d.hasSmsCommandPassword ?? false,
     vehicle: d.vehiclePlate ?? "", 
     orgId: d.organisationId ?? null,
@@ -860,11 +948,13 @@ export default function DeviceManagerPage() {
           onSuccess={(d) => { handleSuccess(d); setShowModal(false); }}
           orgs={orgs}
           users={users}
+          devices={devices}
         />
       )}
       {editingDevice && (
         <EditDeviceModal
           device={editingDevice}
+          devices={devices}
           onClose={() => setEditingDevice(null)}
           onSuccess={handleDeviceUpdated}
         />
