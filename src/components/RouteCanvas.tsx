@@ -142,7 +142,7 @@ export default function RouteCanvas({ path, cursorIndex = null, cursorHeading = 
       let delta = ((heading - markerHeadingRef.current + 540) % 360) - 180;
       if (!Number.isFinite(delta)) delta = 0;
       markerHeadingRef.current += delta;
-      if (car) car.style.transform = `rotate(${markerHeadingRef.current}deg) scale(${playbackActive ? 1.06 : 1})`;
+      if (car) car.style.transform = `rotate(${markerHeadingRef.current + 180}deg) scale(${playbackActive ? 1.06 : 1})`;
       if (halo) {
         halo.style.opacity = playbackActive ? "1" : ".35";
         halo.style.animation = playbackActive && cursorSpeedKph > 2 ? "tp-playback-pulse 1.2s ease-out infinite" : "none";
