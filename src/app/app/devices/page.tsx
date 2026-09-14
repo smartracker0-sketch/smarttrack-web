@@ -3,11 +3,16 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import dynamic from "next/dynamic";
 import {
+  FiActivity,
+  FiAlertTriangle,
+  FiBattery,
   FiCamera,
   FiChevronRight,
   FiClipboard,
   FiCopy,
   FiDatabase,
+  FiDroplet,
+  FiInfo,
   FiLayers,
   FiMapPin,
   FiMessageCircle,
@@ -340,6 +345,101 @@ function MetricBox({ value, label }: { value: string; label: string }) {
       <div className="mt-1 text-[10px] font-medium leading-tight">{label}</div>
     </div>
   );
+}
+
+function VehicleDetailsModal({ device, telem, address, onClose }: { device: DeviceRow; telem: DeviceRow | null; address: string; onClose: () => void }) {
+  const [fuel, setFuel] = useState<DeviceRow | null>(null);
+  const [alerts, setAlerts] = useState<DeviceRow[]>([]);
+  const [driver, setDriver] = useState<DeviceRow | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadDetails = async () => {
+      setLoading(true);
+      const [fuelResponse, alertsResponse, driversResponse] = await Promise.all([
+        fetch(`/api/telemetry?type=fuel-latest&deviceId=${encodeURIComponent(device.id)}`, { cache: "no-store" }).catch(() => null),
+        fetch(`/api/telemetry?type=alerts&deviceId=${encodeURIComponent(device.id)}&unacknowledgedOnly=false`, { cache: "no-store" }).catch(() => null),
+        fetch("/api/drivers", { cache: "no-store" }).catch(() => null),
+      ]);
+      if (cancelled) return;
+      if (fuelResponse?.ok) setFuel(await fuelResponse.json().catch(() => null));
+      if (alertsResponse?.ok) {
+        const data = await alertsResponse.json().catch(() => []);
+        setAlerts(Array.isArray(data) ? data : data?.content ?? []);
+      }
+      if (driversResponse?.ok) {
+        const data = await driversResponse.json().catch(() => []);
+        const rows: DeviceRow[] = Array.isArray(data) ? data : data?.content ?? [];
+        const driverId = String(device.driverId ?? device.assignedDriverId ?? "");
+        const driverName = String(device.driverName ?? "").toLowerCase();
+        setDriver(rows.find((row) => driverId && String(row.id) === driverId) ?? rows.find((row) => driverName && String(row.displayName ?? row.name ?? "").toLowerCase() === driverName) ?? null);
+      }
+      setLoading(false);
+    };
+    loadDetails();
+    return () => { cancelled = true; };
+  }, [device]);
+
+  useEffect(() => {
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  const fuelPercent = numberFrom(fuel?.fuelLevelPct, fuel?.fuelPercent, fuel?.levelPercent);
+  const fuelLitres = numberFrom(fuel?.fuelLiters, fuel?.fuelLitres, fuel?.volumeLiters);
+  const driverScore = numberFrom(driver?.scoreTotal, driver?.score, device.driverScore);
+  const latestAlerts = [...alerts].sort((a, b) => new Date(b.alertTime ?? b.receivedAt ?? 0).getTime() - new Date(a.alertTime ?? a.receivedAt ?? 0).getTime()).slice(0, 5);
+
+  return (
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#061337]/45 p-0 backdrop-blur-[2px] sm:items-center sm:p-5" onMouseDown={onClose}>
+      <section role="dialog" aria-modal="true" aria-label={`${shortName(device)} vehicle details`} onMouseDown={(event) => event.stopPropagation()} className="max-h-[92vh] w-full overflow-y-auto rounded-t-lg bg-white shadow-2xl sm:max-w-3xl sm:rounded-lg">
+        <header className="sticky top-0 z-10 flex items-start justify-between gap-4 border-b border-[#dce6ee] bg-white px-5 py-4 sm:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            <img src={cardObjectIcon(device)} alt="" className="h-11 w-11 flex-shrink-0 object-contain" />
+            <div className="min-w-0"><h2 className="truncate text-lg font-extrabold text-[#061337]">{shortName(device)}</h2><p className="mt-0.5 text-xs font-medium" style={{ color: STATUS_COLOR[statKey(telem)] }}>{statusText(telem)}</p></div>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-md text-[#536987] hover:bg-[#eef4f8]" aria-label="Close vehicle details"><FiX size={21} /></button>
+        </header>
+
+        <div className="space-y-6 p-5 sm:p-6">
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#dce6ee] bg-[#dce6ee] sm:grid-cols-4">
+            <DetailMetric icon={<FiActivity />} label="Speed" value={isRecentlyReporting(telem) ? `${Math.round(Number(telem?.speedKph ?? 0))} km/h` : "--"} />
+            <DetailMetric icon={<FiNavigation />} label="Kilometres covered" value={todayDistance(telem, device) ?? "No trip distance"} />
+            <DetailMetric icon={<FiBattery />} label="Vehicle battery" value={batteryVoltage(telem, device)} />
+            <DetailMetric icon={<FiInfo />} label="Ignition" value={ignitionText(telem)} />
+          </div>
+
+          <section>
+            <h3 className="text-xs font-extrabold uppercase text-[#536987]">Live position</h3>
+            <div className="mt-3 flex items-start gap-3 border-b border-[#e7edf2] pb-4"><FiMapPin className="mt-0.5 flex-shrink-0 text-[#33a46f]" size={19} /><div className="min-w-0"><p className="text-sm font-semibold leading-5 text-[#061337]">{address}</p><p className="mt-1 text-xs text-[#536987]">{coords(telem)} · Last report {timeAgo(telem?.receivedAt ?? telem?.eventTime)}</p></div></div>
+            <div className="grid grid-cols-2 gap-4 pt-4 text-xs sm:grid-cols-4"><DetailLine label="Motion" value={motionText(telem)} /><DetailLine label="Satellites" value={fieldText(telem?.satellites, "Not reported")} /><DetailLine label="GPS accuracy" value={telem?.accuracyM != null ? `${telem.accuracyM} m` : "Not reported"} /><DetailLine label="GSM signal" value={fieldText(telem?.gsmSignal, "Not reported")} /></div>
+          </section>
+
+          {fuel && (fuelPercent != null || fuelLitres != null) && <section><h3 className="flex items-center gap-2 text-xs font-extrabold uppercase text-[#536987]"><FiDroplet /> Fuel</h3><div className="mt-3 grid grid-cols-2 gap-4 border-b border-[#e7edf2] pb-4 sm:grid-cols-4"><DetailLine label="Fuel level" value={fuelPercent == null ? "Not reported" : `${fuelPercent.toFixed(1)}%`} /><DetailLine label="Volume" value={fuelLitres == null ? "Not reported" : `${fuelLitres.toFixed(1)} L`} /><DetailLine label="Temperature" value={fuel.temperatureC == null ? "Not reported" : `${Number(fuel.temperatureC).toFixed(1)} °C`} /><DetailLine label="Sensor report" value={timeAgo(fuel.receivedAt)} /></div></section>}
+
+          <section className="grid gap-6 sm:grid-cols-2">
+            <div><h3 className="text-xs font-extrabold uppercase text-[#536987]">Driver scorecard</h3><div className="mt-3 flex items-center justify-between border-b border-[#e7edf2] pb-4"><div><p className="text-sm font-bold text-[#061337]">{fieldText(driver?.displayName, driver?.name, device.driverName, "Not assigned")}</p><p className="mt-1 text-xs text-[#536987]">{fieldText(driver?.phoneNumber, driver?.mobileNumber, device.driverPhone, "No mobile number")}</p></div><div className="text-right"><div className="text-2xl font-extrabold text-[#33a46f]">{driverScore == null ? "--" : Math.round(driverScore)}</div><div className="text-[10px] font-bold uppercase text-[#536987]">Safety score</div></div></div></div>
+            <div><h3 className="text-xs font-extrabold uppercase text-[#536987]">Vehicle & device</h3><div className="mt-3 grid grid-cols-2 gap-4 border-b border-[#e7edf2] pb-4"><DetailLine label="Registration" value={fieldText(device.vehiclePlate, device.plateNumber, "Not set")} /><DetailLine label="IMEI" value={fieldText(device.imei)} /><DetailLine label="Type" value={fieldText(device.vehicleType, device.deviceType)} /><DetailLine label="Trip" value={fieldText(device.tripName, "Not assigned")} /></div></div>
+          </section>
+
+          <section>
+            <div className="flex items-center justify-between gap-3"><h3 className="flex items-center gap-2 text-xs font-extrabold uppercase text-[#536987]"><FiAlertTriangle /> Recent GPS alerts</h3><span className="text-xs font-bold text-[#f24464]">{alerts.length} total</span></div>
+            <div className="mt-3 divide-y divide-[#e7edf2] border-y border-[#e7edf2]">{loading ? <p className="py-4 text-xs text-[#536987]">Loading vehicle details...</p> : latestAlerts.length === 0 ? <p className="py-4 text-xs text-[#536987]">No alerts recorded for this vehicle.</p> : latestAlerts.map((alert, index) => <div key={alert.id ?? `${alert.alertTime}-${index}`} className="flex items-start justify-between gap-4 py-3"><div className="min-w-0"><p className="text-xs font-bold text-[#061337]">{fieldText(alert.alertType, "GPS alert")}</p><p className="mt-1 truncate text-[11px] text-[#536987]">{fieldText(alert.message, alert.address, "Vehicle alert")}</p></div><time className="flex-shrink-0 text-[10px] text-[#536987]">{formatDateTime(alert.alertTime ?? alert.receivedAt)}</time></div>)}</div>
+          </section>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function DetailMetric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return <div className="bg-white p-4"><div className="flex items-center gap-2 text-[#33a46f]">{icon}<span className="text-[10px] font-bold uppercase text-[#536987]">{label}</span></div><div className="mt-2 text-sm font-extrabold text-[#061337]">{value}</div></div>;
+}
+
+function DetailLine({ label, value }: { label: string; value: string }) {
+  return <div className="min-w-0"><div className="text-[10px] font-bold uppercase text-[#8a9aae]">{label}</div><div className="mt-1 truncate text-xs font-semibold text-[#061337]" title={value}>{value}</div></div>;
 }
 
 function VehicleStatusSummary({
@@ -699,7 +799,7 @@ export default function AllVehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [refreshing, setRefreshing] = useState<string | null>(null);
+  const [detailsDeviceId, setDetailsDeviceId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState("outdoors");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
   const [vehiclePanelOpen, setVehiclePanelOpen] = useState(true);
@@ -873,24 +973,6 @@ export default function AllVehiclesPage() {
     };
   }, [addresses, devices, telemetry]);
 
-  const handleRefresh = async (e: React.MouseEvent, deviceId: string, name: string) => {
-    e.stopPropagation();
-    setRefreshing(deviceId);
-    try {
-      const res = await fetch("/api/live-tracking?tab=objects");
-      if (await redirectIfUnauthorized(res)) return;
-      if (res.ok) {
-        const rows: DeviceRow[] = await res.json();
-        const t = rows.find((row) => String(row.id) === deviceId)?.latestTelemetry;
-        if (!t) return;
-        setTelemetry((prev) => ({ ...prev, [deviceId]: mergeTelemetry(prev[deviceId], t) ?? t }));
-        notify(`Location refreshed for ${name}`);
-      }
-    } finally {
-      setRefreshing(null);
-    }
-  };
-
   const handleShare = (e: React.MouseEvent, d: DeviceRow) => {
     e.stopPropagation();
     const t = telemetry[d.id];
@@ -905,6 +987,7 @@ export default function AllVehiclesPage() {
   };
 
   const selectedDevice = selected ? devices.find((d) => d.id === selected) ?? null : null;
+  const detailsDevice = detailsDeviceId ? devices.find((d) => d.id === detailsDeviceId) ?? null : null;
 
   const statusCounts = useMemo(() => {
     const counts = { all: devices.length, moving: 0, idle: 0, stopped: 0, offline: 0 };
@@ -996,6 +1079,14 @@ export default function AllVehiclesPage() {
   return (
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
+      {detailsDevice && (
+        <VehicleDetailsModal
+          device={detailsDevice}
+          telem={telemetry[detailsDevice.id] ?? null}
+          address={locationLine(detailsDevice, telemetry[detailsDevice.id] ?? null, addresses[addressKey(telemetry[detailsDevice.id] ?? null) ?? ""])}
+          onClose={() => setDetailsDeviceId(null)}
+        />
+      )}
 
       <aside className={`flex max-w-[100vw] flex-shrink-0 overflow-hidden border-r border-[#cfdae5] bg-[#f2f7fa] transition-all duration-200 md:max-w-[390px] ${vehiclePanelOpen ? "w-[min(390px,100vw)] md:w-[390px]" : "w-0 border-r-0"}`}>
         <div className="flex w-[min(390px,100vw)] min-w-[min(390px,100vw)] flex-none flex-col md:w-[390px] md:min-w-[390px]">
@@ -1103,7 +1194,6 @@ export default function AllVehiclesPage() {
                 const key = statKey(t);
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
-                const isRef = refreshing === d.id;
                 const today = todayDistance(t, d);
                 const statusLabel =
                   key === "moving"
@@ -1171,11 +1261,16 @@ export default function AllVehiclesPage() {
                       <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery Voltage" />
                       <button
                         type="button"
-                        onClick={(e) => handleRefresh(e, d.id, shortName(d))}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelected(d.id);
+                          setDetailsDeviceId(d.id);
+                        }}
                         className="grid h-[76px] w-8 flex-shrink-0 place-items-center rounded-lg text-[#061337] transition hover:bg-[#eef4f8]"
-                        aria-label="Refresh vehicle"
+                        aria-label={`View all details for ${shortName(d)}`}
+                        title="Vehicle details"
                       >
-                        <FiChevronRight size={20} className={isRef ? "animate-spin" : ""} />
+                        <FiChevronRight size={20} />
                       </button>
                     </div>
                   </article>
