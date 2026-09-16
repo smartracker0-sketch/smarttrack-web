@@ -16,7 +16,7 @@ export default function DriverPerformancePage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
 
   const sorted = [...drivers].sort((a, b) => (b.scoreTotal ?? 0) - (a.scoreTotal ?? 0));
 

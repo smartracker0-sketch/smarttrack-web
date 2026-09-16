@@ -18,19 +18,19 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
   );
 }
 
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl p-5" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
+      <div className="text-sm font-bold text-white mb-4">{title}</div>
+      {children}
+    </div>
+  );
+}
+
 export default function PlatformSettingsPage() {
   const [flags, setFlags] = useState({ ev: true, elock: true, video: false, maintenance: true });
   const [limits, setLimits] = useState({ starter: 10, pro: 20, enterprise: 100 });
   const [maintenance, setMaintenance] = useState(false);
-
-  function Section({ title, children }: { title: string; children: React.ReactNode }) {
-    return (
-      <div className="rounded-2xl p-5" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="text-sm font-bold text-white mb-4">{title}</div>
-        {children}
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-5 max-w-2xl">

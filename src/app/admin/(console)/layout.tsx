@@ -5,9 +5,8 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   FiGrid, FiUsers, FiTruck, FiCpu, FiAlertTriangle,
-  FiDollarSign, FiSettings, FiHeadphones, FiLogOut,
-  FiActivity, FiFileText, FiSliders, FiChevronDown,
-  FiChevronRight, FiBell, FiSearch, FiExternalLink,
+  FiDollarSign, FiLogOut,
+  FiBell, FiSearch, FiExternalLink,
   FiUser, FiMenu, FiX, FiMail,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
@@ -23,19 +22,10 @@ const NAV = [
   { href: "/admin/billing",        icon: FiDollarSign,    label: "Billing" },
 ];
 
-const SYSTEM_NAV = [
-  { href: "/admin/system/health",    icon: FiActivity,  label: "System Health" },
-  { href: "/admin/system/audit-log", icon: FiFileText,  label: "Audit Log" },
-  { href: "/admin/system/settings",  icon: FiSliders,   label: "Platform Settings" },
-];
-
 function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
   const { adminName, adminEmail, logout } = useAdminAuthStore();
-  const [systemOpen, setSystemOpen] = useState(
-    pathname.startsWith("/admin/system")
-  );
 
   async function handleLogout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -84,55 +74,6 @@ function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () =
           );
         })}
 
-        {/* System group */}
-        <div className="pt-3">
-          <button
-            onClick={() => setSystemOpen(o => !o)}
-            className="w-full flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium transition-colors"
-            style={{ color: "rgba(255,255,255,0.6)" }}
-          >
-            <FiSettings size={16} className="flex-shrink-0" />
-            <span className="flex-1 text-left">System</span>
-            {systemOpen ? <FiChevronDown size={13} /> : <FiChevronRight size={13} />}
-          </button>
-          {systemOpen && (
-            <div className="ml-6 mt-0.5 space-y-0.5">
-              {SYSTEM_NAV.map(({ href, icon: Icon, label }) => {
-                const active = isActive(href);
-                return (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={onClose}
-                    className="flex items-center gap-3 h-9 px-3 rounded-lg text-sm font-medium transition-colors"
-                    style={{
-                      background: active ? "rgba(249,115,22,0.1)" : "transparent",
-                      color: active ? "#F97316" : "rgba(255,255,255,0.5)",
-                      borderLeft: active ? "3px solid #F97316" : "3px solid transparent",
-                    }}
-                  >
-                    <Icon size={14} />
-                    {label}
-                  </Link>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <Link
-          href="/admin/support"
-          onClick={onClose}
-          className="flex items-center gap-3 h-10 px-3 rounded-lg text-sm font-medium transition-colors"
-          style={{
-            background: isActive("/admin/support") ? "rgba(249,115,22,0.1)" : "transparent",
-            color: isActive("/admin/support") ? "#F97316" : "rgba(255,255,255,0.6)",
-            borderLeft: isActive("/admin/support") ? "3px solid #F97316" : "3px solid transparent",
-          }}
-        >
-          <FiHeadphones size={16} />
-          Support Tickets
-        </Link>
       </nav>
 
       {/* Footer */}
@@ -205,16 +146,15 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs" style={{ background: "rgba(255,255,255,0.05)", color: "#7BBBB8", border: "1px solid rgba(255,255,255,0.08)" }}>
+        <Link href="/admin/devices" className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs" style={{ background: "rgba(255,255,255,0.05)", color: "#7BBBB8", border: "1px solid rgba(255,255,255,0.08)" }}>
           <FiSearch size={13} />
-          <span>Search platform…</span>
-        </div>
+          <span>Search devices</span>
+        </Link>
 
         <div className="relative">
-          <button className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "#7BBBB8" }}>
+          <Link href="/admin/alerts" className="w-8 h-8 flex items-center justify-center rounded-lg" style={{ background: "rgba(255,255,255,0.05)", color: "#7BBBB8" }} aria-label="Open alerts">
             <FiBell size={15} />
-          </button>
-          <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-white text-[9px] flex items-center justify-center font-bold" style={{ background: "#EF4444" }}>4</span>
+          </Link>
         </div>
 
         <span

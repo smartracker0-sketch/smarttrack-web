@@ -19,7 +19,7 @@ export default function ElockPage() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true);

@@ -111,7 +111,10 @@ function LiveStream({ camera }: { camera: Dashcam }) {
       void video.play().catch(() => undefined);
       return () => { video.removeAttribute("src"); video.load(); };
     }
-    if (!Hls.isSupported()) { setError("Live HLS playback is not supported by this browser."); return; }
+    if (!Hls.isSupported()) {
+      const timer = window.setTimeout(() => setError("Live HLS playback is not supported by this browser."), 0);
+      return () => window.clearTimeout(timer);
+    }
     const hls = new Hls({ liveSyncDurationCount: 2, lowLatencyMode: true });
     hls.loadSource(source);
     hls.attachMedia(video);

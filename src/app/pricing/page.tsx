@@ -380,7 +380,7 @@ export default function PricingPage() {
                   style={{ background: BRAND.light, border: "1px solid #C5E0DE" }}
                 >
                   <p className="text-base sm:text-lg mb-6 italic" style={{ color: BRAND.dark }}>
-                    "{t.quote}"
+                    &ldquo;{t.quote}&rdquo;
                   </p>
                   <div>
                     <div className="font-bold text-sm" style={{ color: BRAND.dark }}>

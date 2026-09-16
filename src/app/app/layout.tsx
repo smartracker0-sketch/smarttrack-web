@@ -13,32 +13,28 @@ import {
   FiBarChart2, FiDollarSign, FiFileText, FiTool,
   FiUsers, FiMapPin, FiShoppingCart, FiDisc,
   FiCpu, FiHelpCircle, FiSettings, FiLock,
-  FiZap, FiVideo,
+  FiVideo,
   FiDroplet,
 } from "react-icons/fi";
 
 const VEHICLE_SUB = [
   { href: "/app/devices",                label: "All Vehicles" },
   { href: "/app/devices/directory",      label: "Vehicle Directory" },
-  { href: "/app/devices/groups",         label: "My Vehicle Groups" },
   { href: "/app/devices/states",         label: "My Vehicle States" },
 ];
 
 const TRIPS_SUB = [
   { href: "/app/history",                label: "All Trips" },
-  { href: "/app/history/schedules",      label: "Trip Schedules" },
   { href: "/app/history/routes",         label: "Routes" },
   { href: "/app/history/consigners",     label: "Consigners" },
 ];
 
 const REPORTS_SUB = [
   { href: "/app/reports",                label: "All Reports" },
-  { href: "/app/reports/schedules",      label: "Report Schedules" },
 ];
 
 const MAINTENANCE_SUB = [
   { href: "/app/maintenance",                    label: "Service History & Reminders" },
-  { href: "/app/maintenance/schedules",          label: "Service Schedules" },
 ];
 
 const DRIVERS_SUB = [
@@ -48,8 +44,6 @@ const DRIVERS_SUB = [
 
 const CONFIGURATIONS_SUB = [
   { href: "/app/settings",                       label: "General Settings" },
-  { href: "/app/settings/custom-fields",         label: "Custom Fields" },
-  { href: "/app/settings/captain",               label: "Captain Configurations" },
 ];
 
 const SIDEBAR_ITEMS = [
@@ -71,7 +65,6 @@ const SIDEBAR_ITEMS = [
   { href: "/app/support",          icon: FiHelpCircle,    label: "Support" },
   { href: "/app/settings",         icon: FiSettings,      label: "Configurations", sub: CONFIGURATIONS_SUB },
   { href: "/app/elock",            icon: FiLock,          label: "E-Lock Status" },
-  { href: "/app/ev",               icon: FiZap,           label: "EV" },
 ];
 
 const DRAWER_GROUPS = [
@@ -93,6 +86,27 @@ const DRAWER_GROUPS = [
   },
 ];
 
+const PAGE_TITLES: Array<[string, string]> = [
+  ["/app/analytics", "Analytics"],
+  ["/app/devices", "Vehicles"],
+  ["/app/cctv", "Dash Cams"],
+  ["/app/fuel-monitoring", "Fuel Monitoring"],
+  ["/app/history", "Trips"],
+  ["/app/alerts", "Alerts"],
+  ["/app/reports", "Reports"],
+  ["/app/expenses", "Expenses"],
+  ["/app/documents", "Documents"],
+  ["/app/maintenance", "Maintenance"],
+  ["/app/drivers", "Drivers"],
+  ["/app/geofences", "Geofences"],
+  ["/app/vendors", "Vendors"],
+  ["/app/tyre-management", "Tyre Management"],
+  ["/app/devices-mgmt", "Device Inventory"],
+  ["/app/settings", "Configurations"],
+  ["/app/elock", "E-Lock Status"],
+  ["/app/ev", "Electric Vehicles"],
+];
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -104,17 +118,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
   const [sessionReady, setSessionReady] = useState(false);
-  const pageTitle = pathname.startsWith('/app/analytics') ? 'Analytics' : pathname.startsWith('/app/fuel-monitoring') ? 'Fuel Monitoring' : 'All Vehicles';
+  const pageTitle = PAGE_TITLES.find(([path]) => pathname.startsWith(path))?.[1] ?? "Fleet Dashboard";
 
   useEffect(() => {
     let active = true;
-    setSessionReady(false);
     void fetch("/api/auth/me", { cache: "no-store" }).then(async (response) => {
       if (!active) return;
       if (await redirectIfUnauthorized(response, { verifySession: false })) return;
       setSessionReady(true);
     }).catch(() => {
-      if (active) setSessionReady(true);
+      if (active) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
     });
     return () => { active = false; };
   }, [pathname, router]);
@@ -271,10 +284,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Right — actions */}
           <div className="flex items-center gap-2">
-            <button className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
+            <button type="button" onClick={() => router.push("/app/devices")} className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
               🔍 Search
             </button>
-            <button className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
+            <button type="button" onClick={() => router.push("/app/geofences")} className="hidden sm:flex items-center gap-1.5 h-8 px-3 rounded-lg border text-xs font-semibold" style={{ borderColor: '#e5e7eb', color: '#374151' }}>
               Geofences: All ▾
             </button>
             {sessionReady && <AlertWatcher />}

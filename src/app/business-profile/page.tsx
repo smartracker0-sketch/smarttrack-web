@@ -231,7 +231,7 @@ export default function BusinessProfilePage() {
           <div className="grid gap-6 md:grid-cols-2">
             <div className="border-l-4 border-[#24A47B] py-3 pl-6">
               <p className="text-sm font-bold uppercase text-[#188463]">Vision</p>
-              <h2 className="mt-3 text-2xl font-black text-[#0D4A47]">To become Africa's leading Fleet Operating System for SMEs.</h2>
+              <h2 className="mt-3 text-2xl font-black text-[#0D4A47]">To become Africa&apos;s leading Fleet Operating System for SMEs.</h2>
             </div>
             <div className="border-l-4 border-[#EF6B47] py-3 pl-6">
               <p className="text-sm font-bold uppercase text-[#C84E30]">Mission</p>

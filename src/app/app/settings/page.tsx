@@ -11,10 +11,9 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Section title="Account" items={[{ label: "Profile", href: "/app/profile" }]} />
-        <Section title="Preferences" items={[{ label: "Language (coming soon)" }, { label: "Units (coming soon)" }]} />
-        <Section title="Admin" items={[{ label: "Whitelabel Admin", href: "/app/whitelabel" }]} />
+        <Section title="Fleet setup" items={[{ label: "Device inventory", href: "/app/devices-mgmt" }]} />
       </div>
     </div>
   );
@@ -51,4 +50,3 @@ function Section({
     </div>
   );
 }
-

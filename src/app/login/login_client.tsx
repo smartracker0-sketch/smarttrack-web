@@ -227,7 +227,7 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="text-sm font-semibold text-gray-700">Password</label>
-                    <a href="#" className="text-xs font-semibold hover:underline" style={{ color: "#1A7A75" }}>
+                    <a href={`mailto:support@smarttracker.cloud?subject=${encodeURIComponent("Password reset request")}`} className="text-xs font-semibold hover:underline" style={{ color: "#1A7A75" }}>
                       Forgot password?
                     </a>
                   </div>
@@ -283,9 +283,9 @@ export default function LoginClient({ nextPath }: { nextPath: string }) {
             {/* Footer */}
             <p className="mt-8 text-center text-xs text-gray-400">
               Don&apos;t have an account?{" "}
-              <a href="#" className="font-semibold hover:underline" style={{ color: "#1A7A75" }}>
+              <Link href="/company/contact-us" className="font-semibold hover:underline" style={{ color: "#1A7A75" }}>
                 Request access
-              </a>
+              </Link>
             </p>
             <p className="mt-3 text-center text-xs text-gray-300">
               © {new Date().getFullYear()} Smart Tracker Telematics
