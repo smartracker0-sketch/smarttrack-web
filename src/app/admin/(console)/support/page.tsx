@@ -1,36 +1,5 @@
 "use client";
-
-import { FiHeadphones } from "react-icons/fi";
-
-export default function SupportTicketsPage() {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl overflow-hidden" style={{ background: "#0A2A28", border: "1px solid rgba(255,255,255,0.07)" }}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-xs">
-            <thead>
-              <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["Ticket #", "Organisation", "Subject", "Priority", "Status", "Created", "Assigned To"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 font-semibold whitespace-nowrap">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td colSpan={7} className="px-4 py-14 text-center">
-                  <div className="flex flex-col items-center gap-3">
-                    <FiHeadphones size={28} style={{ color: "#4A8A87" }} />
-                    <div className="text-xs font-semibold" style={{ color: "#4A8A87" }}>No support tickets yet</div>
-                    <div className="text-[10px] max-w-xs" style={{ color: "#2A5A57" }}>
-                      Support tickets submitted by organisations will appear here once the support module is connected to a backend.
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useCallback, useEffect, useState } from "react";
+import { FiHeadphones, FiRefreshCw } from "react-icons/fi";
+type Ticket = { id: string; subject: string; details: string; active: boolean; updatedAt: string };
+export default function SupportTicketsPage() { const [tickets, setTickets] = useState<Ticket[]>([]); const [loading, setLoading] = useState(true); const load = useCallback(async () => { setLoading(true); const r = await fetch('/api/admin/support-tickets', { cache: 'no-store' }); if (r.ok) setTickets(await r.json()); setLoading(false); }, []); useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]); return <div className="space-y-4"><div className="flex justify-end"><button onClick={() => void load()} className="grid h-8 w-8 place-items-center rounded-md bg-white/5 text-[#7bbbb8]"><FiRefreshCw className={loading ? 'animate-spin' : ''} /></button></div><div className="overflow-hidden rounded-md border border-white/10 bg-[#0a2a28]"><table className="w-full text-xs"><thead><tr className="border-b border-white/10 text-left text-[#669995]"><th className="px-4 py-3">Subject</th><th className="px-4 py-3">Details</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">Updated</th></tr></thead><tbody>{tickets.length === 0 ? <tr><td colSpan={4} className="py-14 text-center text-[#669995]"><FiHeadphones className="mx-auto mb-3 text-2xl" />No support tickets</td></tr> : tickets.map((ticket) => { let details: { message?: string; priority?: string; status?: string } = {}; try { details = JSON.parse(ticket.details); } catch {} return <tr key={ticket.id} className="border-b border-white/5 text-white"><td className="px-4 py-3 font-bold">{ticket.subject}</td><td className="max-w-md px-4 py-3 text-[#7bbbb8]">{details.message ?? 'No details'}</td><td className="px-4 py-3"><span className="rounded-full bg-orange-500/10 px-2 py-1 text-orange-400">{details.status ?? 'OPEN'} · {details.priority ?? 'NORMAL'}</span></td><td className="px-4 py-3 text-[#669995]">{new Date(ticket.updatedAt).toLocaleString()}</td></tr>; })}</tbody></table></div></div>; }

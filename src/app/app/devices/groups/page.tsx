@@ -1,236 +1,58 @@
 "use client";
-import { useState, useRef } from "react";
 
-type Group = { id: number; name: string; vehicles: string };
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FiEdit2, FiPlus, FiSearch, FiTrash2, FiUsers, FiX } from "react-icons/fi";
 
-const PAGE_SIZE = 10;
-
-
-function GroupFormModal({
-  initial,
-  title,
-  onClose,
-  onSave,
-}: {
-  initial: { name: string; vehicles: string };
-  title: string;
-  onClose: () => void;
-  onSave: (data: { name: string; vehicles: string }) => void;
-}) {
-  const [name, setName] = useState(initial.name);
-  const [vehicles, setVehicles] = useState(initial.vehicles);
-  const [error, setError] = useState("");
-  const overlayRef = useRef<HTMLDivElement>(null);
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) { setError("Group name is required"); return; }
-    onSave({ name, vehicles });
-    onClose();
-  };
-
-  return (
-    <div
-      ref={overlayRef}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4"
-      onClick={(e) => e.target === overlayRef.current && onClose()}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12" /></svg>
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="px-6 py-5 flex flex-col gap-4">
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Group Name <span className="text-red-500">*</span></label>
-            <input
-              value={name}
-              onChange={(e) => { setName(e.target.value); setError(""); }}
-              placeholder="Enter group name"
-              className={`w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30 ${error ? "border-red-400" : "border-gray-200"}`}
-            />
-            {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-          </div>
-          <div>
-            <label className="block text-xs font-semibold text-gray-700 mb-1">Vehicles</label>
-            <input
-              value={vehicles}
-              onChange={(e) => setVehicles(e.target.value)}
-              placeholder="e.g. R7_Binder Singh_PB10GK1292"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[#3949ab]/30"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-1">
-            <button type="button" onClick={onClose} className="px-5 py-2 rounded-lg border border-gray-200 text-sm text-gray-600 hover:bg-gray-50">Cancel</button>
-            <button type="submit" className="px-5 py-2 rounded-lg text-sm font-semibold text-white" style={{ background: "#3949ab" }}>{title}</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+type Group = { id: string; name: string; payload: { vehicles?: string[] }; updatedAt: string };
 
 export default function VehicleGroupsPage() {
   const [groups, setGroups] = useState<Group[]>([]);
-  const [search, setSearch] = useState("");
-  const [page, setPage] = useState(1);
-  const [showAdd, setShowAdd] = useState(false);
-  const [editGroup, setEditGroup] = useState<Group | null>(null);
+  const [query, setQuery] = useState("");
+  const [editing, setEditing] = useState<Group | null>(null);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [vehicles, setVehicles] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const filtered = groups.filter(
-    (g) =>
-      g.name.toLowerCase().includes(search.toLowerCase()) ||
-      g.vehicles.toLowerCase().includes(search.toLowerCase())
-  );
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const load = useCallback(async () => {
+    const response = await fetch("/api/fleet-records/vehicle-group", { cache: "no-store" });
+    if (response.ok) setGroups(await response.json());
+    else setError("Vehicle groups could not be loaded.");
+  }, []);
+  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
 
-  const handleAdd = (data: { name: string; vehicles: string }) => {
-    setGroups((prev) => [...prev, { id: Date.now(), ...data }]);
-  };
+  const filtered = useMemo(() => groups.filter((group) =>
+    `${group.name} ${(group.payload.vehicles ?? []).join(" ")}`.toLowerCase().includes(query.toLowerCase())), [groups, query]);
 
-  const handleEdit = (id: number, data: { name: string; vehicles: string }) => {
-    setGroups((prev) => prev.map((g) => g.id === id ? { ...g, ...data } : g));
-  };
+  function show(group?: Group) {
+    setEditing(group ?? null); setName(group?.name ?? "");
+    setVehicles((group?.payload.vehicles ?? []).join(", ")); setError(""); setOpen(true);
+  }
 
-  const handleDelete = (id: number) => {
-    setGroups((prev) => prev.filter((g) => g.id !== id));
-  };
+  async function save() {
+    if (!name.trim()) { setError("Group name is required."); return; }
+    setBusy(true);
+    const response = await fetch(editing ? `/api/fleet-records/vehicle-group/${editing.id}` : "/api/fleet-records/vehicle-group", {
+      method: editing ? "PUT" : "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, payload: { vehicles: vehicles.split(",").map((value) => value.trim()).filter(Boolean) }, active: true }),
+    });
+    setBusy(false);
+    if (!response.ok) { setError("The group could not be saved."); return; }
+    setOpen(false); await load();
+  }
 
-  return (
-    <div className="p-6 flex flex-col gap-4">
-      {showAdd && (
-        <GroupFormModal
-          initial={{ name: "", vehicles: "" }}
-          title="Add Vehicle Group"
-          onClose={() => setShowAdd(false)}
-          onSave={handleAdd}
-        />
-      )}
-      {editGroup && (
-        <GroupFormModal
-          initial={{ name: editGroup.name, vehicles: editGroup.vehicles }}
-          title="Edit Vehicle Group"
-          onClose={() => setEditGroup(null)}
-          onSave={(data) => { handleEdit(editGroup.id, data); setEditGroup(null); }}
-        />
-      )}
+  async function remove(id: string) {
+    if (!window.confirm("Delete this vehicle group?")) return;
+    const response = await fetch(`/api/fleet-records/vehicle-group/${id}`, { method: "DELETE" });
+    if (response.ok) await load(); else setError("The group could not be deleted.");
+  }
 
-      {/* Header */}
-      <div>
-        <p className="text-xs text-muted">Vehicles</p>
-        <h1 className="text-xl font-bold text-foreground">My Vehicle Groups</h1>
-      </div>
-
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        {/* Search */}
-        <div className="flex items-center gap-2 rounded-lg border border-divider bg-surface px-3 py-2 w-72">
-          <svg className="w-4 h-4 text-muted shrink-0" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
-          </svg>
-          <input
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Search vehicle group or vehicle number"
-            className="bg-transparent text-sm outline-none w-full placeholder:text-muted text-foreground"
-          />
-        </div>
-
-        <div className="ml-auto flex items-center gap-2">
-          {/* Bulk Upload */}
-          <button className="px-4 py-2 rounded-lg border border-divider bg-surface text-sm font-semibold text-foreground hover:bg-divider">
-            Bulk Upload
-          </button>
-
-          {/* Add Vehicle Group */}
-          <button
-            onClick={() => setShowAdd(true)}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white"
-            style={{ background: "#3949ab" }}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            Add Vehicle Group
-          </button>
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-xl border border-divider bg-surface overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-divider bg-[#f0f4f8]">
-              <th className="px-5 py-3 text-left font-semibold text-muted whitespace-nowrap">Vehicle Group Name</th>
-              <th className="px-5 py-3 text-left font-semibold text-muted whitespace-nowrap">Vehicles</th>
-              <th className="px-5 py-3 text-right font-semibold text-muted whitespace-nowrap">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paged.length === 0 ? (
-              <tr>
-                <td colSpan={3} className="px-5 py-10 text-center text-muted text-sm">No vehicle groups found.</td>
-              </tr>
-            ) : (
-              paged.map((g) => (
-                <tr key={g.id} className="border-b border-divider last:border-0 hover:bg-[#f5f9ff] transition-colors">
-                  <td className="px-5 py-3 text-foreground">{g.name}</td>
-                  <td className="px-5 py-3 text-[#00bcd4]">{g.vehicles}</td>
-                  <td className="px-5 py-3">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        onClick={() => setEditGroup(g)}
-                        title="Edit"
-                        className="p-1.5 rounded hover:bg-[#e8eaf6] text-muted hover:text-[#3949ab] transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => handleDelete(g.id)}
-                        title="Delete"
-                        className="p-1.5 rounded hover:bg-red-50 text-muted hover:text-red-500 transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                          <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6" />
-                        </svg>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Pagination */}
-      <div className="flex items-center justify-end gap-2 text-sm text-muted">
-        <span>
-          Showing {filtered.length === 0 ? "0" : `${(page - 1) * PAGE_SIZE + 1} - ${Math.min(page * PAGE_SIZE, filtered.length)}`} of {filtered.length}
-        </span>
-        <button
-          onClick={() => setPage((p) => Math.max(1, p - 1))}
-          disabled={page === 1}
-          className="p-1.5 rounded border border-divider hover:bg-divider disabled:opacity-40"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="m15 18-6-6 6-6" /></svg>
-        </button>
-        <span className="px-2 py-1 rounded border border-divider text-foreground">{page}</span>
-        <span>/ {totalPages}</span>
-        <button
-          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-          disabled={page === totalPages}
-          className="p-1.5 rounded border border-divider hover:bg-divider disabled:opacity-40"
-        >
-          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24"><path d="m9 18 6-6-6-6" /></svg>
-        </button>
-      </div>
-    </div>
-  );
+  return <div className="space-y-4 p-4 sm:p-6">
+    <header className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs font-semibold text-[#1a7a75]">Vehicles</p><h1 className="text-xl font-extrabold text-[#0d4a47]">Vehicle Groups</h1><p className="mt-1 text-xs text-slate-500">Organise vehicles for reports, alerts, and daily operations.</p></div><button onClick={() => show()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[#0d756d] px-4 text-xs font-bold text-white"><FiPlus />Add group</button></header>
+    <div className="relative max-w-md"><FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" /><input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search groups or vehicles" className="h-10 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-[#0d756d]" /></div>
+    {error && !open && <p className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
+    <div className="overflow-hidden rounded-md border border-slate-200 bg-white">{filtered.length === 0 ? <div className="grid place-items-center px-5 py-16 text-center"><FiUsers className="text-3xl text-[#6ca8a3]" /><p className="mt-3 text-sm font-bold text-[#0d4a47]">No vehicle groups</p><p className="mt-1 text-xs text-slate-500">Create a group to organise your fleet.</p></div> : filtered.map((group) => <div key={group.id} className="flex items-center gap-3 border-b border-slate-100 px-4 py-4 last:border-0"><div className="grid h-9 w-9 place-items-center rounded-full bg-[#e8f4f3] text-[#0d756d]"><FiUsers /></div><div className="min-w-0 flex-1"><p className="truncate text-sm font-bold text-[#0d4a47]">{group.name}</p><p className="truncate text-xs text-slate-500">{group.payload.vehicles?.join(", ") || "No vehicles assigned"}</p></div><button onClick={() => show(group)} className="grid h-8 w-8 place-items-center text-slate-500" aria-label="Edit group"><FiEdit2 /></button><button onClick={() => void remove(group.id)} className="grid h-8 w-8 place-items-center text-red-500" aria-label="Delete group"><FiTrash2 /></button></div>)}</div>
+    {open && <div className="fixed inset-0 z-50 grid place-items-center bg-black/50 p-4"><div className="w-full max-w-md rounded-md bg-white shadow-xl"><header className="flex items-center justify-between border-b px-5 py-4"><h2 className="text-sm font-extrabold text-[#0d4a47]">{editing ? "Edit group" : "New vehicle group"}</h2><button onClick={() => setOpen(false)}><FiX /></button></header><div className="space-y-4 p-5"><label className="grid gap-1 text-xs font-bold text-slate-600">Group name<input value={name} onChange={(e) => setName(e.target.value)} className="h-10 rounded-md border px-3 text-sm font-normal outline-none focus:border-[#0d756d]" /></label><label className="grid gap-1 text-xs font-bold text-slate-600">Vehicles or registration numbers<textarea value={vehicles} onChange={(e) => setVehicles(e.target.value)} rows={4} placeholder="Separate vehicles with commas" className="rounded-md border px-3 py-2 text-sm font-normal outline-none focus:border-[#0d756d]" /></label>{error && <p className="text-xs text-red-600">{error}</p>}</div><footer className="flex justify-end gap-2 border-t px-5 py-4"><button onClick={() => setOpen(false)} className="h-9 rounded-md border px-4 text-xs font-bold">Cancel</button><button disabled={busy} onClick={() => void save()} className="h-9 rounded-md bg-[#0d756d] px-4 text-xs font-bold text-white disabled:opacity-50">{busy ? "Saving..." : "Save group"}</button></footer></div></div>}
+  </div>;
 }

@@ -10,6 +10,8 @@ export default function DocumentsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ title: '', docType: 'INSURANCE', vehiclePlate: '', expiryDate: '', fileUrl: '' });
+  const [file, setFile] = useState<File | null>(null);
+  const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
@@ -23,9 +25,17 @@ export default function DocumentsPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true);
-    await fetch('/api/documents', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(form) });
+    let fileUrl = form.fileUrl;
+    if (file) {
+      const upload = new FormData(); upload.append('file', file);
+      const uploaded = await fetch('/api/documents/upload', { method: 'POST', body: upload });
+      if (!uploaded.ok) { setError('The document could not be uploaded. Use PDF, Office, image, CSV, or text files up to 15 MB.'); setSaving(false); return; }
+      fileUrl = (await uploaded.json()).fileUrl;
+    }
+    const response = await fetch('/api/documents', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...form, fileUrl }) });
+    if (!response.ok) { setError('The document record could not be saved.'); setSaving(false); return; }
     setSaving(false); setShowForm(false);
-    setForm({ title: '', docType: 'INSURANCE', vehiclePlate: '', expiryDate: '', fileUrl: '' }); load();
+    setForm({ title: '', docType: 'INSURANCE', vehiclePlate: '', expiryDate: '', fileUrl: '' }); setFile(null); setError(''); load();
   }
 
   async function del(id: string) { await fetch(`/api/documents/${id}`, { method: 'DELETE' }); load(); }
@@ -50,7 +60,8 @@ export default function DocumentsPage() {
             </select>
             <input placeholder="Vehicle plate" value={form.vehiclePlate} onChange={e => setForm(f => ({ ...f, vehiclePlate: e.target.value }))} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: '#C5E0DE' }} />
             <input type="date" placeholder="Expiry date" value={form.expiryDate} onChange={e => setForm(f => ({ ...f, expiryDate: e.target.value }))} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: '#C5E0DE' }} />
-            <input placeholder="File URL (optional)" value={form.fileUrl} onChange={e => setForm(f => ({ ...f, fileUrl: e.target.value }))} className="rounded-lg border px-3 py-2 text-sm" style={{ borderColor: '#C5E0DE' }} />
+            <label className="grid gap-1 text-xs font-semibold text-[#0D4A47]">Document file<input type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg" onChange={e => setFile(e.target.files?.[0] ?? null)} className="rounded-lg border px-3 py-2 text-sm font-normal" style={{ borderColor: '#C5E0DE' }} /></label>
+            {error && <p className="text-xs text-red-600">{error}</p>}
             <button type="submit" disabled={saving} className="h-10 rounded-xl text-sm font-semibold text-white" style={{ background: '#0D4A47' }}>{saving ? 'Saving…' : 'Save'}</button>
           </form>
         )}

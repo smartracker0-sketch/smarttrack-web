@@ -47,13 +47,14 @@ async function refreshAccessTokenOnce(refreshToken: string): Promise<string | nu
 }
 
 async function authenticatedFetch(path: string, token: string, init: RequestInit) {
+  const requestHeaders = new Headers(init.headers);
+  requestHeaders.set("authorization", `Bearer ${token}`);
+  if (typeof init.body === "string" && !requestHeaders.has("content-type")) {
+    requestHeaders.set("content-type", "application/json");
+  }
   return fetch(`${backendUrl()}${path}`, {
     ...init,
-    headers: {
-      "content-type": "application/json",
-      authorization: `Bearer ${token}`,
-      ...(init.headers as Record<string, string> | undefined),
-    },
+    headers: requestHeaders,
     cache: "no-store",
   });
 }

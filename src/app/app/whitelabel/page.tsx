@@ -1,36 +1,15 @@
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { FiCheck, FiImage } from "react-icons/fi";
+
+type Brand = { id: string; name: string; payload: { companyName?: string; primaryColor?: string; supportEmail?: string; domain?: string; logoUrl?: string } };
 export default function WhitelabelPage() {
-  return (
-    <div className="grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Admin</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Whitelabel Admin</h1>
-        <p className="mt-4 text-sm leading-6 text-muted">
-          Manage tenant branding, domains, and report templates for white-label deployments.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Section title="Branding" items={["Logo & colors", "Mobile branding", "Email templates"]} />
-        <Section title="Domains" items={["Subdomain manager", "Custom domain mapping", "SSL provisioning"]} />
-        <Section title="Reports" items={["Header/footer branding", "Template library", "Scheduled delivery"]} />
-      </div>
-    </div>
-  );
+  const [record, setRecord] = useState<Brand | null>(null);
+  const [form, setForm] = useState({ companyName: "Smart Tracker", primaryColor: "#0D756D", supportEmail: "", domain: "", logoUrl: "" });
+  const [message, setMessage] = useState("");
+  const load = useCallback(async () => { const r = await fetch('/api/fleet-records/branding', { cache: 'no-store' }); if (r.ok) { const rows: Brand[] = await r.json(); if (rows[0]) { setRecord(rows[0]); setForm((value) => ({ ...value, ...rows[0].payload })); } } }, []);
+  useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]);
+  async function save() { const r = await fetch(record ? `/api/fleet-records/branding/${record.id}` : '/api/fleet-records/branding', { method: record ? 'PUT' : 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: form.companyName || 'Fleet brand', payload: form, active: true }) }); setMessage(r.ok ? 'Brand settings saved.' : 'Brand settings could not be saved.'); if (r.ok) await load(); }
+  return <div className="space-y-5 p-4 sm:p-6"><header><p className="text-xs font-semibold text-[#1a7a75]">Configurations</p><h1 className="text-xl font-extrabold text-[#0d4a47]">Brand Settings</h1><p className="mt-1 text-xs text-slate-500">Configure organisation identity used in reports and customer communication.</p></header><section className="grid gap-5 rounded-md border border-slate-200 bg-white p-5 lg:grid-cols-[1fr_280px]"><div className="grid gap-4 sm:grid-cols-2"><Field label="Company name" value={form.companyName} onChange={(companyName) => setForm({ ...form, companyName })} /><Field label="Support email" value={form.supportEmail} onChange={(supportEmail) => setForm({ ...form, supportEmail })} /><Field label="Custom domain" value={form.domain} onChange={(domain) => setForm({ ...form, domain })} /><Field label="Logo URL" value={form.logoUrl} onChange={(logoUrl) => setForm({ ...form, logoUrl })} /><label className="grid gap-1 text-xs font-bold text-slate-600">Primary colour<input type="color" value={form.primaryColor} onChange={(e) => setForm({ ...form, primaryColor: e.target.value })} className="h-10 w-full rounded-md border p-1" /></label><div className="flex items-end"><button onClick={() => void save()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[#0d756d] px-5 text-xs font-bold text-white"><FiCheck />Save settings</button></div>{message && <p className="text-xs text-[#0d756d] sm:col-span-2">{message}</p>}</div><aside className="rounded-md border border-slate-200 bg-slate-50 p-5"><p className="text-[10px] font-bold uppercase text-slate-400">Preview</p><div className="mt-4 grid h-16 w-16 place-items-center overflow-hidden rounded-md bg-white shadow-sm">{form.logoUrl ? <img src={form.logoUrl} alt="Brand logo" className="h-full w-full object-contain" /> : <FiImage className="text-2xl text-slate-400" />}</div><h2 className="mt-4 text-lg font-extrabold" style={{ color: form.primaryColor }}>{form.companyName}</h2><p className="mt-1 text-xs text-slate-500">{form.domain || 'Your fleet portal'}</p></aside></section></div>;
 }
-
-function Section({ title, items }: { title: string; items: string[] }) {
-  return (
-    <div className="rounded-3xl border border-divider bg-surface p-6">
-      <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{title}</div>
-      <ul className="mt-4 grid gap-2 text-sm">
-        {items.map((item) => (
-          <li key={item} className="flex items-start gap-3">
-            <span className="mt-2 h-2 w-2 rounded-full flex-shrink-0" style={{ background: '#1A7A75' }} />
-            <span style={{ color: '#1A7A75' }}>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
-
+function Field({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) { return <label className="grid gap-1 text-xs font-bold text-slate-600">{label}<input value={value} onChange={(e) => onChange(e.target.value)} className="h-10 rounded-md border px-3 text-sm font-normal outline-none focus:border-[#0d756d]" /></label>; }

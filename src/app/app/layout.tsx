@@ -15,26 +15,31 @@ import {
   FiCpu, FiHelpCircle, FiSettings, FiLock,
   FiVideo,
   FiDroplet,
+  FiZap,
 } from "react-icons/fi";
 
 const VEHICLE_SUB = [
   { href: "/app/devices",                label: "All Vehicles" },
   { href: "/app/devices/directory",      label: "Vehicle Directory" },
+  { href: "/app/devices/groups",         label: "My Vehicle Groups" },
   { href: "/app/devices/states",         label: "My Vehicle States" },
 ];
 
 const TRIPS_SUB = [
   { href: "/app/history",                label: "All Trips" },
   { href: "/app/history/routes",         label: "Routes" },
+  { href: "/app/history/schedules",      label: "Trip Schedules" },
   { href: "/app/history/consigners",     label: "Consigners" },
 ];
 
 const REPORTS_SUB = [
   { href: "/app/reports",                label: "All Reports" },
+  { href: "/app/reports/schedules",      label: "Report Schedules" },
 ];
 
 const MAINTENANCE_SUB = [
   { href: "/app/maintenance",                    label: "Service History & Reminders" },
+  { href: "/app/maintenance/schedules",          label: "Service Schedules" },
 ];
 
 const DRIVERS_SUB = [
@@ -51,6 +56,7 @@ const SIDEBAR_ITEMS = [
   { href: "/app/devices",          icon: FiTruck,         label: "Vehicles",  sub: VEHICLE_SUB },
   { href: "/app/cctv",             icon: FiVideo,         label: "Dash Cams" },
   { href: "/app/fuel-monitoring",  icon: FiDroplet,       label: "Fuel Monitoring" },
+  { href: "/app/ev",               icon: FiZap,           label: "Electric Vehicles" },
   { href: "/app/history",          icon: FiNavigation,    label: "Trips",     sub: TRIPS_SUB },
   { href: "/app/alerts",           icon: FiAlertTriangle, label: "Alerts" },
   { href: "/app/reports",          icon: FiBarChart2,     label: "Reports",   sub: REPORTS_SUB },
@@ -70,19 +76,19 @@ const SIDEBAR_ITEMS = [
 const DRAWER_GROUPS = [
   {
     label: "Overview",
-    links: SIDEBAR_ITEMS.slice(0, 5),
+    links: SIDEBAR_ITEMS.slice(0, 6),
   },
   {
     label: "Operations",
-    links: SIDEBAR_ITEMS.slice(5, 10),
+    links: SIDEBAR_ITEMS.slice(6, 11),
   },
   {
     label: "Fleet",
-    links: SIDEBAR_ITEMS.slice(10, 14),
+    links: SIDEBAR_ITEMS.slice(11, 15),
   },
   {
     label: "System",
-    links: SIDEBAR_ITEMS.slice(14),
+    links: SIDEBAR_ITEMS.slice(15),
   },
 ];
 

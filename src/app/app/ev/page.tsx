@@ -1,22 +1,7 @@
-export default function EVPage() {
-  return (
-    <div className="p-6 grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Fleet</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>EV</h1>
-        <p className="mt-4 text-sm leading-6 text-muted">Monitor electric vehicle battery levels, charging status, and range across your fleet.</p>
-      </div>
-
-      <div className="rounded-3xl border border-divider bg-surface p-6">
-        <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>EV fleet status</div>
-        <div className="mt-6 flex flex-col items-center gap-3 py-10 text-center">
-          <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ background: '#E8F4F3' }}>
-            <span className="text-xl">⚡</span>
-          </div>
-          <div className="text-sm font-semibold" style={{ color: '#0D4A47' }}>No EV data yet</div>
-          <div className="text-xs max-w-xs" style={{ color: '#9ca3af' }}>Electric vehicle battery, charging, and range data will appear here once EV devices are registered and connected.</div>
-        </div>
-      </div>
-    </div>
-  );
-}
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import { FiBatteryCharging, FiRefreshCw, FiZap } from "react-icons/fi";
+type Device = { id: string; name?: string; deviceType?: string; model?: string; vehiclePlate?: string };
+type Row = Device & { voltage?: number; speed?: number; receivedAt?: string; ignition?: boolean };
+export default function ElectricVehiclesPage() { const [rows, setRows] = useState<Row[]>([]); const [loading, setLoading] = useState(true); const load = useCallback(async () => { setLoading(true); const response = await fetch('/api/devices', { cache: 'no-store' }); if (!response.ok) { setLoading(false); return; } const body = await response.json(); const devices: Device[] = Array.isArray(body) ? body : body.content ?? []; const evs = devices.filter((device) => /electric|\bev\b/i.test(`${device.deviceType ?? ''} ${device.model ?? ''}`)); const enriched = await Promise.all(evs.map(async (device) => { const r = await fetch(`/api/telemetry?type=latest&deviceId=${device.id}`, { cache: 'no-store' }); const t = r.ok ? await r.json() : {}; return { ...device, voltage: t.voltageMv ? t.voltageMv / 1000 : undefined, speed: t.speedKph, receivedAt: t.receivedAt, ignition: t.ignition }; })); setRows(enriched); setLoading(false); }, []); useEffect(() => { const timer = setTimeout(() => void load(), 0); return () => clearTimeout(timer); }, [load]); return <div className="space-y-5 p-4 sm:p-6"><header className="flex items-end justify-between"><div><p className="text-xs font-semibold text-[#1a7a75]">Fleet energy</p><h1 className="text-xl font-extrabold text-[#0d4a47]">Electric Vehicles</h1><p className="mt-1 text-xs text-slate-500">Live battery voltage, movement, and charging readiness.</p></div><button onClick={() => void load()} className="grid h-9 w-9 place-items-center rounded-md border bg-white text-[#0d756d]"><FiRefreshCw className={loading ? 'animate-spin' : ''} /></button></header>{rows.length === 0 ? <div className="grid place-items-center rounded-md border bg-white py-20 text-center"><FiZap className="text-3xl text-[#6ca8a3]" /><p className="mt-3 text-sm font-bold text-[#0d4a47]">No electric vehicles registered</p><p className="mt-1 text-xs text-slate-500">Set a device type or model to Electric Vehicle to monitor it here.</p></div> : <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{rows.map((row) => <article key={row.id} className="rounded-md border bg-white p-5"><div className="flex items-center justify-between"><div><h2 className="text-sm font-extrabold text-[#0d4a47]">{row.name}</h2><p className="text-xs text-slate-500">{row.vehiclePlate || row.model || 'Electric vehicle'}</p></div><FiBatteryCharging className="text-2xl text-emerald-500" /></div><div className="mt-5 grid grid-cols-2 gap-3"><Metric label="Battery voltage" value={row.voltage ? `${row.voltage.toFixed(1)} V` : 'Not reported'} /><Metric label="Speed" value={`${row.speed ?? 0} km/h`} /><Metric label="Ignition" value={row.ignition ? 'ON' : 'OFF'} /><Metric label="Last report" value={row.receivedAt ? new Date(row.receivedAt).toLocaleTimeString() : 'No data'} /></div></article>)}</div>}</div>; }
+function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-md bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">{label}</p><p className="mt-1 text-xs font-bold text-[#0d4a47]">{value}</p></div>; }

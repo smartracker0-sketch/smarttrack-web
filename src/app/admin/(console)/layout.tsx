@@ -7,7 +7,7 @@ import {
   FiGrid, FiUsers, FiTruck, FiCpu, FiAlertTriangle,
   FiDollarSign, FiLogOut,
   FiBell, FiSearch, FiExternalLink,
-  FiUser, FiMenu, FiX, FiMail,
+  FiUser, FiMenu, FiX, FiMail, FiActivity, FiShield, FiHeadphones, FiSettings,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
@@ -20,6 +20,10 @@ const NAV = [
   { href: "/admin/alerts",         icon: FiAlertTriangle, label: "Alerts" },
   { href: "/admin/crm",            icon: FiMail,          label: "CRM Mail" },
   { href: "/admin/billing",        icon: FiDollarSign,    label: "Billing" },
+  { href: "/admin/support",        icon: FiHeadphones,    label: "Support Tickets" },
+  { href: "/admin/system/health",  icon: FiActivity,      label: "System Health" },
+  { href: "/admin/system/audit-log", icon: FiShield,      label: "Audit Log" },
+  { href: "/admin/system/settings", icon: FiSettings,     label: "Platform Settings" },
 ];
 
 function Sidebar({ mobile = false, onClose }: { mobile?: boolean; onClose?: () => void }) {

@@ -11,9 +11,10 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Section title="Account" items={[{ label: "Profile", href: "/app/profile" }]} />
         <Section title="Fleet setup" items={[{ label: "Device inventory", href: "/app/devices-mgmt" }]} />
+        <Section title="Organisation" items={[{ label: "Brand settings", href: "/app/whitelabel" }]} />
       </div>
     </div>
   );

@@ -1,27 +1,10 @@
-export default function SupportPage() {
-  return (
-    <div className="p-6 grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Help</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Support</h1>
-        <p className="mt-4 text-sm leading-6 text-muted">Raise tickets, browse FAQs, and contact the Smart Tracker Telematics support team.</p>
-      </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {[
-          { title: 'Open a Ticket', desc: 'Report an issue or request assistance from our team.', action: 'New Ticket', href: 'mailto:support@smarttracker.cloud?subject=Smart%20Tracker%20support%20request' },
-          { title: 'FAQs', desc: 'Browse common questions and solutions for fleet management.', action: 'Browse FAQs', href: '/resources/faqs' },
-          { title: 'Contact Support', desc: 'Send your question to the Smart Tracker support team.', action: 'Contact Us', href: '/company/contact-us' },
-        ].map((s) => (
-          <div key={s.title} className="rounded-3xl border border-divider bg-surface p-6">
-            <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{s.title}</div>
-            <div className="mt-2 text-sm leading-6 text-muted">{s.desc}</div>
-            <Link href={s.href} className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-xl px-4 text-sm font-semibold text-white transition-all hover:brightness-110" style={{ background: '#0D4A47' }}>
-              {s.action}
-            </Link>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+"use client";
 import Link from "next/link";
+import { useState } from "react";
+import { FiBookOpen, FiCheckCircle, FiMail, FiSend } from "react-icons/fi";
+
+export default function SupportPage() {
+  const [subject, setSubject] = useState(''); const [message, setMessage] = useState(''); const [priority, setPriority] = useState('NORMAL'); const [status, setStatus] = useState('');
+  async function submit() { if (!subject.trim() || !message.trim()) { setStatus('Subject and message are required.'); return; } const r = await fetch('/api/fleet-records/support-ticket', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name: subject, payload: { message, priority, status: 'OPEN' }, active: true }) }); if (r.ok) { setSubject(''); setMessage(''); setStatus('Your support ticket has been submitted.'); } else setStatus('The ticket could not be submitted.'); }
+  return <div className="space-y-5 p-4 sm:p-6"><header><p className="text-xs font-semibold text-[#1a7a75]">Help centre</p><h1 className="text-xl font-extrabold text-[#0d4a47]">Support</h1><p className="mt-1 text-xs text-slate-500">Send a request to the Smart Tracker operations team.</p></header><div className="grid gap-4 lg:grid-cols-[1fr_280px]"><section className="space-y-4 rounded-md border border-slate-200 bg-white p-5"><label className="grid gap-1 text-xs font-bold text-slate-600">Subject<input value={subject} onChange={(e) => setSubject(e.target.value)} className="h-10 rounded-md border px-3 text-sm font-normal" /></label><label className="grid gap-1 text-xs font-bold text-slate-600">Priority<select value={priority} onChange={(e) => setPriority(e.target.value)} className="h-10 rounded-md border px-3 text-sm font-normal"><option>NORMAL</option><option>HIGH</option><option>URGENT</option></select></label><label className="grid gap-1 text-xs font-bold text-slate-600">How can we help?<textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={7} className="rounded-md border px-3 py-2 text-sm font-normal" /></label><button onClick={() => void submit()} className="inline-flex h-10 items-center gap-2 rounded-md bg-[#0d756d] px-5 text-xs font-bold text-white"><FiSend />Submit ticket</button>{status && <p className="flex items-center gap-2 text-xs text-[#0d756d]"><FiCheckCircle />{status}</p>}</section><aside className="space-y-3"><Link href="/resources/faqs" className="flex items-center gap-3 rounded-md border bg-white p-4 text-sm font-bold text-[#0d4a47]"><FiBookOpen />Frequently asked questions</Link><a href="mailto:support@smarttracker.cloud" className="flex items-center gap-3 rounded-md border bg-white p-4 text-sm font-bold text-[#0d4a47]"><FiMail />support@smarttracker.cloud</a></aside></div></div>;
+}
