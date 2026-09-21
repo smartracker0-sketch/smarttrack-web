@@ -804,6 +804,7 @@ export default function AllVehiclesPage() {
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [telemetry, setTelemetry] = useState<Record<string, DeviceRow>>({});
   const [fuelByVehicle, setFuelByVehicle] = useState<Record<string, DeviceRow>>({});
+  const [dashcamByVehicle, setDashcamByVehicle] = useState<Record<string, DeviceRow>>({});
   const [addresses, setAddresses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -840,11 +841,14 @@ export default function AllVehiclesPage() {
         const liveRows: DeviceRow[] = liveResponse.ok ? await liveResponse.json() : [];
         const telemMap: Record<string, DeviceRow | null> = {};
         const fuelMap: Record<string, DeviceRow> = {};
+        const dashcamMap: Record<string, DeviceRow> = {};
         liveRows.forEach((row) => {
           if (row.latestTelemetry) telemMap[String(row.id)] = row.latestTelemetry;
           if (row.latestFuel) fuelMap[String(row.id)] = row.latestFuel;
+          if (row.dashcam) dashcamMap[String(row.id)] = row.dashcam;
         });
         setFuelByVehicle(fuelMap);
+        setDashcamByVehicle(dashcamMap);
         setTelemetry((prev) => {
           const next: Record<string, DeviceRow> = {};
           Object.entries(telemMap).forEach(([deviceId, value]) => {
@@ -1206,6 +1210,7 @@ export default function AllVehiclesPage() {
                 const t = telemetry[d.id] ?? null;
                 const fuel = fuelByVehicle[d.id] ?? null;
                 const fuelValue = fuelCardValue(fuel);
+                const dashcam = dashcamByVehicle[d.id] ?? null;
                 const key = statKey(t);
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
@@ -1252,8 +1257,8 @@ export default function AllVehiclesPage() {
                         <ActionIcon label="Vehicle">
                           <FiTruck size={15} />
                         </ActionIcon>
-                        <ActionIcon label="Camera">
-                          <FiCamera size={15} />
+                        <ActionIcon label={dashcam ? `Open ${fieldText(dashcam.name, "dashcam")} · Device ID ${fieldText(dashcam.deviceId)}` : "No dashcam assigned"} onClick={dashcam ? (event) => { event.stopPropagation(); window.location.assign(`/app/cctv?deviceId=${encodeURIComponent(String(dashcam.id))}`); } : undefined}>
+                          <FiCamera size={15} color={dashcam ? "#16a085" : undefined} />
                         </ActionIcon>
                       </div>
                     </div>

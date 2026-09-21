@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FiCamera, FiCheckCircle, FiClock, FiFilm, FiMapPin, FiPlay, FiRefreshCw, FiSquare, FiWifi, FiWifiOff } from "react-icons/fi";
 
 type DashcamEvent = { id: string; eventTime: string; eventType: string; severity: string; latitude?: number | null; longitude?: number | null; speedKph?: number | null; clipUrl?: string | null; thumbnailUrl?: string | null };
-type Dashcam = { id: string; imei: string; name: string; vehiclePlate?: string | null; manufacturer?: string | null; model?: string | null; cameraId?: string | null; status: string; provisioned: boolean; online: boolean; lastSeenAt?: string | null; latestEvent?: DashcamEvent | null };
+type Dashcam = { id: string; imei: string; name: string; vehiclePlate?: string | null; manufacturer?: string | null; model?: string | null; cameraId?: string | null; assignedVehicleId?: string | null; assignedVehicleName?: string | null; status: string; provisioned: boolean; online: boolean; lastSeenAt?: string | null; latestEvent?: DashcamEvent | null };
 
 const dateTime = (value?: string | null) => value
   ? new Intl.DateTimeFormat(undefined, { dateStyle: "medium", timeStyle: "short" }).format(new Date(value))
@@ -25,7 +25,10 @@ export default function CCTVPage() {
       if (!response.ok) throw new Error(response.status === 401 ? "Your session has expired." : "Could not load dashcams.");
       const data = await response.json() as Dashcam[];
       setCameras(data);
-      setSelectedId(current => current && data.some(camera => camera.id === current) ? current : data[0]?.id ?? null);
+      const requestedId = typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("deviceId");
+      setSelectedId(current => current && data.some(camera => camera.id === current)
+        ? current
+        : requestedId && data.some(camera => camera.id === requestedId) ? requestedId : data[0]?.id ?? null);
       setError("");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load dashcams.");
@@ -65,7 +68,7 @@ export default function CCTVPage() {
             {cameras.map(camera => (
               <button key={camera.id} type="button" onClick={() => setSelectedId(camera.id)} className="w-full rounded-md border bg-white p-3 text-left transition" style={{ borderColor: selected?.id === camera.id ? "#27837d" : "#d9e3e5" }}>
                 <div className="flex items-start justify-between gap-2"><div className="min-w-0"><p className="truncate text-sm font-bold">{camera.name}</p><p className="mt-0.5 truncate text-xs text-[#657b7d]">{camera.vehiclePlate || camera.imei}</p></div>{camera.online ? <FiWifi className="shrink-0 text-emerald-600" /> : <FiWifiOff className="shrink-0 text-[#89999b]" />}</div>
-                <div className="mt-3 flex items-center justify-between text-xs"><span className={camera.online ? "text-emerald-700" : "text-[#657b7d]"}>{camera.online ? "Online" : "Offline"}</span><span className="text-[#657b7d]">{camera.model || "Dashcam"}</span></div>
+              <div className="mt-3 flex items-center justify-between text-xs"><span className={camera.online ? "text-emerald-700" : "text-[#657b7d]"}>{camera.online ? "Online" : "Offline"}</span><span className="text-[#657b7d]">{camera.assignedVehicleName || "Standalone"}</span></div>
               </button>
             ))}
           </div>

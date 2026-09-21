@@ -172,10 +172,12 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users, devices }: AddDeviceM
     e.preventDefault();
     setError("");
     const isFuelSensor = type === "Fuel Sensor";
+    const isDashcam = type === "Dashcam";
     if (!isFuelSensor && !validateImei(imei)) { setError("IMEI must be exactly 15 digits."); return; }
     if (isFuelSensor && !/^[A-Za-z0-9_-]{6,32}$/.test(imei.trim())) { setError("Enter the 6-32 character serial number printed on the TD-BLE sensor."); return; }
     if (isFuelSensor && !/^(?:[0-9A-Fa-f]{2}[:-]){5}[0-9A-Fa-f]{2}$/.test(bleMacAddress.trim())) { setError("Enter a valid BLE MAC address, for example AA:BB:CC:DD:EE:FF."); return; }
     if (isFuelSensor && (!gatewayDeviceId || Number(tankCapacityLiters) <= 0)) { setError("Select a gateway tracker and enter the tank capacity."); return; }
+    if (isDashcam && !/^\d{6,20}$/.test(serialNo.trim())) { setError("Dashcam Device ID must contain 6 to 20 digits."); return; }
     let fuelCalibrationJson = "";
     try { fuelCalibrationJson = isFuelSensor ? calibrationJson(fuelCalibration) : ""; }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Invalid calibration table."); return; }
@@ -186,6 +188,7 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users, devices }: AddDeviceM
         imeis: [imei.trim()], name, type, firmware, serialNo,
         vehicle: assignVehicle, notes, objectIcon,
         simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, smsCommandPassword,
+        ...(isDashcam ? { gatewayDeviceId: gatewayDeviceId || null } : {}),
         ...(isFuelSensor ? {
           bleMacAddress, gatewayDeviceId, fuelMeasurementRange: Number(fuelMeasurementRange),
           tankCapacityLiters: Number(tankCapacityLiters), fuelCalibrationJson,
@@ -344,9 +347,13 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users, devices }: AddDeviceM
                       {DEVICE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </Select>
                   </Field>
+                  {type === "Dashcam" && <>
+                    <Field label="Device ID *"><Input required inputMode="numeric" placeholder="e.g. 628072025645" value={serialNo} onChange={e => setSerialNo(e.target.value.replace(/\D/g, ""))} maxLength={20} /></Field>
+                    <Field label="Assigned Vehicle (optional)"><Select value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Standalone dashcam</option>{devices.filter(d => d.type !== "Fuel Sensor" && d.type !== "Dashcam").map(d => <option key={d.id} value={d.id}>{d.name || d.imei} ({d.imei})</option>)}</Select></Field>
+                  </>}
                   {type === "Fuel Sensor" && <>
                     <Field label="BLE MAC Address *"><Input required placeholder="AA:BB:CC:DD:EE:FF" value={bleMacAddress} onChange={e => setBleMacAddress(e.target.value.toUpperCase())} /></Field>
-                    <Field label="Assigned Vehicle / Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select vehicle tracker</option>{devices.filter(d => d.type !== "Fuel Sensor").map(d => <option key={d.id} value={d.id}>{d.name || d.imei} ({d.imei})</option>)}</Select></Field>
+                    <Field label="Assigned Vehicle / Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select vehicle tracker</option>{devices.filter(d => d.type !== "Fuel Sensor" && d.type !== "Dashcam").map(d => <option key={d.id} value={d.id}>{d.name || d.imei} ({d.imei})</option>)}</Select></Field>
                     <Field label="Measurement Range"><Select value={fuelMeasurementRange} onChange={e => setFuelMeasurementRange(e.target.value)}><option value="4095">1-4095 (recommended)</option><option value="1023">1-1023 (sensor under 500 mm)</option></Select></Field>
                     <Field label="Tank Capacity (litres) *"><Input required type="number" min="1" step="0.1" placeholder="e.g. 300" value={tankCapacityLiters} onChange={e => setTankCapacityLiters(e.target.value)} /></Field>
                     <Field label="Low Sensor Battery (mV)"><Input type="number" min="2500" max="4000" value={sensorBatteryLowMv} onChange={e => setSensorBatteryLowMv(e.target.value)} /></Field>
@@ -365,9 +372,9 @@ function AddDeviceModal({ onClose, onSuccess, orgs, users, devices }: AddDeviceM
                   <Field label="SIM ICCID">
                     <Input placeholder="e.g. 8901…" value={simIccid} onChange={e => setSimIccid(e.target.value)} />
                   </Field>
-                  <Field label="Serial Number">
+                  {type !== "Dashcam" && <Field label="Serial Number">
                     <Input placeholder="e.g. SN-00123456" value={serialNo} onChange={e => setSerialNo(e.target.value)} />
-                  </Field>
+                  </Field>}
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -599,6 +606,11 @@ function EditDeviceModal({ device, devices, onClose, onSuccess }: EditDeviceModa
     }
     setError("");
     const isFuelSensor = deviceType === "Fuel Sensor";
+    const isDashcam = deviceType === "Dashcam";
+    if (isDashcam && !/^\d{6,20}$/.test(serialNo.trim())) {
+      setError("Dashcam Device ID must contain 6 to 20 digits.");
+      return;
+    }
     let fuelCalibrationJson = "";
     try { fuelCalibrationJson = isFuelSensor ? calibrationJson(fuelCalibration) : ""; }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Invalid calibration table."); return; }
@@ -607,7 +619,7 @@ function EditDeviceModal({ device, devices, onClose, onSuccess }: EditDeviceModa
       const response = await fetch(`/api/admin/devices/${device.id}`, {
         method: "PUT",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, objectIcon, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes, ...(isFuelSensor ? { bleMacAddress, gatewayDeviceId, fuelMeasurementRange: Number(fuelMeasurementRange), tankCapacityLiters: Number(tankCapacityLiters), fuelCalibrationJson, sensorBatteryLowMv: Number(sensorBatteryLowMv) } : {}) }),
+        body: JSON.stringify({ name, deviceType, firmware, serialNo, vehiclePlate, simNumber, simApn, manufacturer, model, simIccid, mobileCarrier, objectIcon, ...(smsCommandPassword ? { smsCommandPassword } : {}), notes, ...(isDashcam ? { gatewayDeviceId: gatewayDeviceId || null } : {}), ...(isFuelSensor ? { bleMacAddress, gatewayDeviceId, fuelMeasurementRange: Number(fuelMeasurementRange), tankCapacityLiters: Number(tankCapacityLiters), fuelCalibrationJson, sensorBatteryLowMv: Number(sensorBatteryLowMv) } : {}) }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => null) as { message?: string } | null;
@@ -647,16 +659,20 @@ function EditDeviceModal({ device, devices, onClose, onSuccess }: EditDeviceModa
             }}>{DEVICE_TYPES.map(type => <option key={type} value={type}>{type}</option>)}</Select></Field>
             <Field label="Firmware Version"><Input value={firmware} onChange={e => setFirmware(e.target.value)} /></Field>
             <div className="col-span-2"><Field label={`Object Icon: ${objectIconLabel(objectIcon)}`}><ObjectIconPicker value={objectIcon} onChange={setObjectIcon} /></Field></div>
+            {deviceType === "Dashcam" && <>
+              <Field label="Device ID *"><Input required inputMode="numeric" value={serialNo} onChange={e => setSerialNo(e.target.value.replace(/\D/g, ""))} maxLength={20} /></Field>
+              <Field label="Assigned Vehicle (optional)"><Select value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Standalone dashcam</option>{devices.filter(item => item.id !== device.id && item.type !== "Fuel Sensor" && item.type !== "Dashcam").map(item => <option key={item.id} value={item.id}>{item.name || item.imei} ({item.imei})</option>)}</Select></Field>
+            </>}
             {deviceType === "Fuel Sensor" && <>
               <Field label="BLE MAC Address *"><Input required value={bleMacAddress} onChange={e => setBleMacAddress(e.target.value.toUpperCase())} /></Field>
-              <Field label="Assigned Vehicle / Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select vehicle tracker</option>{devices.filter(item => item.id !== device.id && item.type !== "Fuel Sensor").map(item => <option key={item.id} value={item.id}>{item.name || item.imei} ({item.imei})</option>)}</Select></Field>
+              <Field label="Assigned Vehicle / Gateway Tracker *"><Select required value={gatewayDeviceId} onChange={e => setGatewayDeviceId(e.target.value)}><option value="">Select vehicle tracker</option>{devices.filter(item => item.id !== device.id && item.type !== "Fuel Sensor" && item.type !== "Dashcam").map(item => <option key={item.id} value={item.id}>{item.name || item.imei} ({item.imei})</option>)}</Select></Field>
               <Field label="Measurement Range"><Select value={fuelMeasurementRange} onChange={e => setFuelMeasurementRange(e.target.value)}><option value="4095">1-4095 (recommended)</option><option value="1023">1-1023 (under 500 mm)</option></Select></Field>
               <Field label="Tank Capacity (litres) *"><Input required type="number" min="1" step="0.1" value={tankCapacityLiters} onChange={e => setTankCapacityLiters(e.target.value)} /></Field>
               <Field label="Low Sensor Battery (mV)"><Input type="number" min="2500" max="4000" value={sensorBatteryLowMv} onChange={e => setSensorBatteryLowMv(e.target.value)} /></Field>
               <div className="col-span-2"><Field label="Tank Calibration Points (raw level, litres)"><textarea rows={4} value={fuelCalibration} onChange={e => setFuelCalibration(e.target.value)} className="w-full rounded-xl px-3 py-2 font-mono text-xs text-white outline-none" style={{ background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.1)" }} /></Field></div>
             </>}
             <Field label="SIM ICCID"><Input value={simIccid} onChange={e => setSimIccid(e.target.value)} /></Field>
-            <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>
+            {deviceType !== "Dashcam" && <Field label="Serial Number"><Input value={serialNo} onChange={e => setSerialNo(e.target.value)} /></Field>}
             <Field label="SIM Phone Number"><Input value={simNumber} onChange={e => setSimNumber(e.target.value)} /></Field>
             <Field label="SIM APN"><Input value={simApn} onChange={e => setSimApn(e.target.value)} /></Field>
             <Field label="Manufacturer"><Select value={manufacturer} onChange={e => setManufacturer(e.target.value)}><option value="">— Generic —</option><option value="TELTONIKA">Teltonika</option><option value="CONCOX">Concox / Queclink</option><option value="COBAN">Coban</option><option value="MEITRACK">Meitrack</option><option value="METTAX">MettaX</option></Select></Field>
