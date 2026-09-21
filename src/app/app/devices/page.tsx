@@ -210,6 +210,14 @@ function batteryVoltage(telem: DeviceRow | null, device?: DeviceRow | null) {
   return "Not reported";
 }
 
+function fuelCardValue(fuel: DeviceRow | null) {
+  if (!fuel) return null;
+  const level = numberFrom(fuel.fuelLevelPct, fuel.fuelPercent, fuel.levelPercent);
+  if (level != null) return `${level.toFixed(1)}%`;
+  const litres = numberFrom(fuel.fuelLiters, fuel.fuelLitres, fuel.volumeLiters);
+  return litres == null ? null : `${litres.toFixed(1)} L`;
+}
+
 function ignitionText(telem: DeviceRow | null) {
   if (!isRecentlyReporting(telem)) return "--";
   return isIgnitionOn(telem) ? "ON" : "OFF";
@@ -795,6 +803,7 @@ function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: De
 export default function AllVehiclesPage() {
   const [devices, setDevices] = useState<DeviceRow[]>([]);
   const [telemetry, setTelemetry] = useState<Record<string, DeviceRow>>({});
+  const [fuelByVehicle, setFuelByVehicle] = useState<Record<string, DeviceRow>>({});
   const [addresses, setAddresses] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
@@ -818,7 +827,8 @@ export default function AllVehiclesPage() {
       if (await redirectIfUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
-        const list: DeviceRow[] = Array.isArray(data) ? data : data?.content ?? [];
+        const allDevices: DeviceRow[] = Array.isArray(data) ? data : data?.content ?? [];
+        const list = allDevices.filter((device) => String(device.deviceType ?? "").toLowerCase() !== "fuel sensor");
         setDevices(list);
         setSelected((prev) => {
           if (prev && list.some((d) => d.id === prev)) return prev;
@@ -829,9 +839,12 @@ export default function AllVehiclesPage() {
         if (await redirectIfUnauthorized(liveResponse)) return;
         const liveRows: DeviceRow[] = liveResponse.ok ? await liveResponse.json() : [];
         const telemMap: Record<string, DeviceRow | null> = {};
+        const fuelMap: Record<string, DeviceRow> = {};
         liveRows.forEach((row) => {
           if (row.latestTelemetry) telemMap[String(row.id)] = row.latestTelemetry;
+          if (row.latestFuel) fuelMap[String(row.id)] = row.latestFuel;
         });
+        setFuelByVehicle(fuelMap);
         setTelemetry((prev) => {
           const next: Record<string, DeviceRow> = {};
           Object.entries(telemMap).forEach(([deviceId, value]) => {
@@ -1191,6 +1204,8 @@ export default function AllVehiclesPage() {
             ) : (
               visibleDevices.map((d) => {
                 const t = telemetry[d.id] ?? null;
+                const fuel = fuelByVehicle[d.id] ?? null;
+                const fuelValue = fuelCardValue(fuel);
                 const key = statKey(t);
                 const location = locationLine(d, t, addresses[addressKey(t) ?? ""]);
                 const isSelected = d.id === selected;
@@ -1259,6 +1274,7 @@ export default function AllVehiclesPage() {
                       <MetricBox value={ignitionText(t)} label="Ignition" />
                       <MetricBox value={isRecentlyReporting(t) ? `${Math.round(Number(t?.speedKph ?? 0))} km/h` : "--"} label="Speed" />
                       <MetricBox value={batteryVoltage(t, d)} label="Vehicle Battery Voltage" />
+                      {fuelValue && <MetricBox value={fuelValue} label="Fuel Level" />}
                       <button
                         type="button"
                         onClick={(e) => {
