@@ -130,14 +130,29 @@ function LiveStream({ camera }: { camera: Dashcam }) {
 
   async function start() {
     setStarting(true); setError("");
-    const response = await fetch(`/api/dashcams/${camera.id}/stream/start?channel=${channel}`, { method: "POST" });
-    setStarting(false);
-    if (!response.ok) {
-      const body = await response.json().catch(() => null) as { message?: string } | null;
-      setError(body?.message ?? "Could not start the camera stream.");
-      return;
+    try {
+      const response = await fetch(`/api/dashcams/${camera.id}/stream/start?channel=${channel}`, { method: "POST" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { message?: string } | null;
+        setError(body?.message ?? "Could not start the camera stream.");
+        return;
+      }
+
+      const deadline = Date.now() + 30_000;
+      while (Date.now() < deadline) {
+        const manifest = await fetch(`${source}?ready=${Date.now()}`, { cache: "no-store" });
+        if (manifest.ok && (await manifest.text()).includes("#EXTM3U")) {
+          setPlaying(true);
+          return;
+        }
+        await new Promise(resolve => window.setTimeout(resolve, 1_000));
+      }
+      setError("The camera accepted the request but did not send video. Check its JT1078 server and channel settings.");
+    } catch {
+      setError("The live-video gateway could not be reached.");
+    } finally {
+      setStarting(false);
     }
-    setPlaying(true);
   }
 
   async function stop() {
