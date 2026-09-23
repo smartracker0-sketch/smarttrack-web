@@ -7,7 +7,7 @@ import {
   FiGrid, FiUsers, FiTruck, FiCpu, FiAlertTriangle,
   FiDollarSign, FiLogOut,
   FiBell, FiSearch, FiExternalLink,
-  FiUser, FiMenu, FiX, FiMail, FiActivity, FiShield, FiHeadphones, FiSettings,
+  FiUser, FiMenu, FiX, FiMail, FiActivity, FiShield, FiHeadphones, FiSettings, FiMap,
 } from "react-icons/fi";
 import { useAdminAuthStore } from "@/admin/store/useAdminAuthStore";
 
@@ -17,6 +17,7 @@ const NAV = [
   { href: "/admin/vehicles",       icon: FiTruck,         label: "Vehicles" },
   { href: "/admin/users",          icon: FiUser,          label: "Users" },
   { href: "/admin/devices",        icon: FiCpu,           label: "Devices" },
+  { href: "/admin/map",            icon: FiMap,           label: "System Map" },
   { href: "/admin/alerts",         icon: FiAlertTriangle, label: "Alerts" },
   { href: "/admin/crm",            icon: FiMail,          label: "CRM Mail" },
   { href: "/admin/billing",        icon: FiDollarSign,    label: "Billing" },
@@ -123,6 +124,7 @@ function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
     "/admin/vehicles": "Global Vehicles",
     "/admin/users": "Global Users",
     "/admin/devices": "Device Manager",
+    "/admin/map": "System Map",
     "/admin/alerts": "Global Alerts",
     "/admin/crm": "CRM Mail",
     "/admin/billing": "Billing",
