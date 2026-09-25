@@ -14,6 +14,7 @@ import {
   FiDroplet,
   FiInfo,
   FiLayers,
+  FiLock,
   FiMapPin,
   FiMessageCircle,
   FiNavigation,
@@ -23,6 +24,7 @@ import {
   FiSearch,
   FiShare2,
   FiTruck,
+  FiUnlock,
   FiUser,
   FiX,
 } from "react-icons/fi";
@@ -355,7 +357,7 @@ function MetricBox({ value, label }: { value: string; label: string }) {
   );
 }
 
-function VehicleDetailsModal({ device, telem, address, onClose }: { device: DeviceRow; telem: DeviceRow | null; address: string; onClose: () => void }) {
+function VehicleDetailsModal({ device, telem, address, onClose, onControl }: { device: DeviceRow; telem: DeviceRow | null; address: string; onClose: () => void; onControl: (device: DeviceRow, action: "immobilise" | "mobilise") => void }) {
   const [fuel, setFuel] = useState<DeviceRow | null>(null);
   const [alerts, setAlerts] = useState<DeviceRow[]>([]);
   const [driver, setDriver] = useState<DeviceRow | null>(null);
@@ -418,6 +420,15 @@ function VehicleDetailsModal({ device, telem, address, onClose }: { device: Devi
             <DetailMetric icon={<FiBattery />} label="Vehicle battery" value={batteryVoltage(telem, device)} />
             <DetailMetric icon={<FiInfo />} label="Ignition" value={ignitionText(telem)} />
           </div>
+
+          <section>
+            <h3 className="text-xs font-extrabold uppercase text-[#536987]">Remote vehicle control</h3>
+            <p className="mt-2 text-xs leading-5 text-[#536987]">Immobilisation is only sent while the asset is online and stationary. Always confirm the vehicle is safely parked.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" onClick={() => onControl(device, "immobilise")} disabled={isMoving(telem)} className="inline-flex h-10 items-center gap-2 rounded-md bg-[#f24464] px-4 text-xs font-bold text-white transition hover:bg-[#d93653] disabled:cursor-not-allowed disabled:opacity-40"><FiLock /> Immobilise asset</button>
+              <button type="button" onClick={() => onControl(device, "mobilise")} className="inline-flex h-10 items-center gap-2 rounded-md border border-[#b9ccd8] bg-white px-4 text-xs font-bold text-[#0d5c58] transition hover:bg-[#eef7f6]"><FiUnlock /> Restore engine</button>
+            </div>
+          </section>
 
           <section>
             <h3 className="text-xs font-extrabold uppercase text-[#536987]">Live position</h3>
@@ -821,10 +832,26 @@ export default function AllVehiclesPage() {
 
   const notify = (msg: string) => setToast(msg);
 
+  const handleAssetControl = useCallback(async (device: DeviceRow, action: "immobilise" | "mobilise") => {
+    const verb = action === "immobilise" ? "immobilise" : "restore";
+    const warning = action === "immobilise"
+      ? `Immobilise ${shortName(device)}? Only continue after confirming the asset is safely parked.`
+      : `Send the engine restore command to ${shortName(device)}?`;
+    if (!window.confirm(warning)) return;
+    const response = await fetch(`/api/devices/${encodeURIComponent(device.id)}/control`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action }),
+    });
+    if (await redirectIfUnauthorized(response)) return;
+    const result = await response.json().catch(() => null) as { message?: string } | null;
+    notify(response.ok ? (result?.message ?? `${verb} command sent`) : (result?.message ?? `Could not ${verb} this asset`));
+  }, []);
+
   const load = useCallback(async (showSpinner = false) => {
     if (showSpinner) setLoading(true);
     try {
-      const res = await fetch("/api/devices");
+      const res = await fetch("/api/devices?size=500");
       if (await redirectIfUnauthorized(res)) return;
       if (res.ok) {
         const data = await res.json();
@@ -1102,6 +1129,7 @@ export default function AllVehiclesPage() {
           telem={telemetry[detailsDevice.id] ?? null}
           address={locationLine(detailsDevice, telemetry[detailsDevice.id] ?? null, addresses[addressKey(telemetry[detailsDevice.id] ?? null) ?? ""])}
           onClose={() => setDetailsDeviceId(null)}
+          onControl={handleAssetControl}
         />
       )}
 
@@ -1256,6 +1284,9 @@ export default function AllVehiclesPage() {
                         </ActionIcon>
                         <ActionIcon label="Vehicle">
                           <FiTruck size={15} />
+                        </ActionIcon>
+                        <ActionIcon label="Immobilise asset" onClick={(event) => { event.stopPropagation(); void handleAssetControl(d, "immobilise"); }}>
+                          <FiLock size={14} />
                         </ActionIcon>
                         <ActionIcon label={dashcam ? `Open ${fieldText(dashcam.name, "dashcam")} · Device ID ${fieldText(dashcam.deviceId)}` : "No dashcam assigned"} onClick={dashcam ? (event) => { event.stopPropagation(); window.location.assign(`/app/cctv?deviceId=${encodeURIComponent(String(dashcam.id))}`); } : undefined}>
                           <FiCamera size={15} color={dashcam ? "#16a085" : undefined} />

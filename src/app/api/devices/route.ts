@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/requireAdmin";
 import { proxyUser } from "@/lib/userBackend";
 
-export async function GET() {
-  return proxyUser("/api/v1/devices");
+export async function GET(req: Request) {
+  const query = new URL(req.url).search;
+  return proxyUser(`/api/v1/devices${query}`);
 }
 
 export async function POST(req: Request) {
