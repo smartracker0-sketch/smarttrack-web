@@ -20,7 +20,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ message: "Invalid request" }, { status: 400 });
-  const action = body.userId ? "assign-user" : body.organisationId ? "assign" : "unassign";
+  const action = Array.isArray(body.userIds) ? "assign-users" : body.userId ? "assign-user" : body.organisationId ? "assign" : "unassign";
   return proxyAdmin(req, `/api/v1/admin/devices/${id}/${action}`, {
     method: "PATCH",
     body: JSON.stringify(body),

@@ -696,6 +696,8 @@ type DeviceEx = Device & {
   name?: string | null;
   ownerId?: string | null;
   ownerName?: string | null;
+  assignedUserIds: string[];
+  assignedUserNames: string[];
   simCard?: string | null;
   serialNo?: string | null;
   notes?: string | null;
@@ -755,6 +757,8 @@ function fromApiDto(d: any): DeviceEx {
     orgName: d.organisationName ?? (d.organisationId ? d.organisationId : "—"),
     ownerId: d.ownerId ?? null,
     ownerName: d.ownerName ?? null,
+    assignedUserIds: Array.isArray(d.assignedUserIds) ? d.assignedUserIds : (d.ownerId ? [d.ownerId] : []),
+    assignedUserNames: Array.isArray(d.assignedUserNames) ? d.assignedUserNames : (d.ownerName ? [d.ownerName] : []),
     activationStatus: d.activationStatus ?? "UNACTIVATED",
     activationAttempts: d.activationAttempts ?? 0,
     activationAttemptedAt: d.activationAttemptedAt ?? null,
@@ -767,6 +771,61 @@ function fromApiDto(d: any): DeviceEx {
   };
 }
 
+function UserAssignmentModal({ device, users, saving, onClose, onSave }: {
+  device: DeviceEx;
+  users: { id: string; displayName: string; email: string }[];
+  saving: boolean;
+  onClose: () => void;
+  onSave: (userIds: string[]) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(device.assignedUserIds);
+  const [query, setQuery] = useState("");
+  const visibleUsers = users.filter(user => `${user.displayName} ${user.email}`.toLowerCase().includes(query.toLowerCase()));
+
+  function toggle(userId: string) {
+    setSelected(current => current.includes(userId) ? current.filter(id => id !== userId) : [...current, userId]);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4" style={{ background: "rgba(0,0,0,0.75)" }}>
+      <div className="w-full max-w-md rounded-2xl" style={{ background: "#071E1C", border: "1px solid rgba(255,255,255,0.1)" }}>
+        <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <div>
+            <h2 className="text-sm font-bold text-white">Assign users</h2>
+            <p className="mt-1 text-xs" style={{ color: "#7BBBB8" }}>{device.name || device.imei} · {selected.length} selected</p>
+          </div>
+          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg hover:bg-white/10" aria-label="Close"><FiX size={15} /></button>
+        </div>
+        <div className="p-5">
+          <div className="relative mb-3">
+            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2" size={14} style={{ color: "#4A8A87" }} />
+            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search users" className="h-10 w-full rounded-xl pl-9 pr-3 text-sm text-white outline-none" style={{ background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)" }} />
+          </div>
+          <div className="max-h-72 space-y-1 overflow-y-auto">
+            {visibleUsers.map(user => {
+              const checked = selected.includes(user.id);
+              return (
+                <label key={user.id} className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 hover:bg-white/5">
+                  <input type="checkbox" checked={checked} onChange={() => toggle(user.id)} className="h-4 w-4 accent-orange-500" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold text-white">{user.displayName}</span>
+                    <span className="block truncate text-[10px]" style={{ color: "#4A8A87" }}>{user.email}</span>
+                  </span>
+                </label>
+              );
+            })}
+            {visibleUsers.length === 0 && <p className="py-8 text-center text-xs" style={{ color: "#4A8A87" }}>No users found.</p>}
+          </div>
+          <div className="mt-5 flex gap-3">
+            <button type="button" onClick={onClose} className="h-10 flex-1 rounded-xl text-sm font-semibold" style={{ background: "rgba(255,255,255,0.06)", color: "#9CA3AF" }}>Cancel</button>
+            <button type="button" disabled={saving} onClick={() => onSave(selected)} className="h-10 flex-1 rounded-xl text-sm font-bold text-white disabled:opacity-50" style={{ background: "#F97316" }}>{saving ? "Saving…" : "Save access"}</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function DeviceManagerPage() {
   const [devices, setDevices] = useState<DeviceEx[]>([]);
   const [orgs, setOrgs] = useState<{ id: string; name: string }[]>([]);
@@ -777,6 +836,7 @@ export default function DeviceManagerPage() {
   const [filterStatus, setFilterStatus] = useState("All");
   const [showModal, setShowModal] = useState(false);
   const [editingDevice, setEditingDevice] = useState<DeviceEx | null>(null);
+  const [userAssignmentDevice, setUserAssignmentDevice] = useState<DeviceEx | null>(null);
   const [assigningId, setAssigningId] = useState<string | null>(null);
   const [assignMode, setAssignMode] = useState<Record<string, "org" | "user">>({});
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -882,6 +942,8 @@ export default function DeviceManagerPage() {
     } else {
       const extended: DeviceEx[] = _newDevices.map(d => ({
         ...d,
+        assignedUserIds: [],
+        assignedUserNames: [],
         activationStatus: "UNACTIVATED",
         activationAttempts: 0,
         serverConfigured: false,
@@ -940,16 +1002,18 @@ export default function DeviceManagerPage() {
     }
   }
 
-  async function handleAssignUser(id: string, userId: string) {
+  async function handleAssignUsers(id: string, userIds: string[]) {
     if (apiAvailable) {
       setAssigningId(id);
       try {
         const res = await fetch(`/api/admin/devices/${id}`, {
           method: "PATCH",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ userId }),
+          body: JSON.stringify({ userIds }),
         });
-        if (res.ok) await loadDevices();
+        if (!res.ok) throw new Error("Could not update user access");
+        await loadDevices();
+        setUserAssignmentDevice(null);
       } finally {
         setAssigningId(null);
       }
@@ -973,6 +1037,15 @@ export default function DeviceManagerPage() {
           devices={devices}
           onClose={() => setEditingDevice(null)}
           onSuccess={handleDeviceUpdated}
+        />
+      )}
+      {userAssignmentDevice && (
+        <UserAssignmentModal
+          device={userAssignmentDevice}
+          users={users}
+          saving={assigningId === userAssignmentDevice.id}
+          onClose={() => setUserAssignmentDevice(null)}
+          onSave={(userIds) => handleAssignUsers(userAssignmentDevice.id, userIds)}
         />
       )}
 
@@ -1033,7 +1106,7 @@ export default function DeviceManagerPage() {
           <table className="w-full text-xs">
             <thead>
               <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.07)", color: "#4A8A87" }}>
-                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Owner", "Activation", "Status", "Actions"].map(h => (
+                {["IMEI", "Type", "Firmware", "Assigned Vehicle", "Organisation", "Users", "Activation", "Status", "Actions"].map(h => (
                   <th key={h} className="text-left px-4 py-3 font-semibold whitespace-nowrap">{h}</th>
                 ))}
               </tr>
@@ -1057,7 +1130,9 @@ export default function DeviceManagerPage() {
                     <td className="px-4 py-3" style={{ color: "#4A8A87" }}>{d.firmware}</td>
                     <td className="px-4 py-3 text-white">{d.vehicle}</td>
                     <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.orgName}</td>
-                    <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>{d.ownerName ?? "—"}</td>
+                    <td className="px-4 py-3" style={{ color: "#7BBBB8" }}>
+                      <span title={d.assignedUserNames.join(", ")}>{d.assignedUserNames.length ? `${d.assignedUserNames.slice(0, 2).join(", ")}${d.assignedUserNames.length > 2 ? ` +${d.assignedUserNames.length - 2}` : ""}` : "—"}</span>
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-flex items-center h-5 px-2 rounded text-[10px] font-bold gap-1${ac.pulse ? " animate-pulse" : ""}`}
@@ -1073,7 +1148,7 @@ export default function DeviceManagerPage() {
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         {/* Unassign — only when assigned */}
-                        {(d.orgId || d.ownerId) && (
+                        {(d.orgId || d.ownerId || d.assignedUserIds.length > 0) && (
                           <button
                             title="Unassign"
                             disabled={assigningId === d.id}
@@ -1093,16 +1168,14 @@ export default function DeviceManagerPage() {
                             {assignMode[d.id] === "user" ? "U" : "O"}
                           </button>
                           {assignMode[d.id] === "user" ? (
-                            <select
+                            <button
                               disabled={assigningId === d.id}
-                              defaultValue=""
-                              onChange={e => e.target.value && handleAssignUser(d.id, e.target.value)}
-                              className="h-7 rounded-lg text-[10px] px-1 outline-none disabled:opacity-40"
+                              onClick={() => setUserAssignmentDevice(d)}
+                              className="h-7 rounded-lg text-[10px] px-2 outline-none disabled:opacity-40"
                               style={{ background: "rgba(99,102,241,0.1)", border: "1px solid rgba(99,102,241,0.3)", color: "#818CF8" }}
-                              title="Assign to user">
-                              <option value="">→ User…</option>
-                              {users.map(u => <option key={u.id} value={u.id}>{u.displayName} ({u.email})</option>)}
-                            </select>
+                              title="Manage user access">
+                              Users ({d.assignedUserIds.length})
+                            </button>
                           ) : (
                             <select
                               disabled={assigningId === d.id}
