@@ -28,6 +28,7 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+import LiveStreamModal from "@/components/LiveStreamModal";
 import type { MarkerData } from "@/components/MapboxMap";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
 import { objectIconImage } from "@/lib/objectIcons";
@@ -820,6 +821,7 @@ export default function AllVehiclesPage() {
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [streamDevice, setStreamDevice] = useState<{ id: string; name: string } | null>(null);
   const [detailsDeviceId, setDetailsDeviceId] = useState<string | null>(null);
   const [mapStyle, setMapStyle] = useState("outdoors");
   const [showStyleMenu, setShowStyleMenu] = useState(false);
@@ -1122,6 +1124,7 @@ export default function AllVehiclesPage() {
 
   return (
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
+      {streamDevice && <LiveStreamModal deviceId={streamDevice.id} name={streamDevice.name} onClose={() => setStreamDevice(null)} />}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       {detailsDevice && (
         <VehicleDetailsModal
@@ -1288,7 +1291,7 @@ export default function AllVehiclesPage() {
                         <ActionIcon label="Immobilise asset" onClick={(event) => { event.stopPropagation(); void handleAssetControl(d, "immobilise"); }}>
                           <FiLock size={14} />
                         </ActionIcon>
-                        <ActionIcon label={dashcam ? `Open ${fieldText(dashcam.name, "dashcam")} · Device ID ${fieldText(dashcam.deviceId)}` : "No dashcam assigned"} onClick={dashcam ? (event) => { event.stopPropagation(); window.location.assign(`/app/cctv?deviceId=${encodeURIComponent(String(dashcam.id))}`); } : undefined}>
+                        <ActionIcon label={dashcam ? `Open ${fieldText(dashcam.name, "dashcam")} · Device ID ${fieldText(dashcam.deviceId)}` : "No dashcam assigned"} onClick={dashcam ? (event) => { event.stopPropagation(); setStreamDevice({ id: String(dashcam.id), name: fieldText(dashcam.name, shortName(d)) }); } : undefined}>
                           <FiCamera size={15} color={dashcam ? "#16a085" : undefined} />
                         </ActionIcon>
                       </div>
