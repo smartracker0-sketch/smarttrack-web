@@ -1,8 +1,9 @@
 "use client";
 
-import Hls from "hls.js";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FiCamera, FiCheckCircle, FiClock, FiFilm, FiMapPin, FiPlay, FiRefreshCw, FiSquare, FiWifi, FiWifiOff } from "react-icons/fi";
+import LiveStream from "@/components/DashcamLiveStream";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { FiCamera, FiCheckCircle, FiClock, FiFilm, FiMapPin, FiRefreshCw, FiWifi, FiWifiOff } from "react-icons/fi";
 
 type DashcamEvent = { id: string; eventTime: string; eventType: string; severity: string; latitude?: number | null; longitude?: number | null; speedKph?: number | null; clipUrl?: string | null; thumbnailUrl?: string | null };
 type Dashcam = { id: string; imei: string; name: string; vehiclePlate?: string | null; manufacturer?: string | null; model?: string | null; cameraId?: string | null; assignedVehicleId?: string | null; assignedVehicleName?: string | null; status: string; provisioned: boolean; online: boolean; lastSeenAt?: string | null; latestEvent?: DashcamEvent | null };
@@ -82,7 +83,8 @@ export default function CCTVPage() {
               <div className="mt-4 grid gap-3 sm:grid-cols-3"><Status icon={<FiCheckCircle />} label="Assignment" value={selected.status} /><Status icon={<FiClock />} label="Last camera event" value={dateTime(selected.lastSeenAt)} /><Status icon={<FiFilm />} label="Provisioning" value={selected.provisioned ? "Device details complete" : "Add camera ID, make and model"} /></div>
             </div>
 
-            <LiveStream camera={selected} />
+            <Link href={`/app/cctv/tools?deviceId=${encodeURIComponent(selected.id)}`} className="w-fit rounded-lg bg-teal-700 px-4 py-3 font-semibold text-white">Camera tools and recordings</Link>
+            <LiveStream key={selected.id} camera={selected} />
 
             <div className="rounded-md border border-[#d9e3e5] bg-white">
               <div className="border-b border-[#e3eaeb] px-4 py-3"><h2 className="text-sm font-bold">Camera events</h2></div>
@@ -96,86 +98,6 @@ export default function CCTVPage() {
       </div>
     </main>
   );
-}
-
-function LiveStream({ camera }: { camera: Dashcam }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const [channel, setChannel] = useState(1);
-  const [playing, setPlaying] = useState(false);
-  const [starting, setStarting] = useState(false);
-  const [error, setError] = useState("");
-  const source = `/api/dashcams/${camera.id}/stream/${channel}/live.m3u8`;
-
-  useEffect(() => {
-    if (!playing || !videoRef.current) return;
-    const video = videoRef.current;
-    if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = source;
-      void video.play().catch(() => undefined);
-      return () => { video.removeAttribute("src"); video.load(); };
-    }
-    if (!Hls.isSupported()) {
-      const timer = window.setTimeout(() => setError("Live HLS playback is not supported by this browser."), 0);
-      return () => window.clearTimeout(timer);
-    }
-    const hls = new Hls({ liveSyncDurationCount: 2, lowLatencyMode: true });
-    hls.loadSource(source);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, () => void video.play().catch(() => undefined));
-    hls.on(Hls.Events.ERROR, (_event, data) => {
-      if (data.fatal) setError("Waiting for video from the camera...");
-    });
-    return () => hls.destroy();
-  }, [playing, source]);
-
-  async function start() {
-    setStarting(true); setError("");
-    try {
-      const response = await fetch(`/api/dashcams/${camera.id}/stream/start?channel=${channel}`, { method: "POST" });
-      if (!response.ok) {
-        const body = await response.json().catch(() => null) as { message?: string } | null;
-        setError(body?.message ?? "Could not start the camera stream.");
-        return;
-      }
-
-      const deadline = Date.now() + 30_000;
-      while (Date.now() < deadline) {
-        const manifest = await fetch(`${source}?ready=${Date.now()}`, { cache: "no-store" });
-        if (manifest.ok && (await manifest.text()).includes("#EXTM3U")) {
-          setPlaying(true);
-          return;
-        }
-        await new Promise(resolve => window.setTimeout(resolve, 1_000));
-      }
-      setError("The camera accepted the request but did not send video. Check its JT1078 server and channel settings.");
-    } catch {
-      setError("The live-video gateway could not be reached.");
-    } finally {
-      setStarting(false);
-    }
-  }
-
-  async function stop() {
-    setPlaying(false);
-    await fetch(`/api/dashcams/${camera.id}/stream/stop?channel=${channel}`, { method: "POST" });
-  }
-
-  return <div className="overflow-hidden rounded-md border border-[#d9e3e5] bg-[#111718]">
-    <div className="flex items-center justify-between gap-3 border-b border-white/10 px-3 py-2 text-white">
-      <div className="flex items-center gap-2 text-xs font-semibold"><span className={`h-2 w-2 rounded-full ${playing ? "bg-red-500 animate-pulse" : "bg-slate-500"}`} />{playing ? "Live" : "Camera ready"}</div>
-      <div className="flex items-center gap-1" aria-label="Camera channel">
-        {[1, 2].map(value => <button key={value} type="button" onClick={() => { if (!playing) setChannel(value); }} disabled={playing} className={`h-8 rounded-md px-3 text-xs font-bold ${channel === value ? "bg-[#27837d]" : "bg-white/10"}`}>{value === 1 ? "Road" : "Cabin"}</button>)}
-      </div>
-    </div>
-    <div className="relative aspect-video">
-      <video ref={videoRef} controls playsInline muted className={`h-full w-full bg-black object-contain ${playing ? "block" : "hidden"}`} />
-      {!playing && <div className="grid h-full place-items-center text-center text-white"><div><FiCamera className="mx-auto mb-3 text-4xl text-[#55bcb4]" /><p className="font-semibold">{camera.online ? "Start live video" : "Camera is not connected"}</p><p className="mt-1 max-w-md text-xs text-[#a9b7b8]">The dashcam must be online on JT808 port 5015 before live video can start.</p></div></div>}
-    </div>
-    <div className="flex items-center justify-between gap-3 px-3 py-2">
-      <p className="text-xs text-amber-300">{error}</p>
-      {playing ? <button type="button" onClick={() => void stop()} className="ml-auto flex h-9 items-center gap-2 rounded-md bg-red-600 px-4 text-xs font-bold text-white"><FiSquare /> Stop</button> : <button type="button" onClick={() => void start()} disabled={starting || !camera.online} className="ml-auto flex h-9 items-center gap-2 rounded-md bg-[#27837d] px-4 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><FiPlay /> {starting ? "Starting..." : "Start live"}</button>}
-    </div>
-  </div>;
 }
 
 function Status({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {

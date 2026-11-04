@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { FiRefreshCw, FiX } from "react-icons/fi";
 import DashcamLiveStream, { type StreamCamera } from "@/components/DashcamLiveStream";
 
@@ -44,6 +45,7 @@ export default function LiveStreamModal({ deviceId, name, onClose }: { deviceId:
       {loading && <div role="status" className="grid aspect-video place-items-center rounded-lg bg-[#111718] text-sm text-white">Connecting to camera…</div>}
       {error && <div role="alert" className="rounded-lg border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900">{error}</div>}
       {camera && <DashcamLiveStream key={`${camera.id}-${refresh}`} camera={camera} autoStart />}
+      <Link href={`/app/cctv/tools?deviceId=${encodeURIComponent(deviceId)}`} className="mt-3 mr-3 inline-flex min-h-10 items-center rounded-md bg-teal-700 px-3 text-xs font-bold text-white">Camera tools and recordings</Link>
       {!loading && <button type="button" onClick={() => setRefresh(value => value + 1)} className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-md border border-slate-200 px-3 text-xs font-bold"><FiRefreshCw />Refresh camera status</button>}
     </section>
   </dialog>;
