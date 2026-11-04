@@ -3,7 +3,7 @@ export class LiveStreamSession {
   private tail: Promise<void> = Promise.resolve();
   private readonly request: (url: string, init: RequestInit) => Promise<Response>;
 
-  constructor(request: (url: string, init: RequestInit) => Promise<Response> = fetch) {
+  constructor(request: (url: string, init: RequestInit) => Promise<Response> = (url, init) => globalThis.fetch(url, init)) {
     this.request = request;
   }
 

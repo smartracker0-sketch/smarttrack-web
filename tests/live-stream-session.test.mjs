@@ -46,3 +46,25 @@ test('Rejected start reports the server message without marking the stream live'
   session.open('camera-1', 2, assert.fail, error => { message = error.message; }); await flush();
   assert.equal(message, 'Camera offline');
 });
+
+
+test('Default transport calls browser fetch with its global receiver for start and stop', async () => {
+  const originalFetch = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async function (url, init) {
+    assert.equal(this, globalThis, 'fetch requires the browser global receiver');
+    calls.push({ url, init });
+    return new Response(null, { status: 200 });
+  };
+  try {
+    let started = false;
+    const session = new LiveStreamSession();
+    const close = session.open('camera-browser', 1, () => { started = true; }, assert.fail);
+    await flush();
+    assert.equal(started, true);
+    close(); await flush();
+    assert.deepEqual(calls.map(call => call.url.split('/').at(-1)), ['start?channel=1', 'stop?channel=1']);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
