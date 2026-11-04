@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { FiAlertTriangle } from "react-icons/fi";
+import { FiAlertTriangle, FiBell } from "react-icons/fi";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -130,7 +130,7 @@ function parseStompMessages(frame: string) {
     .filter((alert): alert is AlertRow => Boolean(alert));
 }
 
-export default function AlertWatcher() {
+export default function AlertWatcher({ tracking = false }: { tracking?: boolean }) {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [settings, setSettings] = useState<Map<string, SettingRow>>(new Map());
   const [authenticated, setAuthenticated] = useState(true);
@@ -300,11 +300,12 @@ export default function AlertWatcher() {
   return (
     <Link
       href="/app/alerts"
-      className="relative flex h-8 w-8 items-center justify-center rounded-lg border"
+      className={tracking ? "relative flex h-10 w-10 items-center justify-center rounded-xl text-[#7f98aa] hover:bg-white" : "relative flex h-8 w-8 items-center justify-center rounded-lg border"}
       style={{ borderColor: "#e5e7eb" }}
-      title="Alerts"
+      title="Notifications"
+      aria-label="Notifications"
     >
-      <FiAlertTriangle size={15} style={{ color: "#EF4444" }} />
+      {tracking ? <FiBell size={24} /> : <FiAlertTriangle size={15} style={{ color: "#EF4444" }} />}
       {authenticated && activeCount > 0 && (
         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white" style={{ background: "#EF4444" }}>
           {activeCount > 99 ? "99+" : activeCount}

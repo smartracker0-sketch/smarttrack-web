@@ -124,6 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [driversOpen, setDriversOpen] = useState(pathname.startsWith('/app/drivers'));
   const [configurationsOpen, setConfigurationsOpen] = useState(pathname.startsWith('/app/settings'));
   const [sessionReady, setSessionReady] = useState(false);
+  const isLiveTracking = pathname === "/app/devices";
   const pageTitle = PAGE_TITLES.find(([path]) => pathname.startsWith(path))?.[1] ?? "Fleet Dashboard";
 
   useEffect(() => {
@@ -262,6 +263,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
         {/* Top bar */}
+        {isLiveTracking ? (
+          <header className="relative z-20 flex shrink-0 items-center gap-3 border-b border-[#e1e8ef] bg-[#f5f8fb] px-4 py-4 lg:px-6" style={{ minHeight: 76 }}>
+            <button type="button" onClick={() => setDrawerOpen(true)} aria-label="Open menu" className="absolute left-4 top-4 grid h-10 w-9 place-items-center rounded-lg bg-white text-[#61778c] md:hidden"><FiMenu size={20} /></button>
+            <div id="live-tracking-toolbar" className="flex min-w-0 flex-1">
+              {!sessionReady && <div className="text-sm font-semibold text-[#536987]">Live Track</div>}
+            </div>
+            <div className="absolute right-4 top-4 flex shrink-0 items-center gap-4 xl:static xl:gap-7">
+              {sessionReady && <AlertWatcher tracking />}
+              <Link href="/app/profile" aria-label="Your profile" className="grid h-11 w-11 place-items-center rounded-full border-4 border-white bg-[#07505a] text-white"><FiUser size={23} /></Link>
+            </div>
+          </header>
+        ) : (
         <header
           className="flex-shrink-0 flex items-center justify-between px-4 py-2.5 z-20 border-b"
           style={{ background: '#fff', borderColor: '#e5e7eb', minHeight: 52 }}
@@ -302,6 +315,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </Link>
           </div>
         </header>
+        )}
 
         {/* Page content */}
         <main className="flex-1 overflow-auto">

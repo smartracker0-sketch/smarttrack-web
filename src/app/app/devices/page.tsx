@@ -28,6 +28,7 @@ import {
   FiUser,
   FiX,
 } from "react-icons/fi";
+import LiveTrackingToolbar from "@/components/LiveTrackingToolbar";
 import LiveStreamModal from "@/components/LiveStreamModal";
 import type { MarkerData } from "@/components/MapboxMap";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
@@ -499,12 +500,14 @@ function LiveTabPanel({
   loading,
   devices,
   selectedDeviceId,
+  notificationPreset = { filter: "all", revision: 0 },
 }: {
   tab: string;
   rows: LiveTabRow[];
   loading: boolean;
   devices: DeviceRow[];
   selectedDeviceId?: string | null;
+  notificationPreset?: { filter: string; revision: number };
 }) {
   if (tab === "History") {
     return <HistoryPanel devices={devices} selectedDeviceId={selectedDeviceId} />;
@@ -515,7 +518,7 @@ function LiveTabPanel({
   }
 
   if (tab === "Notifications") {
-    return <NotificationsTable rows={rows} devices={devices} />;
+    return <NotificationsTable key={notificationPreset.revision} rows={rows} devices={devices} initialFilter={notificationPreset.filter} />;
   }
 
   if (rows.length === 0) {
@@ -707,9 +710,9 @@ function formatPlaybackDuration(seconds?: number) {
   return hours ? `${hours}h ${minutes}m` : `${minutes} min`;
 }
 
-function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: DeviceRow[] }) {
+function NotificationsTable({ rows, devices, initialFilter = "all" }: { rows: LiveTabRow[]; devices: DeviceRow[]; initialFilter?: string }) {
   const [search, setSearch] = useState("");
-  const [eventFilter, setEventFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState(initialFilter);
 
   const deviceNames = useMemo(() => {
     const names: Record<string, string> = {};
@@ -729,7 +732,7 @@ function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: De
     return rows.filter((row) => {
       const objectName = fieldText(row.deviceName, row.vehicleName, row.objectName, deviceNames[String(row.deviceId)], row.imei, row.deviceId);
       const event = compactAlertType(row.alertType);
-      const matchesEvent = eventFilter === "all" || event === eventFilter;
+      const matchesEvent = eventFilter === "all" || event === eventFilter || (eventFilter === "emergency" && ["sos", "panic"].includes(event.toLowerCase()));
       if (!matchesEvent) return false;
       if (!query) return true;
       return [objectName, event, row.message, row.severity]
@@ -756,6 +759,7 @@ function NotificationsTable({ rows, devices }: { rows: LiveTabRow[]; devices: De
           aria-label="Event filter"
         >
           <option value="all">Event Filter</option>
+          <option value="emergency">SOS / Panic</option>
           {eventTypes.map((event) => (
             <option key={event} value={event}>
               {event}
@@ -831,6 +835,7 @@ export default function AllVehiclesPage() {
   const [vehicleSearch, setVehicleSearch] = useState("");
   const [tabRows, setTabRows] = useState<LiveTabRow[]>([]);
   const [tabLoading, setTabLoading] = useState(false);
+  const [notificationPreset, setNotificationPreset] = useState({ filter: "all", revision: 0 });
 
   const notify = (msg: string) => setToast(msg);
 
@@ -1071,7 +1076,7 @@ export default function AllVehiclesPage() {
 
   const markers: MarkerData[] = useMemo(
     () =>
-      devices
+      visibleDevices
         .filter((d) => {
           const t = telemetry[d.id];
           return t?.latitude != null && t?.longitude != null;
@@ -1119,11 +1124,47 @@ export default function AllVehiclesPage() {
             `,
           };
         }),
-    [addresses, devices, telemetry]
+    [addresses, visibleDevices, telemetry]
   );
+
+  function downloadVehicles() {
+    const cell = (value: unknown) => {
+      const text = String(value ?? "");
+      const safe = /^[=+@\-\t\r]/.test(text) ? `'${text}` : text;
+      return `"${safe.replace(/"/g, '""')}"`;
+    };
+    const rows = visibleDevices.map((device) => {
+      const point = telemetry[device.id] ?? null;
+      return [shortName(device), device.vehiclePlate ?? device.plateNumber, device.imei, statKey(point), point?.speedKph, point?.latitude, point?.longitude, point?.receivedAt ?? point?.eventTime];
+    });
+    const csv = [["Vehicle", "Plate", "IMEI", "Status", "Speed (km/h)", "Latitude", "Longitude", "Last received"], ...rows].map((row) => row.map(cell).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8;" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `live-vehicles-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
   return (
     <div className="flex h-full min-h-[720px] overflow-hidden bg-[#eef3f7] text-[#061337]">
+      <LiveTrackingToolbar
+        search={vehicleSearch}
+        onSearch={(value) => { setVehicleSearch(value); setActivePanelTab("Objects"); setVehiclePanelOpen(true); }}
+        status={activeStatus}
+        onStatus={(value) => { setActiveStatus(value as typeof activeStatus); setActivePanelTab("Objects"); setVehiclePanelOpen(true); }}
+        panelOpen={vehiclePanelOpen}
+        onPanelOpen={setVehiclePanelOpen}
+        mapStyle={mapStyle}
+        styles={MAP_STYLES}
+        onMapStyle={setMapStyle}
+        onGeofences={() => { setActivePanelTab("Geofence"); setVehiclePanelOpen(true); }}
+        onDownload={downloadVehicles}
+        downloadDisabled={loading || visibleDevices.length === 0}
+        onSos={() => { setNotificationPreset((previous) => ({ filter: "emergency", revision: previous.revision + 1 })); setActivePanelTab("Notifications"); setVehiclePanelOpen(true); }}
+      />
       {streamDevice && <LiveStreamModal deviceId={streamDevice.id} name={streamDevice.name} onClose={() => setStreamDevice(null)} />}
       {toast && <Toast msg={toast} onDone={() => setToast(null)} />}
       {detailsDevice && (
@@ -1164,7 +1205,7 @@ export default function AllVehiclesPage() {
                 <button
                   key={tab}
                   type="button"
-                  onClick={() => setActivePanelTab(tab)}
+                  onClick={() => { setActivePanelTab(tab); if (tab === "Notifications") setNotificationPreset((previous) => ({ filter: "all", revision: previous.revision + 1 })); }}
                   className={`min-w-max px-3 py-2 transition ${
                     activePanelTab === tab ? "bg-white text-[#061337] shadow-sm" : "text-[#2b2f36] hover:bg-white/70"
                   }`}
@@ -1229,7 +1270,7 @@ export default function AllVehiclesPage() {
 
           <div className="min-h-0 flex-1 overflow-y-auto px-3 pb-3.5 pt-2 sm:px-3.5">
             {activePanelTab !== "Objects" ? (
-              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} devices={devices} selectedDeviceId={selected} />
+              <LiveTabPanel tab={activePanelTab} rows={tabRows} loading={tabLoading} devices={devices} selectedDeviceId={selected} notificationPreset={notificationPreset} />
             ) : loading ? (
               <div className="rounded-xl bg-white p-3.5 text-[11px] text-[#536987] shadow-[0_14px_32px_rgba(15,23,42,0.07)]">Loading vehicles...</div>
             ) : devices.length === 0 ? (
