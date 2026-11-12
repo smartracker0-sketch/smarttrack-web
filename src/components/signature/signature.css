@@ -1299,6 +1299,9 @@
 .st-band > :last-child {
   border-right: 0;
 }
+.st-band.st-band-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
 .st-band > .st-band-action {
   position: relative;
   align-content: center;
@@ -1310,6 +1313,10 @@
   font-size: 14px;
   font-weight: 600;
   line-height: 20px;
+  white-space: normal;
+  overflow: visible;
+  overflow-wrap: anywhere;
+  text-overflow: clip;
 }
 .st-band > .st-band-action span {
   font-size: 12.5px;
@@ -2891,6 +2898,13 @@ textarea.st-input {
   .st-band > div,
   .st-band > a {
     border-bottom: 1px solid var(--st-line);
+  }
+  .st-band-metrics > div {
+    padding: 12px;
+    border-bottom: 0;
+  }
+  .st-band-metrics > :nth-child(2) {
+    border-right: 1px solid var(--st-line);
   }
   .st-table-tools {
     overflow-x: auto;

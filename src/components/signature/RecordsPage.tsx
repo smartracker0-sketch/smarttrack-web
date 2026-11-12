@@ -8,7 +8,7 @@ import ReportWorkspace, { isReportWorkspace } from "./ReportWorkspace";
 import ResetHub from "./ResetHub";
 import ScheduledReports from "./ScheduledReports";
 import PageHeader from "./PageHeader";
-import { hubs, pageById } from "./navigation";
+import { pageById } from "./navigation";
 import Icon from "./Icon";
 import { read, rowsFrom, textOf, vehicleName, type DataRow } from "./data";
 import { useWorkspace } from "./WorkspaceContext";
@@ -262,7 +262,6 @@ export function HubOverview({ id }: { id: string }) {
       : page.hub === "maintenance"
         ? "Service records"
         : "Device checks";
-  const hub = hubs.find((item) => item.id === page.hub)!;
   const target = useful[page.hub!];
   const attention = rows
     .filter(
@@ -295,7 +294,7 @@ export function HubOverview({ id }: { id: string }) {
           {error}
         </div>
       )}
-      <div className="st-band">
+      <div className="st-band st-band-metrics">
         <div>
           <span>
             {page.hub === "video"
@@ -314,10 +313,6 @@ export function HubOverview({ id }: { id: string }) {
           <span>Other statuses</span>
           <strong>{loading ? "…" : totals.total - totals.active}</strong>
         </div>
-        <Link href={target.href}>
-          <span>{hub.title}</span>
-          <strong>{target.label}</strong>
-        </Link>
       </div>
       <div className="st-grid st-grid-2" style={{ marginTop: 16 }}>
         <section className="st-card">

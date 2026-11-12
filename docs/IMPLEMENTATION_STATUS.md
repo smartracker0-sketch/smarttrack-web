@@ -4,6 +4,7 @@ Updated 12 November 2026. This is the integrated repository build. The six HTML 
 
 Latest refinements:
 
+- Hub overview summary rows contain three metrics; redundant final destination cards are removed. The records panel retains its View all link. Remaining dashboard action cards use wrapping 14px titles instead of metric typography.
 - Dashboard Customize now offers White / Blue sidebar colours. White is the default and Reset choice; Save applies and remembers the selection, and Cancel leaves it unchanged. White remains white with dark content, with readable active/hover/focus states, phone drawer and rail. Sidebar links and collapsed icons are stronger. Existing explicit colour selections remain remembered.
 - Login has a centered brand/title/form hierarchy, balanced spacing, a quieter request-access footer and a structured three-item marketing panel. The production logo is compressed from 202 KB PNG to 13 KB WebP and loads directly/eagerly.
 - Vehicle Groups now uses the shared PageHeader, searchable/sortable/paged table, native validated Add/Edit dialog and active state. Shared tables have three-dot row menus for details, available edit/delete actions and device/map links. Menus use a viewport-aware portal and keyboard navigation. Page-specific legacy tables still require continued conversion.

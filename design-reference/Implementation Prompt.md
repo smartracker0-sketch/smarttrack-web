@@ -311,6 +311,9 @@ be described as a complete full build.
 
 ## 12 November refinements
 
+- Hub overview summary rows contain three metrics. Omit the redundant destination card;
+  retain the records panel's View all link. Dashboard action-card titles use 14px text
+  that wraps within the tile, independently of numeric KPI typography.
 - Dashboard Customize includes Sidebar colour: Blue / White. Default and Reset use White;
   Save applies and remembers the selection; Cancel leaves it unchanged. White remains
   white with either content theme. Both styles support active/hover/focus, collapsed rail
