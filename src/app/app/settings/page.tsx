@@ -1,53 +1,101 @@
+"use client";
 import Link from "next/link";
+import { useState, type FormEvent } from "react";
+import PageHeader from "@/components/signature/PageHeader";
+import { pageById } from "@/components/signature/navigation";
+import { useWorkspace } from "@/components/signature/WorkspaceContext";
+import Icon from "@/components/signature/Icon";
 
 export default function SettingsPage() {
+  const { theme, setTheme } = useWorkspace();
+  const [draft, setDraft] = useState(theme),
+    [message, setMessage] = useState("");
+  const dirty = draft !== theme;
+  function save(event: FormEvent) {
+    event.preventDefault();
+    setTheme(draft);
+    setMessage("Appearance saved on this browser.");
+  }
   return (
-    <div className="grid gap-6">
-      <div className="rounded-3xl border border-divider bg-surface p-8">
-        <div className="text-xs font-bold tracking-widest uppercase" style={{ color: '#1A7A75' }}>Preferences</div>
-        <h1 className="mt-2 text-2xl font-extrabold tracking-tight" style={{ color: '#0D4A47' }}>Settings</h1>
-        <p className="mt-4 text-sm leading-6 text-muted">
-          Theme, language, units, and account preferences for the web console.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <Section title="Account" items={[{ label: "Profile", href: "/app/profile" }]} />
-        <Section title="Fleet setup" items={[{ label: "Device inventory", href: "/app/devices-mgmt" }]} />
-        <Section title="Organisation" items={[{ label: "Brand settings", href: "/app/whitelabel" }]} />
-      </div>
-    </div>
-  );
-}
-
-function Section({
-  title,
-  items,
-}: {
-  title: string;
-  items: { label: string; href?: string }[];
-}) {
-  return (
-    <div className="rounded-3xl border border-divider bg-surface p-6">
-      <div className="text-sm font-extrabold" style={{ color: '#0D4A47' }}>{title}</div>
-      <div className="mt-4 grid gap-2">
-        {items.map((i) =>
-          i.href ? (
-            <Link
-              key={i.label}
-              href={i.href}
-              className="rounded-2xl border p-4 text-sm font-semibold transition-colors hover:bg-[#E8F4F3]"
-              style={{ borderColor: '#C5E0DE', color: '#0D4A47', background: '#fff' }}
-            >
-              {i.label}
-            </Link>
-          ) : (
-            <div key={i.label} className="rounded-2xl border p-4 text-sm" style={{ borderColor: '#C5E0DE', color: '#B2D4D2', background: '#fff' }}>
-              {i.label}
+    <>
+      <PageHeader page={pageById("settings")!} tenant={false} />
+      <div className="st-settings-layout">
+        <nav className="st-settings-nav" aria-label="Settings sections">
+          <a href="#appearance" aria-current="location">
+            <Icon name="settings" />
+            Appearance
+          </a>
+          <Link href="/app/profile">
+            <Icon name="users" />
+            Profile
+          </Link>
+          <Link href="/app/whitelabel">
+            <Icon name="building" />
+            Brand settings
+          </Link>
+          <Link href="/app/support">
+            <Icon name="help" />
+            Support
+          </Link>
+        </nav>
+        <form onSubmit={save}>
+          <section className="st-card" id="appearance">
+            <div className="st-card-head">
+              <h2>Appearance</h2>
+              <span className="st-muted">This browser</span>
             </div>
-          ),
-        )}
+            <div className="st-card-body st-form-stack">
+              <label className="st-field">
+                <span>Colour theme</span>
+                <select
+                  className="st-input"
+                  value={draft}
+                  onChange={(event) => {
+                    setDraft(event.target.value as "light" | "dark");
+                    setMessage("");
+                  }}
+                >
+                  <option value="light">Light</option>
+                  <option value="dark">Dark</option>
+                </select>
+                <small>
+                  Applies to the dashboard, map and workspace controls.
+                </small>
+              </label>
+              <p className="st-muted">
+                Manage your name and account details in{" "}
+                <Link className="st-link" href="/app/profile">
+                  Profile
+                </Link>
+                .
+              </p>
+            </div>
+          </section>
+          <div className="st-savebar">
+            <span role="status">
+              {message || (dirty ? "Unsaved changes" : "No pending changes")}
+            </span>
+            <button
+              className="st-button"
+              type="button"
+              disabled={!dirty}
+              onClick={() => {
+                setDraft(theme);
+                setMessage("");
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              className="st-button st-primary"
+              type="submit"
+              disabled={!dirty}
+            >
+              Save changes
+            </button>
+          </div>
+        </form>
       </div>
-    </div>
+    </>
   );
 }

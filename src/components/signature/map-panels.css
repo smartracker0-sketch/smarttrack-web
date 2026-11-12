@@ -1,0 +1,441 @@
+.st-map-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 54px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--st-line);
+  flex: none;
+}
+.st-map-error {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 650;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 24px);
+  padding: 8px 12px;
+  border: 1px solid var(--st-red);
+  border-radius: 8px;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  font-size: 13px;
+  box-shadow: var(--st-float);
+}
+.st-map-panel-header > svg {
+  width: 17px;
+  height: 17px;
+  color: var(--st-blue);
+}
+.st-map-panel-header > h1 {
+  flex: 1;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.st-panel-collapse {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  padding: 0;
+  background: var(--st-surface);
+  color: var(--st-secondary);
+  border: 1px solid var(--st-border);
+  border-radius: 8px;
+}
+.st-panel-collapse svg {
+  width: 17px;
+  height: 17px;
+}
+.st-panel-collapse:hover {
+  background: var(--st-soft);
+}
+.st-live-list {
+  width: 332px;
+  bottom: auto;
+  max-height: calc(100% - 24px);
+  border-radius: 14px;
+}
+.st-live-list-head {
+  gap: 0;
+  padding: 0;
+  background: var(--st-surface);
+}
+.st-live-list-title {
+  min-height: 54px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--st-line);
+  justify-content: flex-start;
+  gap: 8px;
+}
+.st-live-list-title > svg {
+  color: var(--st-blue);
+  width: 17px;
+  height: 17px;
+}
+.st-live-list-title > button:not(.st-panel-collapse) {
+  gap: 6px;
+}
+.st-live-list-title > button > strong {
+  font-size: 14px;
+}
+.st-live-list-title > div {
+  margin-left: auto;
+}
+.st-live-list-title > .st-fleet-collapse {
+  justify-content: center;
+  color: var(--st-blue);
+  border-radius: 8px;
+}
+.st-live-list-title > .st-fleet-collapse:hover {
+  background: var(--st-blue-soft);
+}
+.st-fleet-collapse svg {
+  width: 17px;
+  height: 17px;
+}
+.st-live-list-head > .st-search {
+  margin: 12px 12px 8px;
+  border-radius: 10px;
+  background: var(--st-soft);
+}
+.st-live-list-head > .st-live-status {
+  padding: 0 10px 6px;
+}
+.st-live-status strong {
+  font-size: 15px;
+}
+.st-live-status > button > span {
+  font-size: 10.5px;
+}
+.st-live-rows {
+  flex: 0 1 auto;
+  max-height: min(440px, calc(100dvh - 244px));
+  scrollbar-width: thin;
+}
+.st-live-list.is-empty .st-live-rows {
+  flex: none;
+}
+.st-live-list.is-empty .st-empty {
+  padding: 20px 16px;
+  font-size: 13px;
+  line-height: 20px;
+}
+.st-vehicle-row {
+  padding: 8px 12px;
+  gap: 4px;
+}
+.st-vehicle-row-top {
+  grid-template-columns: minmax(0, 1fr) 82px 62px;
+}
+.st-vehicle-row-top .st-status {
+  font-size: 10px;
+  padding: 1px 5px;
+}
+.st-live-reopen {
+  position: absolute;
+  z-index: 510;
+  left: 12px;
+  top: 12px;
+  height: 36px;
+  width: 36px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+  background: var(--st-surface);
+  color: var(--st-blue);
+  box-shadow: var(--st-float);
+}
+.st-map-tools,
+.st-map-tools.is-list-closed {
+  left: auto;
+  right: 88px;
+  top: 12px;
+  display: flex;
+  gap: 8px;
+}
+.st-map-tool-group {
+  display: flex;
+  width: auto;
+}
+.st-map-style-menu {
+  left: auto;
+  right: 0;
+  top: 42px;
+}
+.st-live-filter .st-popover {
+  left: calc(var(--st-nav) + 92px);
+  top: 112px;
+}
+.st-history-layout {
+  height: 100%;
+  min-height: 0;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+.st-history-map {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.st-history-panel {
+  position: absolute;
+  z-index: 500;
+  left: 12px;
+  top: 12px;
+  width: 332px;
+  max-height: calc(100% - 190px);
+  display: flex;
+  flex-direction: column;
+  background: var(--st-surface);
+  color: var(--st-ink);
+  border: 1px solid var(--st-line);
+  border-radius: 14px;
+  box-shadow: var(--st-float);
+  overflow: auto;
+  scrollbar-width: thin;
+}
+.st-history-panel.is-collapsed {
+  display: none;
+}
+.st-history-reopen {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 510;
+  box-shadow: var(--st-float);
+}
+.st-history-search {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  min-width: 0;
+  flex: none;
+  background: var(--st-surface);
+}
+.st-history-search .st-field {
+  gap: 5px;
+}
+.st-history-search .st-field > span:first-child {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--st-secondary);
+}
+.st-history-search .st-input {
+  height: 36px;
+  width: 100%;
+  min-width: 0;
+  font-size: 12.5px;
+  border-radius: 9px;
+}
+.st-history-search input[type="datetime-local"] {
+  min-width: 0;
+  max-width: 100%;
+  padding: 0 9px;
+}
+.st-history-date {
+  min-width: 0;
+}
+.st-history-date > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+.st-history-date > summary::-webkit-details-marker {
+  display: none;
+}
+.st-history-date > summary > span {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12px;
+}
+.st-history-date > summary > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--st-muted);
+}
+.st-history-date-fields {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 12px;
+  background: var(--st-soft);
+  border: 1px solid var(--st-line);
+  border-radius: 10px;
+}
+.st-history-advanced-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: var(--st-blue);
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 0;
+}
+.st-history-advanced-toggle svg {
+  width: 14px;
+  height: 14px;
+}
+.st-history-advanced-toggle svg.is-open {
+  transform: rotate(180deg);
+}
+.st-history-advanced {
+  display: grid;
+  gap: 12px;
+}
+.st-history-vehicle-results {
+  display: grid;
+  max-height: 140px;
+  overflow-y: auto;
+  border: 1px solid var(--st-line);
+  border-radius: 8px;
+}
+.st-history-vehicle-results > button {
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--st-line);
+  background: var(--st-surface);
+  text-align: left;
+  color: var(--st-ink);
+  font-size: 12px;
+}
+.st-history-vehicle-results > button:hover {
+  background: var(--st-blue-soft);
+}
+.st-history-vehicle-results small {
+  display: block;
+  color: var(--st-muted);
+}
+.st-history-search-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 40px;
+  gap: 8px;
+}
+.st-history-search-actions .st-button {
+  min-width: 0;
+  padding: 0 10px;
+}
+.st-history-clear {
+  justify-self: center;
+  font-size: 12px;
+}
+.st-history-panel > .flex-1 {
+  flex: 0 1 auto;
+}
+.st-history-map > section {
+  left: 12px;
+  right: 12px;
+}
+.st-live-drawer:has(.st-history-search) {
+  bottom: auto;
+  max-height: calc(100% - 24px);
+}
+.st-live-drawer:has(.st-history-search) .st-live-drawer-body {
+  padding: 0;
+}
+.st-live-drawer:has(.st-history-search)
+  .st-live-drawer-body
+  > div
+  > :not(.st-history-search) {
+  margin: 0 12px 12px;
+}
+@media (max-width: 1100px) {
+  .st-top-actions {
+    gap: 6px;
+  }
+}
+@media (max-width: 860px) {
+  .st-mobile-brand {
+    display: flex;
+  }
+  .st-sidebar-brand {
+    display: none;
+  }
+  .st-topbar {
+    gap: 8px;
+  }
+  .st-top-actions {
+    gap: 4px;
+  }
+  .st-theme-pill {
+    padding: 2px;
+    gap: 0;
+  }
+  .st-theme-pill > button {
+    width: 25px;
+    height: 27px;
+  }
+  .st-notifications > summary {
+    width: 30px;
+    height: 34px;
+  }
+  .st-notification-feed {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: 64px;
+    width: auto;
+    max-width: none;
+  }
+  .st-live-list {
+    width: auto;
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: 8px;
+    height: 48%;
+    max-height: 48%;
+  }
+  .st-live-list.is-empty {
+    height: auto;
+  }
+  .st-live-rows {
+    flex: 1;
+    max-height: none;
+  }
+  .st-live-list-head > .st-search {
+    margin-top: 8px;
+  }
+  .st-map-tools,
+  .st-map-tools.is-list-closed {
+    top: 12px;
+    right: 80px;
+    max-width: calc(100% - 136px);
+  }
+  .st-map-tools .st-map-tool-group:nth-child(n + 2) {
+    display: none;
+  }
+  .st-history-panel {
+    left: 8px;
+    right: 8px;
+    top: 8px;
+    width: auto;
+    max-height: calc(100% - 180px);
+  }
+  .st-live-drawer:has(.st-history-search) {
+    bottom: 8px;
+    top: auto;
+    height: auto;
+    max-height: 75%;
+  }
+  .st-map-panel-header > .st-icon-button {
+    width: 30px;
+    height: 30px;
+  }
+}

@@ -1,4 +1,5 @@
 "use client";
+import { realtimeTicket } from "@/lib/realtimeTicket";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { FiSearch, FiPlus, FiX, FiTrash2, FiSlash, FiCheckCircle, FiRefreshCw, FiChevronDown, FiChevronUp, FiZap, FiEdit2 } from "react-icons/fi";
@@ -876,6 +877,8 @@ export default function DeviceManagerPage() {
 
   // WebSocket subscription — live activation status updates
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_LIVE_WEBSOCKET_ENABLED === "false") return;
+    let closed = false;
     const apiBase = process.env.NEXT_PUBLIC_API_BASE_URL;
     const wsBase = apiBase
       ? apiBase.replace(/^http/, "ws")
@@ -886,9 +889,12 @@ export default function DeviceManagerPage() {
     try {
       sock = new WebSocket(wsUrl);
       wsRef.current = sock;
-      sock.onopen = () => {
-        // STOMP CONNECT frame
-        sock.send("CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0");
+      sock.onopen = async () => {
+        try {
+          const ticket = await realtimeTicket(true);
+          if (!closed && sock.readyState === WebSocket.OPEN)
+            sock.send(`CONNECT\naccept-version:1.2\nheart-beat:0,0\nauthorization:Bearer ${ticket}\n\n\0`);
+        } catch { sock.close(); }
       };
       sock.onmessage = (evt) => {
         stompBuffer += evt.data;
@@ -914,7 +920,7 @@ export default function DeviceManagerPage() {
       };
       sock.onerror = () => { /* silently ignore if WS unavailable */ };
     } catch { /* silently ignore */ }
-    return () => { wsRef.current?.close(); };
+    return () => { closed = true; wsRef.current?.close(); };
   }, []);
 
   const handleCheckNow = useCallback(async (imei: string) => {

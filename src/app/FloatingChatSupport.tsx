@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { FiMessageCircle, FiMail, FiPhone, FiX } from "react-icons/fi";
 
-const hiddenPrefixes = ["/admin", "/app"];
+const hiddenPrefixes = ["/admin", "/app", "/login"];
 
 export default function FloatingChatSupport() {
   const pathname = usePathname();

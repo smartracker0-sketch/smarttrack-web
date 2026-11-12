@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
+import PageHeader from "@/components/signature/PageHeader";
+import { pageById } from "@/components/signature/navigation";
+import { escapeHtml } from "@/components/signature/data";
 import {
   FiChevronDown,
   FiChevronLeft,
@@ -19,7 +22,9 @@ import {
   FiX,
 } from "react-icons/fi";
 
-const MapboxMap = dynamic(() => import("@/components/MapboxMap"), { ssr: false });
+const MapboxMap = dynamic(() => import("@/components/MapboxMap"), {
+  ssr: false,
+});
 
 type Geofence = {
   id: string;
@@ -58,8 +63,11 @@ function formatRadius(radius?: number | null) {
 function geofenceAddress(zone: Geofence) {
   if (zone.address) return zone.address;
   if (zone.location) return zone.location;
-  if (zone.centerLat && zone.centerLng) return `${zone.centerLat.toFixed(4)}, ${zone.centerLng.toFixed(4)}`;
-  return zone.geofenceType === "POLYGON" ? "Custom polygon boundary" : "Circle boundary";
+  if (zone.centerLat && zone.centerLng)
+    return `${zone.centerLat.toFixed(4)}, ${zone.centerLng.toFixed(4)}`;
+  return zone.geofenceType === "POLYGON"
+    ? "Custom polygon boundary"
+    : "Circle boundary";
 }
 
 export default function GeofencesPage() {
@@ -120,7 +128,8 @@ export default function GeofencesPage() {
         !needle ||
         zone.name.toLowerCase().includes(needle) ||
         geofenceAddress(zone).toLowerCase().includes(needle);
-      const matchesCategory = category === "all" || zone.geofenceType === category;
+      const matchesCategory =
+        category === "all" || zone.geofenceType === category;
       const matchesStatus =
         status === "all" ||
         (status === "active" && zone.active) ||
@@ -132,7 +141,7 @@ export default function GeofencesPage() {
   const activeSelectedId =
     selectedId && filteredZones.some((zone) => zone.id === selectedId)
       ? selectedId
-      : filteredZones[0]?.id ?? null;
+      : (filteredZones[0]?.id ?? null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -151,11 +160,19 @@ export default function GeofencesPage() {
         form.geometryJson ||
         JSON.stringify({
           type: form.geofenceType === "POLYGON" ? "Polygon" : "Circle",
-          coordinates: [parseFloat(form.centerLng || "0"), parseFloat(form.centerLat || "0")],
+          coordinates: [
+            parseFloat(form.centerLng || "0"),
+            parseFloat(form.centerLat || "0"),
+          ],
           radius: parseFloat(form.radiusM || "500"),
           location: form.locationQuery || undefined,
           category: form.category || undefined,
-          tags: form.tags ? form.tags.split(",").map((tag) => tag.trim()).filter(Boolean) : undefined,
+          tags: form.tags
+            ? form.tags
+                .split(",")
+                .map((tag) => tag.trim())
+                .filter(Boolean)
+            : undefined,
         }),
     };
     const res = await fetch("/api/geofences", {
@@ -165,7 +182,10 @@ export default function GeofencesPage() {
     });
     const saved = res.ok ? await res.json().catch(() => null) : null;
     if (saved?.id) {
-      setZones((prev) => [saved, ...prev.filter((zone) => zone.id !== saved.id)]);
+      setZones((prev) => [
+        saved,
+        ...prev.filter((zone) => zone.id !== saved.id),
+      ]);
       setSelectedId(saved.id);
       setQuery("");
       setCategory("all");
@@ -173,7 +193,18 @@ export default function GeofencesPage() {
     }
     setSaving(false);
     setShowForm(false);
-    setForm({ name: "", geofenceType: "CIRCLE", severity: "LOW", centerLat: "", centerLng: "", radiusM: "", geometryJson: "", locationQuery: "", category: "", tags: "" });
+    setForm({
+      name: "",
+      geofenceType: "CIRCLE",
+      severity: "LOW",
+      centerLat: "",
+      centerLng: "",
+      radiusM: "",
+      geometryJson: "",
+      locationQuery: "",
+      category: "",
+      tags: "",
+    });
     await load();
   }
 
@@ -193,9 +224,19 @@ export default function GeofencesPage() {
 
   return (
     <div className="flex h-full min-h-[720px] flex-col overflow-hidden bg-[#f3f4f6] text-[#111827]">
-      <header className="flex h-[58px] flex-shrink-0 items-center border-b border-[#e5e7eb] bg-[#ffffff] px-5">
-        <h1 className="text-xl font-bold tracking-tight" style={{ color: "#166534" }}>Geofences</h1>
-      </header>
+      <PageHeader
+        page={pageById("geofences")!}
+        tenant={false}
+        actions={
+          <button
+            className="st-button st-primary"
+            onClick={() => setShowForm(true)}
+          >
+            <FiPlus />
+            Add geofence
+          </button>
+        }
+      />
 
       <section className="flex flex-shrink-0 flex-wrap items-center gap-3 border-b border-[#e5e7eb] bg-[#ffffff] px-5 py-4">
         <label className="flex h-11 min-w-[170px] items-center gap-2 rounded-lg border border-[#e5e7eb] bg-white px-3 text-sm text-[#6b7280] shadow-sm">
@@ -236,25 +277,29 @@ export default function GeofencesPage() {
 
         <div className="ml-auto flex items-center gap-3">
           <div className="hidden items-center rounded-lg border border-[#e5e7eb] bg-white p-1 shadow-sm sm:flex">
-            <button className="grid h-8 w-8 place-items-center rounded-md bg-[#dcfce7] text-[#166534]" aria-label="Map view">
+            <button
+              className="grid h-8 w-8 place-items-center rounded-md bg-[#dcfce7] text-[#166534]"
+              aria-label="Map view"
+            >
               <FiMap className="h-4 w-4" />
             </button>
-            <button className="grid h-8 w-8 place-items-center rounded-md text-[#9ca3af]" aria-label="List view">
+            <button
+              className="grid h-8 w-8 place-items-center rounded-md text-[#9ca3af]"
+              aria-label="List view"
+            >
               <FiList className="h-4 w-4" />
             </button>
           </div>
-          <button className="grid h-11 w-11 place-items-center rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] shadow-sm" aria-label="Filter">
+          <button
+            className="grid h-11 w-11 place-items-center rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] shadow-sm"
+            aria-label="Filter"
+          >
             <FiFilter className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setShowForm(true)}
-            className="flex h-11 items-center gap-2 rounded-full px-5 text-sm font-bold text-white shadow-sm transition hover:brightness-110"
-            style={{ background: "#166534" }}
+            className="grid h-11 w-11 place-items-center rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] shadow-sm"
+            aria-label="More"
           >
-            <FiPlus className="h-4 w-4" />
-            Add Geofence
-          </button>
-          <button className="grid h-11 w-11 place-items-center rounded-lg border border-[#e5e7eb] bg-white text-[#6b7280] shadow-sm" aria-label="More">
             <FiMoreHorizontal className="h-5 w-5" />
           </button>
         </div>
@@ -263,14 +308,20 @@ export default function GeofencesPage() {
       <main className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[310px_minmax(0,1fr)]">
         <aside className="flex min-h-0 flex-col border-r border-[#e5e7eb] bg-[#f9fafb]">
           <div className="px-5 pb-2 pt-3 text-[11px] font-medium text-[#6b7280]">
-            Last updated 21st Jul 2026, 12:49 AM
+            {loading
+              ? "Loading geofences…"
+              : `${filteredZones.length} geofences`}
           </div>
 
           <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 pb-4">
             {loading ? (
-              <div className="rounded-lg border border-[#e5e7eb] bg-white p-4 text-sm text-[#6b7280]">Loading geofences...</div>
+              <div className="rounded-lg border border-[#e5e7eb] bg-white p-4 text-sm text-[#6b7280]">
+                Loading geofences...
+              </div>
             ) : filteredZones.length === 0 ? (
-              <div className="rounded-lg border border-[#e5e7eb] bg-white p-4 text-sm text-[#6b7280]">No matching geofences found.</div>
+              <div className="rounded-lg border border-[#e5e7eb] bg-white p-4 text-sm text-[#6b7280]">
+                No matching geofences found.
+              </div>
             ) : (
               filteredZones.map((zone) => (
                 <div
@@ -285,13 +336,19 @@ export default function GeofencesPage() {
                     }
                   }}
                   className={`w-full rounded-lg border bg-white p-3 text-left shadow-sm transition ${
-                    activeSelectedId === zone.id ? "border-[#166534]" : "border-[#e5e7eb] hover:border-[#15803d]"
+                    activeSelectedId === zone.id
+                      ? "border-[#166534]"
+                      : "border-[#e5e7eb] hover:border-[#15803d]"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="truncate text-sm font-bold text-[#111827]">{zone.name}</div>
-                      <div className="mt-2 text-[11px] font-medium text-[#6b7280]">{formatDate(zone.updatedAt)}</div>
+                      <div className="truncate text-sm font-bold text-[#111827]">
+                        {zone.name}
+                      </div>
+                      <div className="mt-2 text-[11px] font-medium text-[#6b7280]">
+                        {formatDate(zone.updatedAt)}
+                      </div>
                     </div>
                     {zones.length > 0 && (
                       <button
@@ -307,21 +364,29 @@ export default function GeofencesPage() {
                     )}
                   </div>
 
-                  <div className="mt-3 truncate text-xs font-medium text-[#4b5563]">{geofenceAddress(zone)}</div>
+                  <div className="mt-3 truncate text-xs font-medium text-[#4b5563]">
+                    {geofenceAddress(zone)}
+                  </div>
 
                   <div className="mt-3 grid grid-cols-2 overflow-hidden rounded-md bg-[#f3f4f6]">
                     <div className="flex min-h-[42px] items-center gap-2 px-2 text-[11px] text-[#6b7280]">
                       <FiSquare className="h-4 w-4 text-[#166534]" />
-                      <span className="leading-tight">{formatRadius(zone.radiusM)}</span>
+                      <span className="leading-tight">
+                        {formatRadius(zone.radiusM)}
+                      </span>
                     </div>
                     <div className="flex min-h-[42px] items-center gap-2 bg-white/60 px-2 text-[11px] text-[#6b7280]">
                       <FiTruck className="h-4 w-4 text-[#166534]" />
-                      <span className="leading-tight">{zone.vehicleCount ?? 0} Vehicles Currently</span>
+                      <span className="leading-tight">
+                        {zone.vehicleCount ?? 0} Vehicles Currently
+                      </span>
                     </div>
                   </div>
 
                   <div className="mt-3 flex items-center justify-between">
-                    <span className={`rounded-full px-2 py-1 text-[10px] font-bold ${zone.active ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#6b7280]"}`}>
+                    <span
+                      className={`rounded-full px-2 py-1 text-[10px] font-bold ${zone.active ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#6b7280]"}`}
+                    >
                       {zone.active ? "Active" : "Inactive"}
                     </span>
                     {zones.length > 0 && (
@@ -351,11 +416,15 @@ export default function GeofencesPage() {
 
           <div className="flex h-14 flex-shrink-0 items-center justify-between border-t border-[#e5e7eb] bg-[#f9fafb] px-5 text-sm text-[#6b7280]">
             <span>
-              Showing 1 - {filteredZones.length || 0} of {filteredZones.length || 0}
+              {filteredZones.length
+                ? `Showing 1–${filteredZones.length} of ${filteredZones.length}`
+                : "No matching geofences"}
             </span>
             <div className="flex items-center gap-3">
               <FiChevronLeft className="h-4 w-4 text-[#9ca3af]" />
-              <span className="grid h-8 w-8 place-items-center rounded-lg bg-white font-bold text-[#111827] shadow-sm">1</span>
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-white font-bold text-[#111827] shadow-sm">
+                1
+              </span>
               <span>/ 1</span>
               <FiChevronRight className="h-4 w-4 text-[#9ca3af]" />
             </div>
@@ -364,13 +433,13 @@ export default function GeofencesPage() {
 
         <section className="relative min-h-[520px] overflow-hidden">
           <MapboxMap
-            markers={filteredZones.map(zone => ({
+            markers={filteredZones.map((zone) => ({
               id: zone.id,
               lat: zone.centerLat ?? 6.5244,
               lng: zone.centerLng ?? 3.3792,
               color: zone.active ? "#166534" : "#9ca3af",
               pulsing: zone.active,
-              popupHtml: `<div style="color:#e5e7eb;padding:8px 0;"><strong style="color:#fff;font-size:14px;">${zone.name}</strong><br/><span style="font-size:12px;">${geofenceAddress(zone)}</span><br/><span style="font-size:11px;color:#9ca3af;">${formatDate(zone.updatedAt)}</span></div>`,
+              popupHtml: `<div class="tp-popup-inner"><strong>${escapeHtml(zone.name)}</strong><p>${escapeHtml(geofenceAddress(zone))}</p><small>${escapeHtml(formatDate(zone.updatedAt))}</small></div>`,
             }))}
             flyToId={activeSelectedId ?? ""}
             center={[3.3792, 6.5244]}
@@ -381,42 +450,66 @@ export default function GeofencesPage() {
           />
 
           {showForm && (
-            <form onSubmit={handleSubmit} className="absolute right-5 top-5 z-30 max-h-[calc(100%-2.5rem)] w-[min(520px,calc(100%-2.5rem))] overflow-y-auto rounded-lg border border-[#e5e7eb] bg-white shadow-2xl">
+            <form
+              onSubmit={handleSubmit}
+              className="absolute right-5 top-5 z-30 max-h-[calc(100%-2.5rem)] w-[min(520px,calc(100%-2.5rem))] overflow-y-auto rounded-lg border border-[#e5e7eb] bg-white shadow-2xl"
+            >
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[#e5e7eb] bg-white px-5 py-4">
                 <div>
-                  <div className="text-lg font-extrabold text-[#111827]">Add Geofence</div>
+                  <div className="text-lg font-extrabold text-[#111827]">
+                    Add Geofence
+                  </div>
                 </div>
-                <button type="button" onClick={() => setShowForm(false)} className="grid h-8 w-8 place-items-center rounded-md text-[#6b7280] hover:bg-[#f3f4f6]">
+                <button
+                  type="button"
+                  onClick={() => setShowForm(false)}
+                  className="grid h-8 w-8 place-items-center rounded-md text-[#6b7280] hover:bg-[#f3f4f6]"
+                >
                   <FiX className="h-4 w-4" />
                 </button>
               </div>
 
               <div className="space-y-5 px-5 py-5">
                 <section>
-                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Basic Information</h2>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">
+                    Basic Information
+                  </h2>
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Name*</span>
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                      Name*
+                    </span>
                     <input
                       required
                       placeholder="Enter Geofence Name"
                       value={form.name}
-                      onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, name: e.target.value }))
+                      }
                       className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
                     />
                   </label>
                 </section>
 
                 <section>
-                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Geofence Details</h2>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">
+                    Geofence Details
+                  </h2>
 
                   <label className="block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Find Location</span>
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                      Find Location
+                    </span>
                     <div className="flex h-11 items-center gap-2 rounded-lg border border-[#d1d5db] px-3">
                       <FiSearch className="h-4 w-4 text-[#9ca3af]" />
                       <input
                         placeholder="Search By Location"
                         value={form.locationQuery}
-                        onChange={(e) => setForm((f) => ({ ...f, locationQuery: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({
+                            ...f,
+                            locationQuery: e.target.value,
+                          }))
+                        }
                         className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[#9ca3af]"
                       />
                     </div>
@@ -424,22 +517,30 @@ export default function GeofencesPage() {
 
                   <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Latitude</span>
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                        Latitude
+                      </span>
                       <input
                         inputMode="decimal"
                         placeholder="Enter Latitude"
                         value={form.centerLat}
-                        onChange={(e) => setForm((f) => ({ ...f, centerLat: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, centerLat: e.target.value }))
+                        }
                         className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Longitude</span>
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                        Longitude
+                      </span>
                       <input
                         inputMode="decimal"
                         placeholder="Enter Longitude"
                         value={form.centerLng}
-                        onChange={(e) => setForm((f) => ({ ...f, centerLng: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, centerLng: e.target.value }))
+                        }
                         className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
                       />
                     </label>
@@ -449,17 +550,24 @@ export default function GeofencesPage() {
                     <FiMapPin className="h-4 w-4 text-[#166534]" />
                     <span className="font-bold text-[#111827]">Location :</span>
                     <span className="min-w-0 truncate">
-                      {form.locationQuery || (form.centerLat && form.centerLng ? `${form.centerLat}, ${form.centerLng}` : "-")}
+                      {form.locationQuery ||
+                        (form.centerLat && form.centerLng
+                          ? `${form.centerLat}, ${form.centerLng}`
+                          : "-")}
                     </span>
                   </div>
                 </section>
 
                 <section>
-                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">Shape</h2>
+                  <h2 className="mb-3 text-sm font-extrabold text-[#111827]">
+                    Shape
+                  </h2>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, geofenceType: "CIRCLE" }))}
+                      onClick={() =>
+                        setForm((f) => ({ ...f, geofenceType: "CIRCLE" }))
+                      }
                       className={`flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-bold transition ${
                         form.geofenceType === "CIRCLE"
                           ? "border-[#166534] bg-[#dcfce7] text-[#166534]"
@@ -471,7 +579,9 @@ export default function GeofencesPage() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setForm((f) => ({ ...f, geofenceType: "POLYGON" }))}
+                      onClick={() =>
+                        setForm((f) => ({ ...f, geofenceType: "POLYGON" }))
+                      }
                       className={`flex h-11 items-center justify-center gap-2 rounded-lg border text-sm font-bold transition ${
                         form.geofenceType === "POLYGON"
                           ? "border-[#166534] bg-[#dcfce7] text-[#166534]"
@@ -484,25 +594,35 @@ export default function GeofencesPage() {
                   </div>
 
                   <label className="mt-3 block">
-                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">Radius (In Meters)</span>
+                    <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                      Radius (In Meters)
+                    </span>
                     <input
                       inputMode="numeric"
                       placeholder="Enter Radius"
                       value={form.radiusM}
-                      onChange={(e) => setForm((f) => ({ ...f, radiusM: e.target.value }))}
+                      onChange={(e) =>
+                        setForm((f) => ({ ...f, radiusM: e.target.value }))
+                      }
                       className="h-11 w-full rounded-lg border border-[#d1d5db] px-3 text-sm outline-none placeholder:text-[#9ca3af] focus:border-[#166534]"
                     />
-                    <span className="mt-1.5 block text-xs font-medium text-[#6b7280]">Default Radius : 500 meters</span>
+                    <span className="mt-1.5 block text-xs font-medium text-[#6b7280]">
+                      Default Radius : 500 meters
+                    </span>
                   </label>
                 </section>
 
                 <section>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Geofence Category</span>
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                        Geofence Category
+                      </span>
                       <select
                         value={form.category}
-                        onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, category: e.target.value }))
+                        }
                         className="h-11 w-full rounded-lg border border-[#d1d5db] bg-white px-3 text-sm text-[#374151] outline-none focus:border-[#166534]"
                       >
                         <option value="">Geofence Category</option>
@@ -513,10 +633,14 @@ export default function GeofencesPage() {
                       </select>
                     </label>
                     <label className="block">
-                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">Tags</span>
+                      <span className="mb-1.5 block text-xs font-bold text-[#374151]">
+                        Tags
+                      </span>
                       <select
                         value={form.tags}
-                        onChange={(e) => setForm((f) => ({ ...f, tags: e.target.value }))}
+                        onChange={(e) =>
+                          setForm((f) => ({ ...f, tags: e.target.value }))
+                        }
                         className="h-11 w-full rounded-lg border border-[#d1d5db] bg-white px-3 text-sm text-[#374151] outline-none focus:border-[#166534]"
                       >
                         <option value="">Select Tags</option>
@@ -537,7 +661,12 @@ export default function GeofencesPage() {
                   >
                     Cancel
                   </button>
-                  <button type="submit" disabled={saving} className="h-10 rounded-lg px-5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60" style={{ background: "#166534" }}>
+                  <button
+                    type="submit"
+                    disabled={saving}
+                    className="h-10 rounded-lg px-5 text-sm font-bold text-white transition hover:brightness-110 disabled:opacity-60"
+                    style={{ background: "#166534" }}
+                  >
                     {saving ? "Saving..." : "Save Geofence"}
                   </button>
                 </div>

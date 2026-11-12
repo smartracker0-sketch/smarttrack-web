@@ -1,6 +1,8 @@
 @import "tailwindcss";
 
 :root {
+  --font-geist-sans: var(--font-inter), Inter, ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
   /* ── Smart Tracker Telematics — Official Brand Palette ── */
   --brand-primary:   #0D4A47;
   --brand-dark:      #0A3835;

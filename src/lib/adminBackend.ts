@@ -14,11 +14,9 @@ function getAdminJwtFromRequest(req: Request): string | null {
     const [name, ...rest] = part.trim().split("=");
     if (name.trim() === "stt_admin_token") {
       const val = rest.join("=");
-      console.log("[adminBackend] stt_admin_token length:", val.length);
       return val;
     }
   }
-  console.log("[adminBackend] stt_admin_token not found");
   return null;
 }
 
@@ -62,7 +60,6 @@ export async function proxyAdmin(
   }
 
   const data = await upstream.json().catch(() => null);
-  console.log("[adminBackend] upstream status:", upstream.status, "path:", path, "body:", JSON.stringify(data)?.slice(0, 200));
   return NextResponse.json(data, { status: upstream.ok ? successStatus : upstream.status });
 }
 

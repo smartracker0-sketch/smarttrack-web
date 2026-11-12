@@ -1,0 +1,352 @@
+.page {
+  display: grid;
+  grid-template-columns: 1.04fr 1fr;
+  min-height: 100dvh;
+  background: #f8fafc;
+  color: #0f172a;
+  font-family: var(--font-inter), Inter, system-ui, sans-serif;
+}
+.marketing {
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 100dvh;
+  padding: 40px 56px 24px;
+  overflow: hidden;
+  color: #fff;
+  background: #0b1c44;
+}
+.wallpaper {
+  object-fit: cover;
+  object-position: 47% center;
+  z-index: -2;
+}
+.marketing::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(8, 24, 56, 0.86),
+    rgba(8, 24, 56, 0.45) 30%,
+    rgba(8, 24, 56, 0.92) 62%,
+    #091a3d 100%
+  );
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  color: inherit;
+  text-decoration: none;
+  font-size: 24px;
+}
+.marketingCopy {
+  margin: 64px 0 32px;
+  max-width: 470px;
+}
+.marketingCopy h2 {
+  font-size: clamp(32px, 3.4vw, 48px);
+  line-height: 1.12;
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  margin: 0 0 20px;
+  text-wrap: balance;
+}
+.marketingCopy p {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #e0e7f4;
+  max-width: 390px;
+  margin: 0;
+}
+.features {
+  display: grid;
+  gap: 16px;
+  padding: 0;
+  margin: 28px 0 0;
+  list-style: none;
+}
+.features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12.5px;
+  color: #e0e7f4;
+}
+.features svg {
+  width: 20px;
+  height: 20px;
+  stroke-width: 1.75;
+  flex: none;
+  color: #b9d3ff;
+}
+.features li > span { display: grid; gap: 4px; }
+.features strong { font-size: 13px; font-weight: 600; color: #fff; }
+.features small { font-size: 12px; line-height: 1.5; color: #c7d4ea; }
+.credit {
+  color: #c0cce2;
+  font-size: 10px;
+  text-decoration: none;
+  width: fit-content;
+}
+.credit:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+.formSide {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+  padding: 40px 32px 28px;
+}
+.card {
+  width: 100%;
+  max-width: 440px;
+  padding: 28px 36px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px #0f172a05;
+}
+.card .brand {
+  color: #0f172a;
+  display: flex;
+  margin: 0 auto 20px;
+  font-size: 22px;
+}
+.card h1 {
+  margin: 0 0 4px;
+  font-size: 24px;
+  line-height: 1.25;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+  text-align: center;
+}
+.intro {
+  margin: 0 0 20px;
+  color: #64748b;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: center;
+}
+.form {
+  display: grid;
+  gap: 20px;
+}
+.field {
+  display: grid;
+  gap: 8px;
+}
+.field label {
+  color: #334155;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.labelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.field a,
+.access a {
+  color: #1d4ed8;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: none;
+}
+.field a:hover,
+.access a:hover {
+  text-decoration: underline;
+}
+.inputWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.inputWrap > svg {
+  position: absolute;
+  left: 12px;
+  width: 17px;
+  height: 17px;
+  color: #64748b;
+  pointer-events: none;
+}
+.inputWrap input {
+  width: 100%;
+  height: 44px;
+  padding: 0 40px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  transition:
+    border-color 0.15s,
+    box-shadow 0.15s;
+}
+.inputWrap input::placeholder {
+  color: #64748b;
+}
+.inputWrap input:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 3px #1d4ed81a;
+}
+.inputWrap input[aria-invalid="true"] {
+  border-color: #dc2626;
+}
+.passwordToggle {
+  position: absolute;
+  right: 5px;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #64748b;
+  cursor: pointer;
+}
+.passwordToggle:hover {
+  color: #0f172a;
+  background: #f1f5f9;
+}
+.passwordToggle svg {
+  width: 17px;
+  height: 17px;
+}
+.submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  margin-top: 4px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 8px;
+  background: #1d4ed8;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.submit:hover {
+  background: #1e40af;
+}
+.submit:disabled {
+  opacity: 0.65;
+  cursor: wait;
+}
+.submit svg {
+  width: 17px;
+  height: 17px;
+}
+.error {
+  display: flex;
+  gap: 8px;
+  margin: 0 0 20px;
+  padding: 12px;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background: #fef2f2;
+  color: #991b1b;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.error svg {
+  width: 17px;
+  height: 17px;
+  margin-top: 1px;
+  flex: none;
+}
+.access {
+  margin: 24px 0 0;
+  border-top: 1px solid #e2e8f0;
+  padding-top: 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+.copyright {
+  margin: 0;
+  max-width: 440px;
+  color: #64748b;
+  text-align: center;
+  font-size: 11px;
+  line-height: 1.6;
+}
+.page a:focus-visible,
+.page button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 3px;
+}
+.spinner {
+  animation: turn 0.8s linear infinite;
+}
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
+@media (max-width: 1100px) {
+  .marketing {
+    padding: 32px;
+  }
+  .card {
+    padding: 28px;
+  }
+  .formSide {
+    padding: 32px 24px;
+  }
+}
+@media (max-width: 860px) {
+  .page {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .marketing {
+    display: none;
+  }
+  .formSide {
+    min-height: 100dvh;
+    padding: 32px 20px 24px;
+    gap: 24px;
+  }
+  .card {
+    padding: 28px;
+  }
+}
+@media (max-width: 390px) {
+  .formSide {
+    padding: 24px 16px;
+  }
+  .card {
+    padding: 24px 20px;
+  }
+  .brand {
+    font-size: 22px;
+  }
+  .labelRow {
+    gap: 8px;
+  }
+}
