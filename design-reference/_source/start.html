@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smart Tracker</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Cdefs%3E%3ClinearGradient id=%27g%27 x1=%270%27 y1=%270%27 x2=%271%27 y2=%271%27%3E%3Cstop offset=%270%27 stop-color=%27%232563eb%27/%3E%3Cstop offset=%271%27 stop-color=%27%2338bdf8%27/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27url(%23g)%27/%3E%3Cpath d=%27M16 6 23 25 16 21 9 25z%27 fill=%27%23fff%27/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f2f5fa;--surface:#fff;--ink:#0f172a;--ink-2:#475569;--ink-3:#64748b;--line:#e3e8f0;--primary:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#060c1d;--surface:#0c1530;--ink:#e6ebf5;--ink-2:#a8b3c9;--ink-3:#8492ab;--line:#1a2646;--primary:#6d97ff}}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.55 'Inter',system-ui,sans-serif;color:var(--ink);background:var(--bg)}
+header{background:linear-gradient(120deg,#0a0f1e 0%,#0f1f4d 50%,#1e3a8a 100%);color:#fff;padding:40px 24px 96px}
+.wrap{max-width:1180px;margin:0 auto}
+.brand{display:flex;align-items:center;gap:11px;font-weight:700;font-size:17px;margin-bottom:26px}
+.brand i{width:32px;height:32px;border-radius:9px;background:linear-gradient(135deg,#2563eb,#38bdf8);display:grid;place-items:center}
+.brand i svg{width:17px;height:17px;fill:#fff}
+.brand span{color:#8fc8ff;font-weight:600}
+h1{margin:0 0 10px;font-size:32px;letter-spacing:-.025em}
+header p{margin:0;color:#c3cfee;max-width:700px;font-size:15px}
+main{margin-top:-64px;padding:0 24px 60px}
+.sig{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);background:var(--surface);border:2px solid #2563eb;border-radius:18px;overflow:hidden;text-decoration:none;color:inherit;box-shadow:0 18px 44px rgba(15,23,42,.18);margin-bottom:22px;transition:transform .15s}
+.sig:hover{transform:translateY(-3px)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;text-decoration:none;color:inherit;transition:transform .15s,box-shadow .15s;box-shadow:0 1px 2px rgba(15,23,42,.05),0 4px 14px rgba(15,23,42,.05)}
+.card:hover{transform:translateY(-3px);box-shadow:0 14px 34px rgba(15,23,42,.14)}
+.thumb{height:170px;background:#e9eef6;position:relative;overflow:hidden;border-bottom:1px solid var(--line)}
+.sig .thumb{height:auto;min-height:300px;border-bottom:0;border-right:1px solid var(--line)}
+.thumb div{position:absolute}
+.mp{background:linear-gradient(135deg,#efe6cf 0%,#f3ead6 55%,#cfe2f1 56%,#bcd6ee 100%)}
+.mp::after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(35deg,transparent 0 26px,rgba(214,120,80,.35) 26px 28px),repeating-linear-gradient(-55deg,transparent 0 40px,rgba(255,255,255,.7) 40px 42px)}
+.pn{background:#fff;border-radius:8px;box-shadow:0 3px 10px rgba(0,0,0,.15);z-index:3}
+.row{position:absolute;left:8%;right:8%;height:6px;border-radius:3px;background:#e3e9f3}
+.dot{width:10px;height:10px;border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);z-index:2}
+.ring{width:22px;height:22px;border-radius:50%;background:conic-gradient(#1fa45b 0 50%,#e5484d 50% 75%,#f2a20c 75%);z-index:2}
+.ring::after{content:"";position:absolute;inset:4px;border-radius:50%;background:#fff}
+.body{padding:18px 20px 20px;display:grid;gap:10px;align-content:start;flex:1}
+.sig .body{padding:26px 28px}
+.tag{display:inline-flex;align-items:center;gap:6px;width:max-content;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#fff;background:#1d4ed8;padding:4px 10px;border-radius:999px}
+.num{font-size:12px;font-weight:700;color:var(--primary);letter-spacing:.06em}
+.body h2{margin:0;font-size:19px;letter-spacing:-.015em}
+.sig .body h2{font-size:26px}
+.body p{margin:0;color:var(--ink-2)}
+ul{margin:0;padding-left:18px;color:var(--ink-2);display:grid;gap:4px}
+.open{margin-top:auto;display:inline-flex;align-items:center;gap:6px;font-weight:600;color:var(--primary)}
+.sec{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.07em;color:var(--ink-3);margin:6px 2px 12px}
+.notes{margin-top:26px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:22px 24px}
+.notes h3{margin:0 0 12px;font-size:16px}
+.notes ul{grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr));gap:8px 28px}
+@media (max-width:800px){.sig{grid-template-columns:1fr}.sig .thumb{min-height:220px;border-right:0;border-bottom:1px solid var(--line)}}
+</style>
+</head>
+<body>
+<header><div class="wrap">
+  <div class="brand"><i><svg viewBox="0 0 24 24"><path d="M12 2.5 19.5 20.5 12 16.2 4.5 20.5z"/></svg></i>Smart <span>Tracker</span></div>
+  <h1>Design directions</h1>
+  <p>Signature is the chosen direction. The five alternatives share its pages, live map and data, and differ only in navigation and frame. Every file is clickable with sample data, light and dark mode, and search on Ctrl K.</p>
+</div></header>
+<main><div class="wrap">
+
+<a class="sig" href="01%20Signature.html"><div class="thumb">
+  <div style="left:0;top:0;bottom:0;width:15%;background:radial-gradient(120% 38% at 0% 0%,rgba(37,99,235,.5),transparent 70%),linear-gradient(180deg,#132f86,#0a1338)"></div>
+  <div style="left:2%;top:58px;width:11%;height:14px;border-radius:5px;background:rgba(0,0,0,.32)"></div>
+  <div style="left:15%;right:0;top:0;height:30px;background:#fff;border-bottom:1px solid #dbe2ee;z-index:4"></div>
+  <div class="mp" style="left:15%;right:0;top:30px;bottom:0"></div>
+  <div class="pn" style="left:17%;top:40px;bottom:10px;width:27%"><div class="row" style="top:12px"></div><div class="row" style="top:30px;height:22px;background:#eef3fd"></div><div class="row" style="top:62px"></div><div class="row" style="top:78px"></div><div class="row" style="top:94px"></div><div class="row" style="top:110px"></div><div class="row" style="top:126px"></div></div>
+  <div class="pn" style="left:46%;right:7%;bottom:10px;height:30%"></div>
+  <div style="right:1.5%;top:40px;width:4%;height:46%;background:#fff;border-radius:6px;box-shadow:0 2px 8px rgba(0,0,0,.15);z-index:3"></div>
+  <div style="right:1.5%;top:58%;width:4%;height:9%;background:#1d4ed8;border-radius:4px;z-index:4"></div>
+  <div class="ring" style="left:58%;top:24%"></div><div class="dot" style="left:70%;top:40%;background:#1fa45b"></div><div class="dot" style="left:52%;top:46%;background:#e5484d"></div><div class="dot" style="left:80%;top:30%;background:#f2a20c"></div>
+</div><div class="body"><span class="tag">★ Signature · chosen</span><h2>01 Signature</h2>
+<p>Deep-blue sidebar with hub panels, a clean top bar, and one live map behind every map page.</p>
+<ul><li>Sidebar 200 px with an icon rail; hubs open a section panel that starts on Overview</li><li>Short hub panels with up to seven items; related pages stay in tabs below the title</li><li>Live map: vehicle list, hover card, Exit focus, tool dock, details / remote control / fuel / trips drawers, nearby vehicles and POIs, full replay</li><li>Dashboard: fleet motion, fuel snapshot, status pies, driver, telemetry and video bands, fleet km, activity, mileage table; Arrange and Customize</li><li>Tables: vehicle reg first, KPI filters, bulk bar, import / export, row detail dialog, numbered paging, scrollbars top and bottom</li></ul>
+<span class="open">Open Signature →</span></div></a>
+
+<div class="sec">Alternatives</div>
+<div class="grid">
+<a class="card" href="02%20Meridian.html"><div class="thumb"><div style="left:0;right:0;top:0;height:22px;background:#0b1a3f;z-index:4"></div><div style="left:70px;top:19px;width:34px;height:3px;background:#38bdf8;z-index:5"></div><div class="mp" style="left:0;right:0;top:22px;bottom:12px"></div><div class="pn" style="left:3%;top:30px;bottom:18px;width:30%"></div><div style="left:0;right:0;bottom:0;height:12px;background:#fff;border-top:1px solid #dbe2ee"></div><div class="ring" style="left:58%;top:40%"></div></div>
+<div class="body"><span class="num">02</span><h2>Meridian</h2><p>Navy tab bar across the top and a status bar with connection and local time.</p><span class="open">Open →</span></div></a>
+<a class="card" href="03%20Harbor.html"><div class="thumb"><div style="left:0;top:0;bottom:0;width:20%;background:linear-gradient(180deg,#0a1433,#1a3480);z-index:4"></div><div style="left:20%;right:0;top:0;height:20px;background:#fff;border-bottom:1px solid #dbe2ee;z-index:4"></div><div class="mp" style="left:20%;right:0;top:20px;bottom:0"></div><div class="pn" style="left:23%;top:28px;bottom:8px;width:28%"></div><div class="dot" style="left:66%;top:48%;background:#1fa45b"></div></div>
+<div class="body"><span class="num">03</span><h2>Harbor</h2><p>Gradient sidebar with sections opening inline, cyan indicator bar.</p><span class="open">Open →</span></div></a>
+<a class="card" href="04%20Orbit.html"><div class="thumb" style="background:#0a1736"><div style="left:6px;top:36px;width:14px;height:14px;border-radius:4px;background:#2563eb"></div><div class="mp" style="left:28px;right:6px;top:22px;bottom:6px;border-radius:10px"></div><div class="pn" style="left:34px;top:28px;bottom:12px;width:28%"></div><div class="dot" style="left:66%;top:50%;background:#1fa45b"></div></div>
+<div class="body"><span class="num">04</span><h2>Orbit</h2><p>Navy frame around a rounded canvas; selected item is a solid blue icon tile.</p><span class="open">Open →</span></div></a>
+<a class="card" href="05%20Atlas.html"><div class="thumb"><div style="left:0;right:0;top:0;height:20px;background:linear-gradient(100deg,#0a0f1e,#1e3a8a);z-index:4"></div><div style="left:0;right:0;top:20px;height:14px;background:#fff;border-bottom:1px solid #dbe2ee;z-index:4"></div><div class="mp" style="left:0;right:0;top:34px;bottom:0"></div><div class="pn" style="left:3%;top:42px;bottom:8px;width:30%"></div><div class="ring" style="left:62%;top:52%"></div></div>
+<div class="body"><span class="num">05</span><h2>Atlas</h2><p>Two-row header: brand bar with wide search, then a white module strip.</p><span class="open">Open →</span></div></a>
+<a class="card" href="06%20Horizon.html"><div class="thumb"><div style="left:0;right:0;top:0;height:22px;background:#0f1f4d;z-index:4"></div><div style="left:80px;top:5px;width:36px;height:12px;border-radius:8px;background:#fff;z-index:5"></div><div class="mp" style="left:0;right:0;top:22px;bottom:0"></div><div class="pn" style="left:3%;top:30px;bottom:8px;width:30%"></div><div class="dot" style="left:60%;top:46%;background:#1fa45b"></div></div>
+<div class="body"><span class="num">06</span><h2>Horizon</h2><p>Pill tabs in a navy header for a lighter, dispatch-screen feel.</p><span class="open">Open →</span></div></a>
+</div>
+
+<section class="notes"><h3>Shared by every design</h3>
+<ul>
+<li>Deep-blue Signature sidebar: #132F86 → #0F2160 → #0A1338; brand #1D4ED8</li>
+<li>Browser tab shows "Smart Tracker" with the Smart Tracker logo</li>
+<li>Map pages float their panel over one shared map; the map never reloads between them</li>
+<li>Dashboard is its own full page, with a colour per category in every pie chart</li>
+<li>No add shortcut on the map panel; records are added on their own pages</li>
+<li>Motion status: Moving, Idle, Stopped, Inactive; vehicle rows keep aligned status and age columns</li>
+<li>Table tabs, segments and page size are remembered per page; Enter opens a focused row</li>
+<li>Settings have separate sections, validation, and a sticky Save changes / Cancel bar</li>
+<li>Support below Settings: searchable answers and a request form; contacts come from root-superadmin Platform settings</li>
+<li>Compact, unboxed headers have page icons and clearly selected tabs; the tenant picker keeps All tenants separate</li>
+<li>Mileage scrolls inside a short 220px area with no visible scrollbar; AI opens in a compact panel</li>
+<li>Overview panels show operational follow-ups; Video events include evidence previews</li>
+<li>Ctrl/⌘+K opens search; Esc closes the top layer; Space toggles replay</li>
+</ul></section>
+<section class="notes"><h3>Repository build · 12 November 2026</h3>
+<p>Hub overview summaries use three metrics with no duplicate destination tile. Use the records panel's View all link. Dashboard action-card titles stay compact and wrap inside their card.</p>
+<p>The Signature build is in progress in the web app. White is the default sidebar colour; Customize can save Blue or White. Login uses a compact email/password form, compressed production logo, local Inter and marketing photo. Vehicle Groups, States, Drivers and six fleet ledgers use shared tables and three-dot actions. Profile saves the display name. AI requests and conversations follow tenant scope. Fuel/Video policies, Maintenance attention, root access controls, Reports/Maintenance scheduling and the Trips drawer are connected. Production build and 100 selected backend tests pass. Other workflows remain unfinished. These six files remain sample-data design references. See <a href="Implementation%20Prompt.md">Implementation Prompt.md</a> for requirements, build status and verification limits.</p>
+</section>
+</div></main>
+</body>
+</html>

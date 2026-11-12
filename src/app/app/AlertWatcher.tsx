@@ -1,8 +1,9 @@
 "use client";
+import { realtimeTicket } from "@/lib/realtimeTicket";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { FiAlertTriangle, FiBell } from "react-icons/fi";
+import { FiBell } from "react-icons/fi";
 import { redirectIfUnauthorized } from "@/lib/clientSession";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -71,24 +72,41 @@ const TYPE_TO_SETTING: Record<string, string> = {
 };
 
 function alertId(alert: AlertRow) {
-  return String(alert.id ?? `${alert.alertType ?? alert.type}-${alert.alertTime ?? alert.receivedAt ?? ""}`);
+  return String(
+    alert.id ??
+      `${alert.alertType ?? alert.type}-${alert.alertTime ?? alert.receivedAt ?? ""}`,
+  );
 }
 
 function alertSettingKey(alert: AlertRow) {
-  return TYPE_TO_SETTING[String(alert.alertType ?? alert.type ?? "").trim().toUpperCase()] ?? "";
+  return (
+    TYPE_TO_SETTING[
+      String(alert.alertType ?? alert.type ?? "")
+        .trim()
+        .toUpperCase()
+    ] ?? ""
+  );
 }
 
 function shouldNotify(alert: AlertRow, settings: Map<string, SettingRow>) {
   const key = alertSettingKey(alert);
   const setting = key ? settings.get(key) : null;
   if (!setting) return true;
-  if (setting.webNotifications === false && setting.sound !== true) return false;
-  const vehicleIds = Array.isArray(setting.vehicleIds) ? setting.vehicleIds.map(String) : [];
-  return vehicleIds.length === 0 || vehicleIds.includes(String(alert.deviceId ?? ""));
+  if (setting.webNotifications === false && setting.sound !== true)
+    return false;
+  const vehicleIds = Array.isArray(setting.vehicleIds)
+    ? setting.vehicleIds.map(String)
+    : [];
+  return (
+    vehicleIds.length === 0 || vehicleIds.includes(String(alert.deviceId ?? ""))
+  );
 }
 
 function playAlertSound() {
-  const AudioContextClass = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+  const AudioContextClass =
+    window.AudioContext ||
+    (window as typeof window & { webkitAudioContext?: typeof AudioContext })
+      .webkitAudioContext;
   if (!AudioContextClass) return;
   const ctx = new AudioContextClass();
   const oscillator = ctx.createOscillator();
@@ -130,7 +148,11 @@ function parseStompMessages(frame: string) {
     .filter((alert): alert is AlertRow => Boolean(alert));
 }
 
-export default function AlertWatcher({ tracking = false }: { tracking?: boolean }) {
+export default function AlertWatcher({
+  tracking = false,
+}: {
+  tracking?: boolean;
+}) {
   const [alerts, setAlerts] = useState<AlertRow[]>([]);
   const [settings, setSettings] = useState<Map<string, SettingRow>>(new Map());
   const [authenticated, setAuthenticated] = useState(true);
@@ -139,6 +161,18 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
   const readyRef = useRef(false);
   const audioUnlockedRef = useRef(false);
   const authBlockedRef = useRef(false);
+  const menuRef = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const outside = (event: PointerEvent) => {
+      if (
+        menuRef.current?.open &&
+        !menuRef.current.contains(event.target as Node)
+      )
+        menuRef.current.open = false;
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, []);
 
   useEffect(() => {
     settingsRef.current = settings;
@@ -184,7 +218,9 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
 
     async function loadSettings() {
       if (authBlockedRef.current) return;
-      const res = await fetch("/api/telemetry/alert-settings", { cache: "no-store" }).catch(() => null);
+      const res = await fetch("/api/telemetry/alert-settings", {
+        cache: "no-store",
+      }).catch(() => null);
       if (res?.status === 401) {
         authBlockedRef.current = true;
         setAuthenticated(false);
@@ -215,7 +251,10 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
 
     async function loadAlerts() {
       if (authBlockedRef.current) return;
-      const res = await fetch("/api/telemetry?type=alerts&unacknowledgedOnly=false", { cache: "no-store" }).catch(() => null);
+      const res = await fetch(
+        "/api/telemetry?type=alerts&unacknowledgedOnly=false",
+        { cache: "no-store" },
+      ).catch(() => null);
       if (res?.status === 401) {
         authBlockedRef.current = true;
         setAuthenticated(false);
@@ -224,7 +263,9 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
       }
       if (!res?.ok || cancelled) return;
       const data = await res.json().catch(() => []);
-      const list: AlertRow[] = Array.isArray(data) ? data : data?.content ?? [];
+      const list: AlertRow[] = Array.isArray(data)
+        ? data
+        : (data?.content ?? []);
       setAlerts(list);
 
       const currentIds = new Set(list.map(alertId));
@@ -234,7 +275,9 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
         return;
       }
 
-      const fresh = list.filter((alert) => !seenRef.current.has(alertId(alert)));
+      const fresh = list.filter(
+        (alert) => !seenRef.current.has(alertId(alert)),
+      );
       seenRef.current = currentIds;
       fresh.slice(0, 3).forEach(notifyAlert);
     }
@@ -248,6 +291,7 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
   }, [notifyAlert]);
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_LIVE_WEBSOCKET_ENABLED === "false") return;
     let closed = false;
     let reconnectId: number | null = null;
     let socket: WebSocket | null = null;
@@ -262,19 +306,30 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
         return;
       }
 
-      socket.onopen = () => {
-        socket?.send("CONNECT\naccept-version:1.2\nheart-beat:0,0\n\n\0");
+      socket.onopen = async () => {
+        try {
+          const ticket = await realtimeTicket();
+          if (!closed && socket?.readyState === WebSocket.OPEN)
+            socket.send(`CONNECT\naccept-version:1.2\nheart-beat:0,0\nauthorization:Bearer ${ticket}\n\n\0`);
+        } catch { socket?.close(); }
       };
       socket.onmessage = (event) => {
         stompBuffer += String(event.data);
         if (stompBuffer.includes("CONNECTED")) {
-          socket?.send("SUBSCRIBE\nid:sub-user-alerts\ndestination:/topic/alerts\n\n\0");
+          socket?.send(
+            "SUBSCRIBE\nid:sub-user-alerts\ndestination:/topic/alerts\n\n\0",
+          );
         }
         parseStompMessages(stompBuffer).forEach((alert) => {
           const id = alertId(alert);
           if (seenRef.current.has(id)) return;
           seenRef.current.add(id);
-          setAlerts((current) => [alert, ...current.filter((item) => alertId(item) !== id)].slice(0, 200));
+          setAlerts((current) =>
+            [alert, ...current.filter((item) => alertId(item) !== id)].slice(
+              0,
+              200,
+            ),
+          );
           notifyAlert(alert);
         });
         if (stompBuffer.includes("\0")) stompBuffer = "";
@@ -295,22 +350,70 @@ export default function AlertWatcher({ tracking = false }: { tracking?: boolean 
     };
   }, [notifyAlert]);
 
-  const activeCount = useMemo(() => alerts.filter((alert) => !alert.acknowledged).length, [alerts]);
+  const activeCount = useMemo(
+    () => alerts.filter((alert) => !alert.acknowledged).length,
+    [alerts],
+  );
 
   return (
-    <Link
-      href="/app/alerts"
-      className={tracking ? "relative flex h-10 w-10 items-center justify-center rounded-xl text-[#7f98aa] hover:bg-white" : "relative flex h-8 w-8 items-center justify-center rounded-lg border"}
-      style={{ borderColor: "#e5e7eb" }}
-      title="Notifications"
-      aria-label="Notifications"
+    <details
+      ref={menuRef}
+      className={`st-notifications${tracking ? " is-map" : ""}`}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.stopPropagation();
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector<HTMLElement>("summary")?.focus();
+        }
+      }}
     >
-      {tracking ? <FiBell size={24} /> : <FiAlertTriangle size={15} style={{ color: "#EF4444" }} />}
-      {authenticated && activeCount > 0 && (
-        <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold text-white" style={{ background: "#EF4444" }}>
-          {activeCount > 99 ? "99+" : activeCount}
-        </span>
-      )}
-    </Link>
+      <summary aria-label="Notifications" title="Notifications">
+        <FiBell />
+        {authenticated && activeCount > 0 && (
+          <span className="st-notification-count">
+            {activeCount > 99 ? "99+" : activeCount}
+          </span>
+        )}
+      </summary>
+      <section className="st-notification-feed" aria-label="Notifications">
+        <header>
+          <strong>Notifications</strong>
+          <span>{activeCount} open</span>
+        </header>
+        {alerts.length ? (
+          alerts.slice(0, 5).map((alert) => (
+            <Link
+              key={alertId(alert)}
+              href="/app/alerts"
+              onClick={() => {
+                if (menuRef.current) menuRef.current.open = false;
+              }}
+            >
+              <strong>
+                {String(
+                  alert.message ?? alert.alertType ?? "Fleet alert",
+                ).replaceAll("_", " ")}
+              </strong>
+              <span>
+                {String(alert.deviceName ?? alert.vehiclePlate ?? "")}
+              </span>
+            </Link>
+          ))
+        ) : (
+          <p>No recent notifications.</p>
+        )}
+        <footer>
+          <Link
+            className="st-link"
+            href="/app/alerts"
+            onClick={() => {
+              if (menuRef.current) menuRef.current.open = false;
+            }}
+          >
+            View all alerts
+          </Link>
+        </footer>
+      </section>
+    </details>
   );
 }

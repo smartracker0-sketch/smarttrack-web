@@ -2,6 +2,7 @@
 
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useRef, useCallback } from "react";
+import LeafletMap from "./LeafletMap";
 import { objectIconSvg } from "@/lib/objectIcons";
 
 export type MarkerData = {
@@ -19,7 +20,7 @@ export type MarkerData = {
   label?: string;
 };
 
-interface Props {
+export interface MapProps {
   markers: MarkerData[];
   flyToId?: string | null;
   followId?: string | null;
@@ -28,6 +29,10 @@ interface Props {
   style?: string;
   className?: string;
   onMarkerClick?: (id: string) => void;
+  route?: [number, number][];
+  routeProgress?: number;
+  fitRoute?: boolean;
+  onMapClick?: (coordinate: [number, number]) => void;
 }
 
 const DEFAULT_CENTER: [number, number] = [3.3792, 6.5244];
@@ -36,7 +41,7 @@ const DEFAULT_STYLE = "mapbox://styles/mapbox/outdoors-v12";
 const CLUSTER_MAX_ZOOM = 15;
 const CLUSTER_RADIUS_PX = 72;
 
-export default function MapboxMap({
+function MapboxEngine({
   markers,
   flyToId,
   followId,
@@ -45,7 +50,7 @@ export default function MapboxMap({
   style = DEFAULT_STYLE,
   className = "w-full h-full",
   onMarkerClick,
-}: Props) {
+}: MapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map());
@@ -65,23 +70,38 @@ export default function MapboxMap({
   flyToIdRef.current = flyToId;
   followIdRef.current = followId;
 
-  const buildMarkerEl = useCallback((color: string, pulsing: boolean, heading = 0, label = "", ignition = false, moving = false, motionLabel?: string, objectIcon?: string) => {
-    const badgeLabel = motionLabel ?? (moving ? "MOVING" : ignition ? "ON" : "OFF");
-    const assetSvg = objectIconSvg(objectIcon, color);
-    const el = document.createElement("div");
-    el.style.cssText = `
+  const buildMarkerEl = useCallback(
+    (
+      color: string,
+      pulsing: boolean,
+      heading = 0,
+      label = "",
+      ignition = false,
+      moving = false,
+      motionLabel?: string,
+      objectIcon?: string,
+    ) => {
+      const badgeLabel =
+        motionLabel ?? (moving ? "MOVING" : ignition ? "ON" : "OFF");
+      const assetSvg = objectIconSvg(objectIcon, color);
+      const el = document.createElement("div");
+      el.style.cssText = `
       width: 0; height: 0; cursor: pointer; position: relative;
       pointer-events: auto; overflow: visible; transform: translateZ(0);
     `;
 
-    el.innerHTML = `
-      ${pulsing ? `
+      el.innerHTML = `
+      ${
+        pulsing
+          ? `
         <span style="
           position:absolute; left:-25px; top:-25px; width:50px; height:50px; border-radius:50%;
           background:${color}; opacity:0.2;
           animation: tp-pulse 1.4s ease-out infinite;
         "></span>
-      ` : ""}
+      `
+          : ""
+      }
       <div style="
         position:absolute; left:0; top:-48px; transform:translateX(-50%); z-index:3; display:flex; gap:4px;
         align-items:center; padding:3px 6px; border-radius:999px; background:#fff;
@@ -102,7 +122,9 @@ export default function MapboxMap({
         border-radius:999px; background:${color}; border:2px solid #fff;
         box-shadow:0 1px 4px rgba(15,23,42,.28);
       "></span>
-      ${label ? `
+      ${
+        label
+          ? `
         <div style="
           position:absolute; left:0; top:31px; transform:translateX(-50%);
           width:max-content; max-width:122px; padding:8px 10px; border-radius:10px;
@@ -110,10 +132,14 @@ export default function MapboxMap({
           text-align:center; box-shadow:0 4px 12px rgba(15,23,42,.18);
           white-space:normal; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
         ">${label}</div>
-      ` : ""}
+      `
+          : ""
+      }
     `;
-    return el;
-  }, []);
+      return el;
+    },
+    [],
+  );
 
   const buildClusterEl = useCallback((count: number) => {
     const el = document.createElement("button");
@@ -130,41 +156,48 @@ export default function MapboxMap({
     return el;
   }, []);
 
-  const animateMarkerTo = useCallback((id: string, marker: mapboxgl.Marker, lng: number, lat: number) => {
-    const activeTarget = animationTargetsRef.current.get(id);
-    if (activeTarget && activeTarget[0] === lng && activeTarget[1] === lat) return;
+  const animateMarkerTo = useCallback(
+    (id: string, marker: mapboxgl.Marker, lng: number, lat: number) => {
+      const activeTarget = animationTargetsRef.current.get(id);
+      if (activeTarget && activeTarget[0] === lng && activeTarget[1] === lat)
+        return;
 
-    const current = marker.getLngLat();
-    const startLng = current.lng;
-    const startLat = current.lat;
-    const deltaLng = lng - startLng;
-    const deltaLat = lat - startLat;
+      const current = marker.getLngLat();
+      const startLng = current.lng;
+      const startLat = current.lat;
+      const deltaLng = lng - startLng;
+      const deltaLat = lat - startLat;
 
-    window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
-    animationTargetsRef.current.set(id, [lng, lat]);
+      window.cancelAnimationFrame(animationRef.current.get(id) ?? 0);
+      animationTargetsRef.current.set(id, [lng, lat]);
 
-    if (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001) {
-      marker.setLngLat([lng, lat]);
-      animationTargetsRef.current.delete(id);
-      return;
-    }
-
-    const startedAt = performance.now();
-    const duration = 4200;
-    const step = (now: number) => {
-      const progress = Math.min((now - startedAt) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      marker.setLngLat([startLng + deltaLng * eased, startLat + deltaLat * eased]);
-      if (progress < 1) {
-        animationRef.current.set(id, window.requestAnimationFrame(step));
-      } else {
+      if (Math.abs(deltaLng) < 0.000001 && Math.abs(deltaLat) < 0.000001) {
         marker.setLngLat([lng, lat]);
-        animationRef.current.delete(id);
         animationTargetsRef.current.delete(id);
+        return;
       }
-    };
-    animationRef.current.set(id, window.requestAnimationFrame(step));
-  }, []);
+
+      const startedAt = performance.now();
+      const duration = 4200;
+      const step = (now: number) => {
+        const progress = Math.min((now - startedAt) / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        marker.setLngLat([
+          startLng + deltaLng * eased,
+          startLat + deltaLat * eased,
+        ]);
+        if (progress < 1) {
+          animationRef.current.set(id, window.requestAnimationFrame(step));
+        } else {
+          marker.setLngLat([lng, lat]);
+          animationRef.current.delete(id);
+          animationTargetsRef.current.delete(id);
+        }
+      };
+      animationRef.current.set(id, window.requestAnimationFrame(step));
+    },
+    [],
+  );
 
   const clearClusterMarkers = useCallback(() => {
     clusterRunRef.current += 1;
@@ -185,7 +218,9 @@ export default function MapboxMap({
     const activeMarkers = markersDataRef.current;
     if (map.getZoom() >= CLUSTER_MAX_ZOOM || activeMarkers.length < 2) return;
 
-    const isolatedIds = new Set([flyToIdRef.current, followIdRef.current].filter(Boolean).map(String));
+    const isolatedIds = new Set(
+      [flyToIdRef.current, followIdRef.current].filter(Boolean).map(String),
+    );
     const candidates = activeMarkers
       .filter((marker) => !isolatedIds.has(marker.id))
       .map((marker) => ({
@@ -216,7 +251,10 @@ export default function MapboxMap({
       group.forEach(({ marker }) => {
         lng += marker.lng;
         lat += marker.lat;
-        markersRef.current.get(marker.id)?.getElement().style.setProperty("display", "none");
+        markersRef.current
+          .get(marker.id)
+          ?.getElement()
+          .style.setProperty("display", "none");
       });
       lng /= group.length;
       lat /= group.length;
@@ -224,15 +262,30 @@ export default function MapboxMap({
       const ids = group.map(({ marker }) => marker.id);
       const clusterId = ids.sort().join("|");
       import("mapbox-gl").then((mbgl) => {
-        if (!mapRef.current || mapRef.current !== map || clusterRun !== clusterRunRef.current) return;
+        if (
+          !mapRef.current ||
+          mapRef.current !== map ||
+          clusterRun !== clusterRunRef.current
+        )
+          return;
         const mapboxgl = mbgl.default ?? mbgl;
         const el = buildClusterEl(group.length);
         el.addEventListener("click", () => {
           const bounds = new mapboxgl.LngLatBounds();
-          group.forEach(({ marker }) => bounds.extend([marker.lng, marker.lat]));
-          map.fitBounds(bounds, { padding: 90, maxZoom: 17, duration: 900, essential: true });
+          group.forEach(({ marker }) =>
+            bounds.extend([marker.lng, marker.lat]),
+          );
+          map.fitBounds(bounds, {
+            padding: 90,
+            maxZoom: 17,
+            duration: 900,
+            essential: true,
+          });
         });
-        const clusterMarker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        const clusterMarker = new mapboxgl.Marker({
+          element: el,
+          anchor: "center",
+        })
           .setLngLat([lng, lat])
           .addTo(map);
         clusterMarkersRef.current.set(clusterId, clusterMarker);
@@ -246,27 +299,49 @@ export default function MapboxMap({
     popupsRef.current.get(id)?.remove();
   }, []);
 
-  const schedulePopupClose = useCallback((id: string) => {
-    window.clearTimeout(popupCloseTimersRef.current.get(id));
-    const timer = window.setTimeout(() => closePopup(id), 140);
-    popupCloseTimersRef.current.set(id, timer);
-  }, [closePopup]);
+  const schedulePopupClose = useCallback(
+    (id: string) => {
+      window.clearTimeout(popupCloseTimersRef.current.get(id));
+      const timer = window.setTimeout(() => closePopup(id), 140);
+      popupCloseTimersRef.current.set(id, timer);
+    },
+    [closePopup],
+  );
 
-  const openPopup = useCallback((id: string, marker: mapboxgl.Marker, map: mapboxgl.Map) => {
-    const popup = popupsRef.current.get(id);
-    if (!popup) return;
-    window.clearTimeout(popupCloseTimersRef.current.get(id));
-    popupCloseTimersRef.current.delete(id);
-    popup.setLngLat(marker.getLngLat()).addTo(map);
-    const popupEl = popup.getElement();
-    if (!popupEl) return;
-    popupEl.onmouseenter = () => {
+  const openPopup = useCallback(
+    (id: string, marker: mapboxgl.Marker, map: mapboxgl.Map) => {
+      const popup = popupsRef.current.get(id);
+      if (!popup) return;
       window.clearTimeout(popupCloseTimersRef.current.get(id));
       popupCloseTimersRef.current.delete(id);
-    };
-    popupEl.onmouseleave = () => schedulePopupClose(id);
-  }, [schedulePopupClose]);
+      popup.setLngLat(marker.getLngLat()).addTo(map);
+      const popupEl = popup.getElement();
+      if (!popupEl) return;
+      popupEl.onmouseenter = () => {
+        window.clearTimeout(popupCloseTimersRef.current.get(id));
+        popupCloseTimersRef.current.delete(id);
+      };
+      popupEl.onmouseleave = () => schedulePopupClose(id);
+    },
+    [schedulePopupClose],
+  );
 
+  useEffect(() => {
+    const fit = async () => {
+      const map = mapRef.current;
+      const points = markersDataRef.current.filter(
+        (point) => Number.isFinite(point.lat) && Number.isFinite(point.lng),
+      );
+      if (!map || !points.length) return;
+      const { LngLatBounds } = await import("mapbox-gl");
+      if (map !== mapRef.current) return;
+      const bounds = new LngLatBounds();
+      points.forEach((point) => bounds.extend([point.lng, point.lat]));
+      map.fitBounds(bounds, { padding: 90, maxZoom: 14, duration: 700 });
+    };
+    window.addEventListener("st-map:fit", fit);
+    return () => window.removeEventListener("st-map:fit", fit);
+  }, []);
   useEffect(() => {
     if (initializedRef.current || !containerRef.current) return;
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -300,8 +375,14 @@ export default function MapboxMap({
         logoPosition: "bottom-left",
       });
 
-      map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
-      map.addControl(new mapboxgl.NavigationControl({ showCompass: true }), "bottom-right");
+      map.addControl(
+        new mapboxgl.AttributionControl({ compact: true }),
+        "bottom-right",
+      );
+      map.addControl(
+        new mapboxgl.NavigationControl({ showCompass: true }),
+        "bottom-right",
+      );
       map.addControl(new mapboxgl.FullscreenControl(), "bottom-right");
 
       mapRef.current = map;
@@ -335,13 +416,30 @@ export default function MapboxMap({
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function addMarker(m: MarkerData, mgl: any, map: mapboxgl.Map) {
-    const el = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel, m.objectIcon);
+    const el = buildMarkerEl(
+      m.color,
+      m.pulsing,
+      m.heading ?? 0,
+      m.label,
+      m.ignition,
+      m.moving,
+      m.motionLabel,
+      m.objectIcon,
+    );
 
-    const popup = new mgl.Popup({ offset: 58, maxWidth: "460px", closeButton: true, className: "tp-vehicle-popup" })
-      .setHTML(m.popupHtml);
+    const popup = new mgl.Popup({
+      offset: 58,
+      maxWidth: "460px",
+      closeButton: true,
+      className: "tp-vehicle-popup",
+    }).setHTML(m.popupHtml);
     popupsRef.current.set(m.id, popup);
 
-    const marker = new mgl.Marker({ element: el, anchor: "center", offset: [0, 0] })
+    const marker = new mgl.Marker({
+      element: el,
+      anchor: "center",
+      offset: [0, 0],
+    })
       .setLngLat([m.lng, m.lat])
       .addTo(map);
 
@@ -363,7 +461,16 @@ export default function MapboxMap({
         if (marker) {
           animateMarkerTo(m.id, marker, m.lng, m.lat);
           const el = marker.getElement();
-          el.innerHTML = buildMarkerEl(m.color, m.pulsing, m.heading ?? 0, m.label, m.ignition, m.moving, m.motionLabel, m.objectIcon).innerHTML;
+          el.innerHTML = buildMarkerEl(
+            m.color,
+            m.pulsing,
+            m.heading ?? 0,
+            m.label,
+            m.ignition,
+            m.moving,
+            m.motionLabel,
+            m.objectIcon,
+          ).innerHTML;
           const popup = popupsRef.current.get(m.id);
           popup?.setHTML(m.popupHtml);
           existing.delete(m.id);
@@ -390,7 +497,12 @@ export default function MapboxMap({
     const marker = markersRef.current.get(flyToId);
     if (!marker) return;
     const lngLat = marker.getLngLat();
-    mapRef.current.flyTo({ center: [lngLat.lng, lngLat.lat], zoom: 16, duration: 1200, essential: true });
+    mapRef.current.flyTo({
+      center: [lngLat.lng, lngLat.lat],
+      zoom: 16,
+      duration: 1200,
+      essential: true,
+    });
     applyClusters();
   }, [applyClusters, flyToId, markers]);
 
@@ -399,7 +511,11 @@ export default function MapboxMap({
     const marker = markersRef.current.get(followId);
     if (!marker) return;
     const lngLat = marker.getLngLat();
-    mapRef.current.easeTo({ center: [lngLat.lng, lngLat.lat], duration: 1000, essential: true });
+    mapRef.current.easeTo({
+      center: [lngLat.lng, lngLat.lat],
+      duration: 1000,
+      essential: true,
+    });
     applyClusters();
   }, [applyClusters, followId, markers]);
 
@@ -515,5 +631,13 @@ export default function MapboxMap({
       `}</style>
       <div ref={containerRef} className={className} />
     </>
+  );
+}
+
+export default function MapboxMap(props: MapProps) {
+  return process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? (
+    <MapboxEngine {...props} />
+  ) : (
+    <LeafletMap {...props} />
   );
 }

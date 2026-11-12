@@ -1,2 +1,2 @@
-import ScheduleManager from "@/components/ScheduleManager";
-export default function Page() { return <ScheduleManager type="report-schedule" title="Report Schedules" description="Deliver fleet reports automatically to your team." />; }
+import ScheduledReports from "@/components/signature/ScheduledReports";
+export default function Page() { return <ScheduledReports />; }

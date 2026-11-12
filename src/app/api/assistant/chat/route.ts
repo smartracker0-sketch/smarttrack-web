@@ -5,7 +5,7 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   const body = await request.text();
   try {
-    const upstream = await userFetch("/api/v1/assistant/chat", { method: "POST", body });
+    const upstream = await userFetch("/api/v1/assistant/chat", { method: "POST", body, signal: request.signal });
     if (!upstream.ok) {
       const error = await upstream.json().catch(() => ({ message: "Fleet AI is temporarily unavailable." }));
       return Response.json(error, { status: upstream.status });
