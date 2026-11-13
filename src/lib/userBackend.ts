@@ -1,5 +1,6 @@
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
+import { serverBackendUrl } from './serverBackendUrl';
 import {
   USER_ACCESS_COOKIE,
   USER_REFRESH_COOKIE,
@@ -9,11 +10,7 @@ import {
 const refreshRequests = new Map<string, Promise<string | null>>();
 
 export function backendUrl() {
-  return (
-    process.env.TRACKPRO_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8080"
-  );
+  return serverBackendUrl();
 }
 
 export async function userFetch(

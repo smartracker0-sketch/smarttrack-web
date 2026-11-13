@@ -6,13 +6,12 @@ import {
   USER_REFRESH_COOKIE,
   sessionCookieOptions,
 } from "@/lib/sessionCookies";
-
-const BASE_URL = process.env.TRACKPRO_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080";
+import { serverBackendUrl } from '@/lib/serverBackendUrl';
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
-  const email: string = body?.email?.trim() ?? "";
-  const password: string = body?.password ?? "";
+  const email = typeof body?.email === 'string' ? body.email.trim() : '';
+  const password = typeof body?.password === 'string' ? body.password : '';
 
   if (!email || !password) {
     return NextResponse.json({ message: "Email and password are required" }, { status: 400 });
@@ -20,11 +19,12 @@ export async function POST(req: Request) {
 
   let upstream: Response;
   try {
-    upstream = await fetch(`${BASE_URL}/api/v1/auth/login`, {
+    upstream = await fetch(`${serverBackendUrl()}/api/v1/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ email, password }),
       cache: "no-store",
+      signal: AbortSignal.timeout(10000),
     });
   } catch {
     return NextResponse.json({ message: "Backend unavailable" }, { status: 503 });

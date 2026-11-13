@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { serverBackendUrl } from './serverBackendUrl';
 
 export function backendUrl() {
-  return (
-    process.env.TRACKPRO_API_BASE_URL ??
-    process.env.NEXT_PUBLIC_API_BASE_URL ??
-    "http://localhost:8080"
-  );
+  return serverBackendUrl();
 }
 
 function getAdminJwtFromRequest(req: Request): string | null {
