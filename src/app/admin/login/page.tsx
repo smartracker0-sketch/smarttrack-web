@@ -30,7 +30,7 @@ export default function AdminLoginPage() {
         setError(data.message || "Invalid credentials");
         return;
       }
-      login("", data.displayName ?? data.email ?? email, data.email ?? email);
+      login(data.displayName ?? data.email ?? email, data.email ?? email);
       router.replace("/admin/overview");
     } catch {
       setError("Network error. Try again.");

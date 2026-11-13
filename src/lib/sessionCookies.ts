@@ -10,13 +10,13 @@ export function sessionCookieDomain(hostHeader: string | null): string | undefin
     : undefined;
 }
 
-export function sessionCookieOptions(hostHeader: string | null, maxAge: number) {
+export function sessionCookieOptions(_hostHeader: string | null, maxAge: number) {
   return {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax" as const,
     path: "/",
     maxAge,
-    domain: sessionCookieDomain(hostHeader),
+    // Session credentials are host-only. The helper remains for clearing old domain cookies.
   };
 }

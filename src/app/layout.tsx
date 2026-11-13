@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { headers } from "next/headers";
+import BrowserSessionCleanup from '@/components/BrowserSessionCleanup';
 import FloatingChatSupport from "./FloatingChatSupport";
 import "./globals.css";
 
@@ -21,11 +23,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // A per-request CSP nonce requires dynamic rendering; never cache one user's nonce.
+  await headers();
   return (
     <html
       lang="en"
@@ -33,6 +37,7 @@ export default function RootLayout({
       data-scroll-behavior="smooth"
     >
       <body className="h-full flex flex-col">
+        <BrowserSessionCleanup />
         {children}
         <FloatingChatSupport />
       </body>
